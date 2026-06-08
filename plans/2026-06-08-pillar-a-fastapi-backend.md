@@ -249,7 +249,7 @@ pnpm --filter roadmap-engine test
 
 ### Phase 5 — FastAPI routers + integration tests
 
-**Status:** `✅ Complete — pending`  
+**Status:** `✅ Complete — 74346f1`  
 **Depends on:** Phase 3, Phase 4
 
 **Goal:** HTTP API mirrors TS public API; integration tests pass.
