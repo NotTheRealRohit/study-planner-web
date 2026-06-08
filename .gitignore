@@ -17,3 +17,10 @@ test-results/
 # transient agent worktrees
 .claude/worktrees/
 handovers/
+
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
