@@ -57,6 +57,10 @@ export class SyncEngine {
   // immediately rather than waiting for the interval threshold.
   private hasEverSnapshottedThisSession = false;
 
+  // Prevents concurrent restoreFromCloud calls (e.g. React Strict Mode double-mount)
+  // from both wiping + bulkAppending the snapshot and duplicating events.
+  private restoreInFlight: Promise<void> | null = null;
+
   constructor(
     private supabase: SupabaseClientLike,
     private eventStore: EventStore,
@@ -282,7 +286,15 @@ export class SyncEngine {
 
       // Skip events that originated from this client — we already have them
       // in the local event store from when they were logged.
-      const foreignEvents = remoteEvents.filter(e => e.client_id !== this.clientId);
+      const existingSessionIds = await this.getLocalSessionIds();
+      const foreignEvents = remoteEvents.filter(e => {
+        if (e.client_id === this.clientId) return false;
+        if (e.kind === 'SessionLogged') {
+          const sessionId = e.payload.sessionId as string | undefined;
+          if (sessionId && existingSessionIds.has(sessionId)) return false;
+        }
+        return true;
+      });
 
       if (foreignEvents.length > 0) {
         await this.eventStore.bulkAppend(
@@ -416,11 +428,38 @@ export class SyncEngine {
   async restoreFromCloud(): Promise<void> {
     if (this.destroyed) return;
 
+    if (this.restoreInFlight) {
+      return this.restoreInFlight;
+    }
+
+    this.restoreInFlight = this.doRestoreFromCloud();
+    try {
+      await this.restoreInFlight;
+    } finally {
+      this.restoreInFlight = null;
+    }
+  }
+
+  private async doRestoreFromCloud(): Promise<void> {
+    if (this.destroyed) return;
+
     const path = `${this.userId}/snapshot.json`;
 
     this.notifyState({ status: 'syncing', lastError: null });
 
     try {
+      // Same device re-login: IndexedDB already has events. Skip wipe + snapshot
+      // restore — only flush pending writes and pull remote delta. Full restore
+      // is for cold-start clients with an empty local event log.
+      const localEventCount = await this.eventStore.table('events').count();
+      if (localEventCount > 0) {
+        await this.flushQueue();
+        await this.deduplicateLocalSessionEvents();
+        await this.pullAndMerge();
+        this.notifyState({ status: 'idle', lastSyncedAt: new Date() });
+        return;
+      }
+
       // ── Step 1: Fetch the checkpoint tombstone ──────────────────────────
       // The checkpoint row is the authority. If it doesn't exist, there is no
       // valid snapshot to restore — fall through to a full pull.
@@ -529,7 +568,56 @@ export class SyncEngine {
     }
   }
 
+  // ─── Local deduplication ──────────────────────────────────────────────────
+
+  /**
+   * Remove duplicate SessionLogged rows that share the same sessionId.
+   * Keeps the row with the lowest local id (first inserted).
+   * Heals corruption from concurrent snapshot restores on re-login.
+   */
+  private async deduplicateLocalSessionEvents(): Promise<void> {
+    const all = await this.eventStore.getAll();
+    const keepIdBySession = new Map<string, number>();
+    const idsToDelete: number[] = [];
+
+    for (const event of all) {
+      if (event.kind !== 'SessionLogged' || event.id === undefined) continue;
+
+      const sessionId = event.payload.sessionId as string | undefined;
+      if (!sessionId) continue;
+
+      const keptId = keepIdBySession.get(sessionId);
+      if (keptId === undefined) {
+        keepIdBySession.set(sessionId, event.id);
+        continue;
+      }
+
+      if (event.id < keptId) {
+        idsToDelete.push(keptId);
+        keepIdBySession.set(sessionId, event.id);
+      } else {
+        idsToDelete.push(event.id);
+      }
+    }
+
+    if (idsToDelete.length > 0) {
+      await this.eventStore.table('events').bulkDelete(idsToDelete);
+    }
+  }
+
   // ─── Cursor helpers ───────────────────────────────────────────────────────
+
+  private async getLocalSessionIds(): Promise<Set<string>> {
+    const all = await this.eventStore.getAll();
+    const ids = new Set<string>();
+    for (const event of all) {
+      if (event.kind === 'SessionLogged') {
+        const sessionId = event.payload.sessionId as string | undefined;
+        if (sessionId) ids.add(sessionId);
+      }
+    }
+    return ids;
+  }
 
   private async getLastPulledId(): Promise<number> {
     const meta = (await this.eventStore

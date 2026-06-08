@@ -671,6 +671,107 @@ describe('SyncEngine', () => {
       expect(state.status).toBe('error');
       expect(state.lastError).toContain('schema v999');
     });
+
+    it('does not wipe and re-append on re-login when local events already exist', async () => {
+      const sessionIdA = 'session-a';
+      const sessionIdB = 'session-b';
+      await eventStore.append('SessionLogged', {
+        sessionId: sessionIdA,
+        duration: 60,
+        description: 'Video on DSA- Arrays',
+      });
+      await eventStore.append('SessionLogged', {
+        sessionId: sessionIdB,
+        duration: 1,
+        description: 'Onam scene 6 · session 1 of 1',
+      });
+
+      const snapshotData = {
+        schemaVersion: 1,
+        asOfRemoteId: 10,
+        asOfCreatedAt: '2024-01-15T10:00:00Z',
+        events: [
+          { kind: 'SessionLogged', payload: { sessionId: sessionIdA, duration: 60 }, createdAt: '2024-06-07T10:00:00Z', clientId, deviceLocalId: 1 },
+          { kind: 'SessionLogged', payload: { sessionId: sessionIdB, duration: 1 }, createdAt: '2024-05-09T10:00:00Z', clientId, deviceLocalId: 2 },
+          { kind: 'SessionLogged', payload: { sessionId: sessionIdA, duration: 60 }, createdAt: '2024-06-07T10:00:00Z', clientId, deviceLocalId: 3 },
+        ],
+      };
+      const blob = new Blob([JSON.stringify(snapshotData)], { type: 'application/json' });
+      fakeSupabase._snapshots.set(`${userId}/snapshot.json`, blob);
+      fakeSupabase._checkpoints.set(userId, {
+        user_id: userId,
+        as_of_remote_id: 10,
+        schema_version: 1,
+        event_count: 3,
+        created_at: '2024-01-15T10:00:00Z',
+      });
+
+      const engine = createEngine();
+      await engine.restoreFromCloud();
+      await engine.restoreFromCloud();
+
+      const localEvents = await eventStore.getAll();
+      expect(localEvents).toHaveLength(2);
+    });
+
+    it('heals duplicate SessionLogged rows with the same sessionId on re-login', async () => {
+      const sessionId = 'dup-session';
+      await eventStore.append('SessionLogged', {
+        sessionId,
+        duration: 60,
+        description: 'Video on DSA- Arrays',
+      });
+      await eventStore.append('SessionLogged', {
+        sessionId,
+        duration: 60,
+        description: 'Video on DSA- Arrays',
+      });
+      await eventStore.append('SessionLogged', {
+        sessionId: 'other-session',
+        duration: 1,
+        description: 'Onam scene 6 · session 1 of 1',
+      });
+
+      const engine = createEngine();
+      await engine.restoreFromCloud();
+
+      const localEvents = await eventStore.getAll();
+      expect(localEvents).toHaveLength(2);
+      const sessionIds = localEvents.map(e => e.payload.sessionId);
+      expect(sessionIds).toContain('dup-session');
+      expect(sessionIds).toContain('other-session');
+    });
+
+    it('concurrent restoreFromCloud on cold start does not duplicate snapshot events', async () => {
+      const snapshotData = {
+        schemaVersion: 1,
+        asOfRemoteId: 10,
+        asOfCreatedAt: '2024-01-15T10:00:00Z',
+        events: [
+          { kind: 'SessionLogged', payload: { sessionId: 'a', duration: 60 }, createdAt: '2024-06-07T10:00:00Z', clientId: 'other', deviceLocalId: 1 },
+          { kind: 'SessionLogged', payload: { sessionId: 'b', duration: 1 }, createdAt: '2024-05-09T10:00:00Z', clientId: 'other', deviceLocalId: 2 },
+        ],
+      };
+      const blob = new Blob([JSON.stringify(snapshotData)], { type: 'application/json' });
+      fakeSupabase._snapshots.set(`${userId}/snapshot.json`, blob);
+      fakeSupabase._checkpoints.set(userId, {
+        user_id: userId,
+        as_of_remote_id: 10,
+        schema_version: 1,
+        event_count: 2,
+        created_at: '2024-01-15T10:00:00Z',
+      });
+
+      const engine = createEngine();
+      await Promise.all([
+        engine.restoreFromCloud(),
+        engine.restoreFromCloud(),
+        engine.restoreFromCloud(),
+      ]);
+
+      const localEvents = await eventStore.getAll();
+      expect(localEvents).toHaveLength(2);
+    });
   });
 
   describe('snapshot scheduling', () => {
