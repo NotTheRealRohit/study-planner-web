@@ -205,7 +205,7 @@ ls tests/fixtures/pillar-a/roadmap/ | wc -l    # ~31+
 
 ### Phase 3 — Port `packages/py-progress`
 
-**Status:** `✅ Complete — 79fb09b`  
+**Status:** `✅ Complete — aebb861`  
 **Depends on:** Phase 2
 
 **Goal:** All progress parity tests green.
