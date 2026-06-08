@@ -269,7 +269,7 @@ uv run --package intelligence pytest services/intelligence/tests -q
 
 ### Phase 6 — Docker + Colima + docs
 
-**Status:** `🟡 In progress`
+**Status:** `✅ Complete — pending`
 **Depends on:** Phase 5
 
 **Goal:** Service runs in Docker; README has curl examples.
@@ -283,7 +283,7 @@ uv run --package intelligence pytest services/intelligence/tests -q
 ```bash
 docker compose up --build -d
 curl -s http://localhost:8000/health
-curl -s -X POST http://localhost:8000/v1/calibration -H 'Content-Type: application/json' -d @tests/fixtures/pillar-a/progress/empty-sessions.input.json
+curl -s -X POST http://localhost:8000/v1/calibration -H 'Content-Type: application/json' -d @tests/fixtures/pillar-a/progress/compute-calibration-empty.input.json
 docker compose down
 ```
 
