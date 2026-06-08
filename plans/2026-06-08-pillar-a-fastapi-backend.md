@@ -228,7 +228,7 @@ pnpm --filter progress test   # TS still passes
 
 ### Phase 4 — Port `packages/py-roadmap-engine`
 
-**Status:** `☐ Not started`  
+**Status:** `🟡 In progress`  
 **Depends on:** Phase 2
 
 **Goal:** All roadmap parity + property tests green.
