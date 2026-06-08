@@ -269,7 +269,7 @@ uv run --package intelligence pytest services/intelligence/tests -q
 
 ### Phase 6 — Docker + Colima + docs
 
-**Status:** `☐ Not started`  
+**Status:** `🟡 In progress`
 **Depends on:** Phase 5
 
 **Goal:** Service runs in Docker; README has curl examples.
