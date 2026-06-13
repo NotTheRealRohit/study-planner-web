@@ -206,7 +206,7 @@ Candidate rosters (build-plan §6), all called directly (D-01 from Part 1):
 
 ### Phase 3a: Change-detection track
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~400 lines
 
