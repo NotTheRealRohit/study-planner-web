@@ -492,7 +492,7 @@ ls research/results/*.json && cat research/results/*.json | grep _provenance  # 
 
 ### Phase 1: Seeded synthetic-learner generator with ground-truth sidecar
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 0
 **Estimated scope:** ~10 files, ~700 lines (split across the steps below)
 
@@ -607,7 +607,12 @@ make dataset && d=$(ls -dt research/datasets/*/ | head -1); echo "seed-stable if
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+The generator keeps planted regime shifts on the archetypes that define them in the
+pre-registration: Fading-Flame gets gradual drift and Marathon-Runner gets abrupt steps; flat
+archetypes keep their distinguishing adherence/time/deadline mechanisms without generic extra
+shifts. Clip-rate accounting is active-session-only because manual sessions emit no pace to the
+engines. A deterministic noise redraw guard preserves seed determinism while enforcing the frozen
+`<2%` physical-plausibility ceiling.
 
 ---
 
