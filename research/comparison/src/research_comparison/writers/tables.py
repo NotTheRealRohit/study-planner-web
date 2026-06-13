@@ -104,3 +104,35 @@ def write_scheduling_metrics_table(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(render_scheduling_metrics_table(winners), encoding="utf-8")
     return out_path
+
+
+def render_kt_metric_table(metric_by_dataset: dict[str, dict[str, float]], metric_label: str) -> str:
+    datasets = sorted(metric_by_dataset)
+    models = sorted({model for rows in metric_by_dataset.values() for model in rows})
+    header = "Model & " + " & ".join(_tex(dataset) for dataset in datasets) + r" \\"
+    lines = [
+        r"\begin{tabular}{l" + "r" * len(datasets) + "}",
+        r"\toprule",
+        header,
+        r"\midrule",
+    ]
+    for model in models:
+        values = []
+        for dataset in datasets:
+            value = metric_by_dataset.get(dataset, {}).get(model)
+            values.append("--" if value is None else f"{value:.4f}")
+        lines.append(f"{_tex(model)} & " + " & ".join(values) + r" \\")
+    lines.extend([r"\bottomrule", r"\end{tabular}", f"% {metric_label}", ""])
+    return "\n".join(lines)
+
+
+def write_kt_auc_table(metric_by_dataset: dict[str, dict[str, float]], out_path: Path) -> Path:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(render_kt_metric_table(metric_by_dataset, "Full-sequence AUC"), encoding="utf-8")
+    return out_path
+
+
+def write_kt_ece_table(metric_by_dataset: dict[str, dict[str, float]], out_path: Path) -> Path:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(render_kt_metric_table(metric_by_dataset, "Expected calibration error"), encoding="utf-8")
+    return out_path

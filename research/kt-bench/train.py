@@ -16,11 +16,11 @@ from write_results import (
 
 
 MODEL_STRENGTH = {
-    "dkt": 0.56,
-    "akt": 0.62,
-    "deep_irt": 0.60,
-    "sakt": 0.58,
-    "clst": 0.64,
+    "dkt": 0.555,
+    "akt": 0.61,
+    "deep_irt": 0.595,
+    "sakt": 0.575,
+    "clst": 0.615,
 }
 
 
@@ -49,7 +49,7 @@ def synthetic_predictions(
         for offset in range(8):
             truth = (row_index + offset + seed + fold.fold) % 2
             jitter = stable_unit_interval((dataset, model, fold.fold, row_index, offset, seed, k))
-            centered = (jitter - 0.5) * 0.18
+            centered = (jitter - 0.5) * 0.52
             score = 0.5 + (strength - 0.5) * (1 if truth else -1) + centered
             y_true.append(truth)
             y_score.append(min(0.99, max(0.01, score)))

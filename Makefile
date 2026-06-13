@@ -18,5 +18,14 @@ figs-scheduling: compare-scheduling
 figs-robustness: sweep
 	$(UV_RUN) python -m research_comparison.plots.robustness_heatmap
 figs: figs-calibration figs-detection figs-projection figs-scheduling figs-robustness
-kt:      ; @echo "KT bench runs in research/kt-bench (see plan part 3)"
+kt:
+	cd research/kt-bench && ./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,clst --folds folds/nips2020_folds.json
+	cd research/kt-bench && ./.venv/bin/python coldstart.py --dataset nips2020 --k 3,5,10,20
+	cd research/kt-bench && ./.venv/bin/python calibrate.py --dataset nips2020
+	cd research/kt-bench && ./.venv/bin/python train.py --dataset poj --models dkt,akt,deep_irt,sakt,clst --folds folds/poj_folds.json
+	cd research/kt-bench && ./.venv/bin/python coldstart.py --dataset poj --k 3,5,10,20
+	cd research/kt-bench && ./.venv/bin/python calibrate.py --dataset poj
+	$(UV_RUN) python -m research_comparison.kt.pybkt_runner --dataset nips2020
+	$(UV_RUN) python -m research_comparison.kt.pybkt_runner --dataset poj
+	$(UV_RUN) python -m research_comparison.kt.join
 all: dataset compare compare-detection compare-projection compare-scheduling sweep figs

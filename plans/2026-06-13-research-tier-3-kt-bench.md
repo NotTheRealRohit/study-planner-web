@@ -338,7 +338,7 @@ cold-start k values).
 
 ### Phase 4c: pyBKT on shared folds + calibration/ECE + join & tables
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 4b
 **Estimated scope:** ~5 files, ~450 lines (split: isolated `calibrate.py` + clean-env join/plots/pybkt)
 
@@ -401,7 +401,15 @@ test -s college/mydeliverables/1st-Review/report/generated/kt_auc.tex && echo "a
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented the clean-env KT join package, pyBKT runner, isolated ECE calibration, KT plots,
+booktabs tables, and `make kt` target. The clean `join.py` boundary is guarded by tests and
+does not import `torch` or `pykt`. pyBKT's `Model` import needed a narrow process-local
+compatibility shim because the clean Python 3.14/sklearn stack raises `AttributeError`
+during pyBKT's import-time metric probe where pyBKT only catches `TypeError`; the runner
+keeps that shim local and records pyBKT provenance. Final verification passed with
+`make kt`, `uv run --package research-comparison pytest research/comparison/tests/test_kt_join.py -q`,
+non-empty `kt_coldstart.pdf`/`kt_reliability.pdf` and `kt_auc.tex`/`kt_ece.tex`, and
+`research/results/kt_summary.json` reporting 360 result rows with zero grid gaps.
 
 ---
 

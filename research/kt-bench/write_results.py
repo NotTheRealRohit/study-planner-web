@@ -65,6 +65,8 @@ def kt_provenance(*, seed: int, folds_path: Path, folds_meta: dict[str, Any]) ->
 
 
 def result_filename(dataset: str, model: str, fold: int, k: str | int) -> str:
+    if k == "ece":
+        return f"{dataset}__{model}__fold{fold}__ece.json"
     return f"{dataset}__{model}__fold{fold}__k{k}.json"
 
 
