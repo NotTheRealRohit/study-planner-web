@@ -274,7 +274,7 @@ records `raw_source: smoke_fixture` so public raw exports can replace them delib
 
 ### Phase 4b: Deep models — full-seq AUC + cold-start curve + CLST
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 4a
 **Estimated scope:** ~3 files, ~400 lines (isolated env)
 
