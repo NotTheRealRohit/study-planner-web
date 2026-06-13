@@ -274,7 +274,7 @@ Implemented with scoped staging because the worktree already contained unrelated
 
 ### Phase 3b: Target-date projection track
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~400 lines
 
@@ -328,7 +328,7 @@ test -s college/mydeliverables/1st-Review/report/generated/projection_winners.te
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented as direct forecast adapters over `fit_burn_up_gp`, linear extrapolation, and `run_kalman_on_phase`, with finish-date point/interval metrics aggregated per learner. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q` and the plan's `make dataset compare-projection figs` gate; projection report artifacts were committed, while ignored runtime JSON remains under `research/results/projection/`.
 
 ---
 
