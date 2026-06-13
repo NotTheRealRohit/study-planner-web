@@ -401,7 +401,7 @@ Implemented the open-loop scheduler comparison with the incumbent `generate_road
 
 ### Phase 3d: Oracle baselines + sensitivity sweep + robustness heatmap
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 3a, Phase 3b, Phase 3c
 **Estimated scope:** ~5 files, ~450 lines
 
@@ -456,7 +456,7 @@ ls research/results/sweep/*.json | head -1
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Registered oracle upper-bound candidates in the calibration, detection, and projection outputs, added the full §8 grid enumerator, and emitted a robustness heatmap from stamped sweep results. Also removed `gen_time_ms` from scheduling winner scoring because it made tied scheduling rows nondeterministic; generation time remains recorded as a metric. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_oracles_and_sweep.py -q`, the plan's `make sweep figs` gate, and a post-change focused suite covering detection/projection/scheduling/oracles.
 
 ---
 

@@ -14,6 +14,7 @@ from research_comparison.baselines.projection import (
     forecast_linear_finish,
 )
 from research_comparison.metrics.projection import projection_metrics, winner_by_band
+from research_comparison.oracles.projection import forecast_projection_oracle
 from research_comparison.runners.calibration import latest_dataset_dir
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
@@ -122,6 +123,33 @@ def run_projection_for_learner(
                 "n_forecasts": len(forecasts),
             }
         )
+    oracle_forecasts = [forecast_projection_oracle(true_finish_date) for _t in grid]
+    for t, forecast in zip(grid, oracle_forecasts, strict=True):
+        forecast_rows.append(
+            {
+                "learner_id": learner["learner_id"],
+                "band": learner["band"],
+                "archetype": learner["archetype"],
+                "seed": learner["seed"],
+                "candidate": "oracle_projection",
+                "t": t,
+                **forecast,
+            }
+        )
+    oracle_metrics = projection_metrics(oracle_forecasts, true_finish_date=true_finish_date)
+    rows.append(
+        {
+            "learner_id": learner["learner_id"],
+            "band": learner["band"],
+            "archetype": learner["archetype"],
+            "seed": learner["seed"],
+            "candidate": "oracle_projection",
+            "coverage": oracle_metrics["coverage"],
+            "mean_sharpness_days": oracle_metrics["mean_sharpness_days"],
+            "mean_abs_error_days": oracle_metrics["mean_abs_error_days"],
+            "n_forecasts": len(oracle_forecasts),
+        }
+    )
     return rows, forecast_rows
 
 

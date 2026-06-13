@@ -15,6 +15,7 @@ from research_comparison.metrics.coverage import credible_interval_coverage
 from research_comparison.metrics.paired import paired_difference
 from research_comparison.metrics.prequential import prequential_absolute_errors
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
+from research_comparison.oracles.calibration import calibration_oracle_estimate
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
 
@@ -133,6 +134,32 @@ def run_calibration_track(dataset_dir: str | None = None, out_dir: str | None = 
         if len(active_sessions) < 3:
             continue
         t_grid = default_t_grid(len(active_sessions))
+        oracle_estimate = calibration_oracle_estimate(truth)
+        rows.append(
+            {
+                "learner_id": learner["learner_id"],
+                "band": learner["band"],
+                "archetype": learner["archetype"],
+                "seed": learner["seed"],
+                "candidate": "oracle_calibration",
+                "recovery_mae": recovery_mae([oracle_estimate], truth["m_global"]),
+                "recovery_rmse": recovery_rmse([oracle_estimate], truth["m_global"]),
+                "prequential_mae": 0.0,
+                "coverage": 1.0,
+                "n_active": len(active_sessions),
+            }
+        )
+        convergence.extend(
+            {
+                "band": learner["band"],
+                "archetype": learner["archetype"],
+                "seed": learner["seed"],
+                "candidate": "oracle_calibration",
+                "t": t,
+                "recovery_error": 0.0,
+            }
+            for t in t_grid
+        )
         for candidate in candidates:
             estimates = prequential_calibration(active_sessions, candidate, t_grid)
             estimate_values = [estimate for _t, estimate in estimates]

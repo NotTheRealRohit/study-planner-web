@@ -17,6 +17,7 @@ from research_comparison.metrics.detection import (
     score_detections,
     winner_by_shift_type,
 )
+from research_comparison.oracles.detection import detection_oracle_breakpoints
 from research_comparison.runners.calibration import latest_dataset_dir
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
@@ -135,6 +136,30 @@ def run_detection_for_learner(
                     "breakpoints": breakpoints,
                 }
             )
+
+    oracle_breakpoints = detection_oracle_breakpoints(shifts)
+    oracle_score = score_detections(oracle_breakpoints, shifts, n_observations=len(pace_ratios))
+    for shift_type in SHIFT_TYPES:
+        type_score = oracle_score["by_type"][shift_type]
+        if type_score["n_shifts"] == 0:
+            continue
+        rows.append(
+            {
+                "learner_id": learner["learner_id"],
+                "band": learner["band"],
+                "archetype": learner["archetype"],
+                "seed": learner["seed"],
+                "candidate": "oracle_detection",
+                "shift_type": shift_type,
+                "n_shifts": type_score["n_shifts"],
+                "n_detected": type_score["n_detected"],
+                "missed": type_score["missed"],
+                "mean_latency": type_score["mean_latency"],
+                "false_alarms": oracle_score["false_alarms"],
+                "false_alarm_rate": oracle_score["false_alarm_rate"],
+                "breakpoints": oracle_breakpoints,
+            }
+        )
 
     baseline = pace_ratios[: min(8, len(pace_ratios))]
     reference_mean = float(statistics.fmean(baseline)) if baseline else 1.0

@@ -79,7 +79,7 @@ def winner_by_material_mix(rows: list[dict[str, Any]]) -> dict[str, dict[str, An
             capacity = statistics.fmean(float(row["capacity_violation_rate"]) for row in selected)
             prereq = statistics.fmean(float(row["prereq_order_correctness"]) for row in selected)
             gen_time = statistics.fmean(float(row["gen_time_ms"]) for row in selected)
-            score = drift + capacity * 25.0 + (1.0 - prereq) * 25.0 + gen_time / 10_000.0
+            score = drift + capacity * 25.0 + (1.0 - prereq) * 25.0
             scores[candidate] = {
                 "score": float(score),
                 "mean_abs_deadline_drift_days": float(drift),
