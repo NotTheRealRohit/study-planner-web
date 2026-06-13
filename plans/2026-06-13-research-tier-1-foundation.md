@@ -267,7 +267,7 @@ flowchart LR
 
 ### Phase 0: Scaffold `/research`, register the workspace member, run a stamped no-op pipeline
 
-**Status:** ✅ Complete — a20b9b1e02ca9256ce91533c3e07d7aa76a13ca4
+**Status:** ✅ Complete — b46b79ccda987df29d8db5b5f39a13581ae67cd4
 **Depends on:** none — can start immediately
 **Estimated scope:** ~8 files, ~250 lines
 
