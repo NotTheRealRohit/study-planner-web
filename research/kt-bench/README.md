@@ -1,0 +1,64 @@
+# KT Bench
+
+This directory is the quarantined knowledge-tracing bench for the research tier.
+It deliberately owns its own Python environment and is not a `uv` workspace
+member. Do not import anything from this directory in `research/comparison`.
+
+The artifact seam is:
+
+```text
+research/results/kt/*.json
+```
+
+The clean comparison harness reads those JSON files and the tracked shared folds
+under `research/kt-bench/folds/`; it never imports `torch` or `pykt`.
+
+## Environment
+
+```bash
+cd research/kt-bench
+python3 -m venv .venv
+./.venv/bin/pip install -U pip
+./.venv/bin/pip install -r requirements.txt
+```
+
+If a package download fails on the corporate network, ***REMOVED***
+pattern documented in `.agents/rules/docker-colima-setup.agents.md` and
+`.agents/rules/pnpm-build-registry.agents.md`; keep any machine-specific config
+outside this repo.
+
+## Workflow
+
+1. Preprocess and export shared folds:
+
+   ```bash
+   ./.venv/bin/python preprocess.py --datasets nips2020,poj
+   ```
+
+2. Train full-sequence models and write `k=full` results:
+
+   ```bash
+   ./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,clst --folds folds/nips2020_folds.json
+   ```
+
+3. Emit the cold-start curve:
+
+   ```bash
+   ./.venv/bin/python coldstart.py --dataset nips2020 --k 3,5,10,20
+   ```
+
+4. Emit calibration artifacts:
+
+   ```bash
+   ./.venv/bin/python calibrate.py --dataset nips2020
+   ```
+
+5. Join in the clean env:
+
+   ```bash
+   cd ../..
+   uv run --package research-comparison python -m research_comparison.kt.join
+   ```
+
+Use `WANDB_MODE=offline` unless intentionally running online sweeps. Fixed
+configs and seeds are sufficient for the thesis; sweeps are optional.

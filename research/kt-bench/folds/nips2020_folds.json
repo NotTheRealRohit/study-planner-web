@@ -1,0 +1,99 @@
+{
+  "dataset": "nips2020",
+  "folds": [
+    {
+      "fold": 0,
+      "test_indices": [
+        0,
+        1
+      ],
+      "train_indices": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "fold": 1,
+      "test_indices": [
+        2,
+        3
+      ],
+      "train_indices": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "fold": 2,
+      "test_indices": [
+        4,
+        5
+      ],
+      "train_indices": [
+        0,
+        1,
+        2,
+        3,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "fold": 3,
+      "test_indices": [
+        6,
+        7
+      ],
+      "train_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        8,
+        9
+      ]
+    },
+    {
+      "fold": 4,
+      "test_indices": [
+        8,
+        9
+      ],
+      "train_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  ],
+  "kfold": 5,
+  "pykt_dataset": "nips_task34",
+  "pykt_version": "0.0.38",
+  "python_version": "3.9.6",
+  "raw_source": "smoke_fixture",
+  "source": "pykt.preprocess.split_datasets.KFold_split",
+  "source_sequences_sha256": "a1a1b863e200848d6e8527f21b717b61a1392b9be9f15dc2c28945a1b3eacb15",
+  "train_valid_rows": 10,
+  "train_valid_sha256": "b2cfc1a2521abb9f8e78a64bd87389639ae01d59a7aaea5af701d309d90d3871"
+}

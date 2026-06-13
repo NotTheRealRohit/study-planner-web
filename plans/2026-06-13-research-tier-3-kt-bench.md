@@ -193,7 +193,7 @@ flowchart LR
 
 ### Phase 4a: Isolated env bootstrap + shared-fold export
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — cf887cad150fc55d39739e8bde9c9cfe0724ffe9
 **Depends on:** Part 1 Phase 0 (the `research/` tree, `.gitignore`, results-schema/stamp conventions)
 **Estimated scope:** ~3 files + folds export, ~200 lines
 
@@ -261,7 +261,14 @@ git ls-files research/kt-bench/folds | head            # folds tracked
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented the isolated venv and fold-export wrapper with two explicit drift notes. First,
+`pykt-toolkit==0.0.39` was not available on PyPI, so the bench is pinned to the latest
+available `pykt-toolkit==0.0.38` with `torch==2.3.1`. Second, this machine only had system
+Python 3.14 and 3.9; `uv python install 3.12` failed twice with an archive stream error, so
+the isolated venv uses `/usr/bin/python3` 3.9.6, which imports Torch 2.3.1 successfully. The
+tracked folds were exported through pyKT's own `KFold_split` path from deterministic smoke
+fixtures because the public Eedi/POJ raw files were not present locally; each folds JSON
+records `raw_source: smoke_fixture` so public raw exports can replace them deliberately.
 
 ---
 

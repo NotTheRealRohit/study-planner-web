@@ -34,3 +34,5 @@ research/datasets/**
 !research/datasets/**/manifest.json
 research/results/
 research/kt-bench/.venv/
+research/kt-bench/.work/
+research/kt-bench/data/
