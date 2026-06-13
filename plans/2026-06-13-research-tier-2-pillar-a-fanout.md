@@ -334,7 +334,7 @@ Implemented as direct forecast adapters over `fit_burn_up_gp`, linear extrapolat
 
 ### Phase 3c: Roadmap-scheduling track (open-loop)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~450 lines
 
