@@ -274,7 +274,7 @@ Implemented with scoped staging because the worktree already contained unrelated
 
 ### Phase 3b: Target-date projection track
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~400 lines
 
