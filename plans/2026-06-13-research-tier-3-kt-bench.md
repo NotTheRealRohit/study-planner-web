@@ -338,7 +338,7 @@ cold-start k values).
 
 ### Phase 4c: pyBKT on shared folds + calibration/ECE + join & tables
 
-**Status:** ✅ Complete — ded302eb7920e308a79ead8c7d94591a61b17df1
+**Status:** ✅ Complete — e3c1e09377fb13103700f74e39824a86efd17411
 **Depends on:** Phase 4b
 **Estimated scope:** ~5 files, ~450 lines (split: isolated `calibrate.py` + clean-env join/plots/pybkt)
 
