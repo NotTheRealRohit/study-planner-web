@@ -618,7 +618,7 @@ engines. A deterministic noise redraw guard preserves seed determinism while enf
 
 ### Phase 2: Calibration track end-to-end — THE TRACER BULLET
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — fd6d7c97a76ca8b45e19d6f887e896c41644a3c6
 **Depends on:** Phase 1
 **Estimated scope:** ~11 files, ~650 lines
 
