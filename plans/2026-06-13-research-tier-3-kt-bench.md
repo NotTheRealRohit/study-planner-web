@@ -193,7 +193,7 @@ flowchart LR
 
 ### Phase 4a: Isolated env bootstrap + shared-fold export
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Part 1 Phase 0 (the `research/` tree, `.gitignore`, results-schema/stamp conventions)
 **Estimated scope:** ~3 files + folds export, ~200 lines
 
