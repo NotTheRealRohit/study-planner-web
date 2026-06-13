@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from collections import defaultdict
 from pathlib import Path
+
+os.environ.setdefault("SOURCE_DATE_EPOCH", "0")
 
 import matplotlib
 
@@ -62,7 +65,11 @@ def write_convergence_plot(results_path: Path, out_path: Path) -> Path:
     plt.grid(True, alpha=0.25)
     plt.legend(frameon=False, fontsize=8)
     plt.tight_layout()
-    plt.savefig(out_path, format="pdf")
+    plt.savefig(
+        out_path,
+        format="pdf",
+        metadata={"CreationDate": None, "ModDate": None},
+    )
     plt.close()
     return out_path
 

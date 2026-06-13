@@ -704,7 +704,9 @@ grep -l _provenance research/results/calibration/*.json | head -1               
 The Makefile command variable was renamed from `UV` to `UV_RUN` because this shell exports
 `UV=/Users/rsaji/.local/bin/uv`; with the plan's original `UV ?= ...`, `make dataset` invoked
 `uv python -m ...` and failed. Phase 2 now produces stamped calibration JSON, a vector PDF,
-the booktabs winners table, and a provenance text file from the clean tracer-bullet run.
+the booktabs winners table, and a provenance text file from the clean tracer-bullet run. The PDF
+writer sets deterministic metadata/source-date behavior so repeated `make figs` runs do not churn
+the generated PDF.
 
 ---
 
