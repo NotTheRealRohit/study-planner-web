@@ -206,7 +206,7 @@ Candidate rosters (build-plan §6), all called directly (D-01 from Part 1):
 
 ### Phase 3a: Change-detection track
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — dcd6c725f45d8f6c0bb0285de8e176491d590f83
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~400 lines
 
@@ -268,7 +268,7 @@ grep -l _provenance research/results/detection/*.json | head -1
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented with scoped staging because the worktree already contained unrelated project-instruction and generated-file changes. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_detection_track.py -q` and the plan's `make dataset compare-detection figs` gate; detection report artifacts were committed, while ignored runtime JSON remains under `research/results/detection/`.
 
 ---
 
