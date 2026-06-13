@@ -462,7 +462,7 @@ Registered oracle upper-bound candidates in the calibration, detection, and proj
 
 ### Phase 7: Closed-loop machinery (built, **revealed in Phase II**)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 3a, Phase 3c *(needs calibration spine from Part 1 + scheduling from 3c)*
 **Estimated scope:** ~3 files, ~300 lines
 
