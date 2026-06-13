@@ -47,6 +47,8 @@ def build_regime_series(
     band: str,
     n_sessions: int,
     rng: np.random.Generator,
+    step_magnitude: float | None = None,
+    drift_total: float | None = None,
 ) -> tuple[list[float], list[Shift]]:
     multipliers = np.ones(n_sessions, dtype=float)
     count = _shift_count(archetype, band, rng)
@@ -57,7 +59,7 @@ def build_regime_series(
     for onset, shift_type in zip(onsets, types, strict=False):
         pre_mean = float(multipliers[max(0, onset - 1)])
         if shift_type == "step":
-            magnitude = float(rng.uniform(*STEP_MAG_RANGE))
+            magnitude = float(step_magnitude if step_magnitude is not None else rng.uniform(*STEP_MAG_RANGE))
             if archetype in {"fading_flame", "marathon_runner"}:
                 sign = -1 if len(shifts) % 2 == 0 else 1
             else:
@@ -75,8 +77,9 @@ def build_regime_series(
             )
             continue
 
-        total = -DRIFT_TOTAL_DEFAULT if archetype == "fading_flame" else float(
-            rng.choice([-1, 1]) * DRIFT_TOTAL_DEFAULT
+        configured_drift = DRIFT_TOTAL_DEFAULT if drift_total is None else float(drift_total)
+        total = -configured_drift if archetype == "fading_flame" else float(
+            rng.choice([-1, 1]) * configured_drift
         )
         min_frac, max_frac = DRIFT_WINDOW_FRAC
         window = max(1, int(n_sessions * float(rng.uniform(min_frac, max_frac))))

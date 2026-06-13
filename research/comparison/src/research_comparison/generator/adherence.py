@@ -33,5 +33,5 @@ def attempt_probability(
     return float(archetype_config.get("attempt_prob", 0.88))
 
 
-def choose_source(rng: np.random.Generator) -> str:
-    return "manual" if float(rng.random()) < MANUAL_FRACTION else "active"
+def choose_source(rng: np.random.Generator, manual_fraction: float = MANUAL_FRACTION) -> str:
+    return "manual" if float(rng.random()) < manual_fraction else "active"

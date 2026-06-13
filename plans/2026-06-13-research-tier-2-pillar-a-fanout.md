@@ -456,7 +456,7 @@ ls research/results/sweep/*.json | head -1
 
 #### Notes (filled in during implementation)
 
-Registered oracle upper-bound candidates in the calibration, detection, and projection outputs, added the full §8 grid enumerator, and emitted a robustness heatmap from stamped sweep results. Also removed `gen_time_ms` from scheduling winner scoring because it made tied scheduling rows nondeterministic; generation time remains recorded as a metric. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_oracles_and_sweep.py -q`, the plan's `make sweep figs` gate, and a post-change focused suite covering detection/projection/scheduling/oracles.
+Registered oracle upper-bound candidates in the calibration, detection, and projection outputs, added the full §8 grid enumerator, and emitted a robustness heatmap from stamped sweep results. The sweep now regenerates per-grid-cell step/drift learner fixtures using generator override hooks, reruns detection/projection/scheduling in memory, and records held/flipped rankings from those cell results. Also removed `gen_time_ms` from scheduling winner scoring because it made tied scheduling rows nondeterministic; generation time remains recorded as a metric. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_oracles_and_sweep.py -q`, the plan's `make sweep figs` gate, and a post-change focused suite covering detection/projection/scheduling/oracles.
 
 ---
 

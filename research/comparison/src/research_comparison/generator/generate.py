@@ -18,7 +18,15 @@ from research_comparison.generator.pace import latent_base
 from research_comparison.generator.regimes import build_regime_series
 from research_comparison.generator.types import GroundTruth, SessionEvent
 from research_comparison.manifest import build_manifest, stamp
-from research_comparison.params import BANDS, CLIP_HIGH, CLIP_LOW, PARAMS_VERSION_HASH, ROLE_RHO
+from research_comparison.params import (
+    AR1_PHI,
+    BANDS,
+    CLIP_HIGH,
+    CLIP_LOW,
+    MANUAL_FRACTION,
+    PARAMS_VERSION_HASH,
+    ROLE_RHO,
+)
 
 DEFAULT_ARCHETYPE_MIX = {
     "steady": 1,
@@ -53,6 +61,7 @@ def _collect_attempted_slots(
     materials: list[Material],
     target_sessions: int,
     rng: np.random.Generator,
+    manual_fraction: float,
 ) -> list[tuple[PlannedSlot, str]]:
     slots_needed = max(target_sessions * 4, target_sessions + 12)
     emitted: list[tuple[PlannedSlot, str]] = []
@@ -63,7 +72,7 @@ def _collect_attempted_slots(
                 break
             prob = attempt_probability(archetype, config, slot, len(emitted), target_sessions)
             if float(rng.random()) <= prob:
-                emitted.append((slot, choose_source(rng)))
+                emitted.append((slot, choose_source(rng, manual_fraction=manual_fraction)))
         slots_needed *= 2
     return emitted[:target_sessions]
 
@@ -123,6 +132,7 @@ def _draw_emitted_ratios_under_clip_guard(
     emitted_slots: list[tuple[PlannedSlot, str]],
     sigma_log: float,
     rng: np.random.Generator,
+    ar1_phi: float,
 ) -> tuple[list[float], float]:
     active_indices = [
         index for index, (_slot, source) in enumerate(emitted_slots) if source == "active"
@@ -131,7 +141,7 @@ def _draw_emitted_ratios_under_clip_guard(
     best_clip_rate = 1.0
 
     for _attempt in range(20):
-        emitted_ratios, _clip_rate = apply_lognormal_ar1(r_star, sigma_log, rng)
+        emitted_ratios, _clip_rate = apply_lognormal_ar1(r_star, sigma_log, rng, phi=ar1_phi)
         active_clip_count = sum(
             1
             for index in active_indices
@@ -151,13 +161,31 @@ def generate_learner(
     archetype: str,
     band: str,
     seed: int,
+    overrides: dict[str, float] | None = None,
 ) -> tuple[list[SessionEvent], GroundTruth]:
+    selected_overrides = overrides or {}
     rng = np.random.default_rng(seed)
     config = archetype_config(archetype)
+    if "sigma_log" in selected_overrides:
+        config["sigma_log"] = float(selected_overrides["sigma_log"])
     target_sessions = _target_sessions(band, rng)
     materials = sample_material_mix(band, rng)
-    emitted_slots = _collect_attempted_slots(archetype, config, materials, target_sessions, rng)
-    regime, shifts = build_regime_series(archetype, band, len(emitted_slots), rng)
+    emitted_slots = _collect_attempted_slots(
+        archetype,
+        config,
+        materials,
+        target_sessions,
+        rng,
+        manual_fraction=float(selected_overrides.get("manual_fraction", MANUAL_FRACTION)),
+    )
+    regime, shifts = build_regime_series(
+        archetype,
+        band,
+        len(emitted_slots),
+        rng,
+        step_magnitude=selected_overrides.get("step_mag"),
+        drift_total=selected_overrides.get("drift_total"),
+    )
 
     r_star: list[float] = []
     for index, ((slot, _source), regime_multiplier) in enumerate(
@@ -178,7 +206,11 @@ def generate_learner(
         r_star.append(round(float(latent), 6))
 
     emitted_ratios, clip_rate = _draw_emitted_ratios_under_clip_guard(
-        r_star, emitted_slots, float(config["sigma_log"]), rng
+        r_star,
+        emitted_slots,
+        float(config["sigma_log"]),
+        rng,
+        ar1_phi=float(selected_overrides.get("ar1_phi", AR1_PHI)),
     )
     events = [
         _event_for_slot(archetype, band, seed, index, slot, source, emitted_ratios[index])
