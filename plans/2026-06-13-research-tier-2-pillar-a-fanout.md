@@ -401,7 +401,7 @@ Implemented the open-loop scheduler comparison with the incumbent `generate_road
 
 ### Phase 3d: Oracle baselines + sensitivity sweep + robustness heatmap
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 15b63d566ef477630f96679caf043a4af4f71e20
 **Depends on:** Phase 3a, Phase 3b, Phase 3c
 **Estimated scope:** ~5 files, ~450 lines
 
