@@ -462,7 +462,7 @@ Registered oracle upper-bound candidates in the calibration, detection, and proj
 
 ### Phase 7: Closed-loop machinery (built, **revealed in Phase II**)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 3a, Phase 3c *(needs calibration spine from Part 1 + scheduling from 3c)*
 **Estimated scope:** ~3 files, ~300 lines
 
@@ -514,7 +514,7 @@ ls research/results/closed_loop/*.json | head -1                                
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented as an archive-only runner: open-loop keeps the initial roadmap fixed, while closed-loop detects CUSUM breakpoints, computes calibration, scales remaining roadmap input, and calls `regenerate_roadmap`. The `closed-loop` Makefile target writes only to `research/results/closed_loop/` and is intentionally excluded from `figs`. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_closed_loop.py -q`, `make closed-loop`, archived JSON existence, and the no-leak guard for `report/generated`.
 
 ---
 
