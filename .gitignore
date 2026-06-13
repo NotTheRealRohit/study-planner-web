@@ -24,3 +24,13 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+
+# code-memory: agent-only index, do not commit
+.codex/memory/
+
+# Research tier generated artifacts
+research/datasets/**
+!research/datasets/**/
+!research/datasets/**/manifest.json
+research/results/
+research/kt-bench/.venv/

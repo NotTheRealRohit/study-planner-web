@@ -10,6 +10,7 @@ members = [
     "packages/py-progress",
     "packages/py-roadmap-engine",
     "services/intelligence",
+    "research/comparison",
 ]
 
 [dependency-groups]
@@ -24,11 +25,13 @@ testpaths = [
     "packages/py-progress/tests",
     "packages/py-roadmap-engine/tests",
     "services/intelligence/tests",
+    "research/comparison/tests",
 ]
 pythonpath = [
     "packages/py-progress/src",
     "packages/py-roadmap-engine/src",
     "services/intelligence",
+    "research/comparison/src",
 ]
 
 [tool.ruff]
@@ -38,6 +41,7 @@ src = [
     "packages/py-progress/src",
     "packages/py-roadmap-engine/src",
     "services/intelligence",
+    "research/comparison/src",
 ]
 
 [tool.ruff.lint]

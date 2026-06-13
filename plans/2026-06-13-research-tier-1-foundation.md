@@ -267,7 +267,7 @@ flowchart LR
 
 ### Phase 0: Scaffold `/research`, register the workspace member, run a stamped no-op pipeline
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — a20b9b1e02ca9256ce91533c3e07d7aa76a13ca4
 **Depends on:** none — can start immediately
 **Estimated scope:** ~8 files, ~250 lines
 
@@ -484,7 +484,9 @@ ls research/results/*.json && cat research/results/*.json | grep _provenance  # 
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+`pyBKT>=1.4` initially resolved to `pybkt==1.4.2`, whose package metadata reports version
+`1.4.1`; uv rejects that build. The comparison package therefore constrains pyBKT to
+`>=1.4,<1.4.2`, preserving the intended 1.4 line while keeping the clean env reproducible.
 
 ---
 
