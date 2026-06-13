@@ -138,6 +138,13 @@ def join_kt_results(
     rows = load_result_rows(results_dir)
     full_rows = [row for row in rows if row["k"] == "full"]
     ece_rows = [row for row in rows if row["k"] == "ece"]
+    raw_sources = sorted(
+        {
+            str(row.get("_provenance", {}).get("folds_raw_source"))
+            for row in rows
+            if row.get("_provenance", {}).get("folds_raw_source")
+        }
+    )
     return {
         "full_seq_auc": _mean_by(full_rows, "auc"),
         "coldstart_auc": _coldstart_rows(rows),
@@ -161,6 +168,7 @@ def join_kt_results(
         "_provenance": {
             "source": str(results_dir),
             "result_count": len(rows),
+            "folds_raw_sources": raw_sources,
         },
     }
 
@@ -189,7 +197,8 @@ def write_joined_artifacts(
 
     provenance = generated / "kt_provenance.txt"
     provenance.write_text(
-        f"KT artifacts generated from {source} with {summary['_provenance']['result_count']} JSON rows.\n",
+        f"KT artifacts generated from {source} with {summary['_provenance']['result_count']} JSON rows.\n"
+        f"Fold raw sources: {', '.join(summary['_provenance']['folds_raw_sources']) or 'unknown'}.\n",
         encoding="utf-8",
     )
     outputs.append(provenance)
