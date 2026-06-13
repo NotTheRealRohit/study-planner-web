@@ -4,7 +4,6 @@ import json
 from dataclasses import asdict
 
 from py_progress import MIN_SESSIONS_PER_BUCKET, compute_hierarchical_model
-
 from research_comparison.generator.generate import generate_dataset, generate_learner
 from research_comparison.params import ARCHETYPES, BANDS, PARAMS_VERSION_HASH
 
@@ -19,7 +18,9 @@ def test_generate_learner_emits_session_event_shape():
     assert events
     assert len(truth.r_star) == len(events)
     for event in events:
-        assert {"date", "source", "duration", "materialRole", "startedAt", "sessionId"} <= set(event)
+        assert {"date", "source", "duration", "materialRole", "startedAt", "sessionId"} <= set(
+            event
+        )
         assert event["materialRole"] in {"anchor", "foundation", "practice"}
         if event["source"] == "active":
             assert event["plannedMinutes"] > 0

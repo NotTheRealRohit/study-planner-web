@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import py_progress
 import py_roadmap_engine
-
 from research_comparison.manifest import build_manifest, stamp
 from research_comparison.params import ARCHETYPES, PARAMS_VERSION_HASH
 

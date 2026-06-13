@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 
 import numpy as np
 
@@ -27,7 +27,7 @@ _HOUR_BY_TIME = {"morning": 8, "afternoon": 14, "evening": 19}
 
 
 def _iso_started_at(day: date, time_of_day: str) -> str:
-    started = datetime.combine(day, time(_HOUR_BY_TIME[time_of_day], 0), tzinfo=timezone.utc)
+    started = datetime.combine(day, time(_HOUR_BY_TIME[time_of_day], 0), tzinfo=UTC)
     return started.isoformat().replace("+00:00", "Z")
 
 

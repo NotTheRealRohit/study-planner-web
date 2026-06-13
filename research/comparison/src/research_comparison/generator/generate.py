@@ -104,7 +104,10 @@ def _event_for_slot(
     base: SessionEvent = {
         "date": slot.date.isoformat(),
         "source": source,  # type: ignore[typeddict-item]
-        "duration": round(slot.planned_minutes if source == "manual" else slot.planned_minutes * ratio, 6),
+        "duration": round(
+            slot.planned_minutes if source == "manual" else slot.planned_minutes * ratio,
+            6,
+        ),
         "materialRole": slot.material_role,
         "startedAt": slot.started_at,
         "sessionId": f"{archetype}-{band}-{seed}-{index:04d}",
@@ -144,7 +147,11 @@ def _draw_emitted_ratios_under_clip_guard(
     return best_ratios, best_clip_rate
 
 
-def generate_learner(archetype: str, band: str, seed: int) -> tuple[list[SessionEvent], GroundTruth]:
+def generate_learner(
+    archetype: str,
+    band: str,
+    seed: int,
+) -> tuple[list[SessionEvent], GroundTruth]:
     rng = np.random.default_rng(seed)
     config = archetype_config(archetype)
     target_sessions = _target_sessions(band, rng)

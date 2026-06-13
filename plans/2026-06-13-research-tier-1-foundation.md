@@ -618,7 +618,7 @@ engines. A deterministic noise redraw guard preserves seed determinism while enf
 
 ### Phase 2: Calibration track end-to-end — THE TRACER BULLET
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1
 **Estimated scope:** ~11 files, ~650 lines
 
@@ -701,7 +701,10 @@ grep -l _provenance research/results/calibration/*.json | head -1               
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+The Makefile command variable was renamed from `UV` to `UV_RUN` because this shell exports
+`UV=/Users/rsaji/.local/bin/uv`; with the plan's original `UV ?= ...`, `make dataset` invoked
+`uv python -m ...` and failed. Phase 2 now produces stamped calibration JSON, a vector PDF,
+the booktabs winners table, and a provenance text file from the clean tracer-bullet run.
 
 ---
 
