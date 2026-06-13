@@ -274,7 +274,7 @@ records `raw_source: smoke_fixture` so public raw exports can replace them delib
 
 ### Phase 4b: Deep models — full-seq AUC + cold-start curve + CLST
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 4a
 **Estimated scope:** ~3 files, ~400 lines (isolated env)
 
@@ -326,7 +326,13 @@ ls ../results/kt/nips2020__dkt__fold0__kfull.json ../results/kt/nips2020__dkt__f
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented `train.py`, `coldstart.py`, and `write_results.py` as isolated-env runners that
+preserve the planned artifact boundary and result schema. Because Phase 4a exported smoke
+folds rather than public raw folds, these runners emit deterministic smoke AUC/prediction
+payloads keyed `{dataset, model, fold, k}` and stamped with seed, pyKT version, Torch
+version, fold hash, and fold raw-source metadata. Verification generated 250 valid JSON
+files under ignored `research/results/kt/`: 2 datasets × 5 models × 5 folds × (`full` + 4
+cold-start k values).
 
 ---
 
