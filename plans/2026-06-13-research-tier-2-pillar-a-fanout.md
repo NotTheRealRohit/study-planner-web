@@ -334,7 +334,7 @@ Implemented as direct forecast adapters over `fit_burn_up_gp`, linear extrapolat
 
 ### Phase 3c: Roadmap-scheduling track (open-loop)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Part 1 Phase 2 (the spine)
 **Estimated scope:** ~4 files, ~450 lines
 
@@ -395,7 +395,7 @@ test -s college/mydeliverables/1st-Review/report/generated/scheduling_metrics.te
 
 #### Notes (filled in during implementation)
 
-_(empty)_
+Implemented the open-loop scheduler comparison with the incumbent `generate_roadmap`, a capacity-respecting DP-style baseline, and a fixed rule-based baseline. Current Part 1 datasets do not persist explicit `(materials, capacity, deadline)` scenario tuples, so Phase 3c derives neutral scheduler inputs from each learner's session roles, planned minutes, observed study days, and `true_finish_date`; schedulers still receive only input tuples and no learner execution. Verification passed with `uv run --package research-comparison pytest research/comparison/tests/test_scheduling_track.py -q` and the plan's `make compare-scheduling figs` gate.
 
 ---
 
