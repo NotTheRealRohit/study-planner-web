@@ -492,7 +492,7 @@ ls research/results/*.json && cat research/results/*.json | grep _provenance  # 
 
 ### Phase 1: Seeded synthetic-learner generator with ground-truth sidecar
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 0
 **Estimated scope:** ~10 files, ~700 lines (split across the steps below)
 
