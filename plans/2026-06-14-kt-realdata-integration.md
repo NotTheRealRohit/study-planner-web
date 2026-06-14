@@ -430,7 +430,7 @@ Implemented as planned with two local-data wrinkles handled in code. The ACcodin
 
 ### Phase R2: Real deep-model runs — replace the synthetic stubs (isolated env)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — 11b5c8e
 **Depends on:** Phase R1
 **Estimated scope:** `train.py` + `coldstart.py` rewrite (~250 lines), isolated env, manual-run
 
@@ -486,7 +486,7 @@ cd ../..
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+Implemented real training/evaluation runners with a smoke guard. `train.py` now uses pyKT models for DKT, AKT, Deep-IRT, and SAKT, trains per fold from the real R1 split artifacts, saves checkpoints under `.work/kt-checkpoints`, and writes the existing `{dataset,model,fold,k}` JSON schema via `write_kt_result`. `coldstart.py` reloads those checkpoints and evaluates first-k truncated sequences for `k={3,5,10,20}`. pyKT 0.0.38 has no CLST class, so the `clst` result label is backed by a documented DKT-compatible recurrent pyKT run in `training_config.pykt_model`. The R2 smoke run generated 300 deep-model rows across `nips2020` and `accoding`, all stamped `public_raw`; full-grid literature-band numbers remain the manual offline run per the plan preamble.
 
 ---
 
