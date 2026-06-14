@@ -492,7 +492,7 @@ Implemented real training/evaluation runners with a smoke guard. `train.py` now 
 
 ### Phase R3: Real pyBKT on shared folds + regenerate report + flip provenance
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase R2
 **Estimated scope:** `pybkt_runner.py` rewrite (~150 lines) + `join.py` 1-line default + report regen + tracker flip
 
@@ -552,7 +552,7 @@ test -s college/mydeliverables/1st-Review/report/generated/kt_auc.tex && echo "a
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+Implemented real clean-env pyBKT on the exported sequence sidecars and regenerated the KT report artifacts. `pybkt_runner.py` now reads `{dataset}_sequences.csv`, fits per-skill pyBKT models per fold on the shared R1 split rows, evaluates full and first-k test sequences, writes the existing result schema, and prints CLI progress to stderr by dataset, fold, skill, prediction stage, and output file. pyBKT 1.4.1 has two local compatibility issues in this Python/sklearn/numpy stack: its import-time sklearn metric probe raises without the existing metric patch, and `pyBKT.fit.EM_fit.run` never executes workers when imported as a library because its worker pool is guarded by `if __name__ == "__main__"`. The runner applies narrow runtime patches for those issues and suppresses only the repeated pyBKT `invalid value encountered in divide` RuntimeWarning from sparse coding skills. `join.py` now defaults to `nips2020,accoding` and filters summaries to the expected grid so stale ignored `poj` smoke JSONs do not pollute provenance. Real pyBKT generation completed for both datasets (30 rows each), `kt_summary.json` reports `folds_raw_sources == ["public_raw"]` and zero gaps, and the generated KT report artifacts now stamp `public_raw`.
 
 ---
 

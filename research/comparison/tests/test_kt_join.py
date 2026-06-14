@@ -119,6 +119,7 @@ def _write_result(
     k: str | int = "full",
     auc: float = 0.75,
     ece: float | None = None,
+    raw_source: str = "public_raw",
 ) -> None:
     suffix = "ece" if k == "ece" else f"k{k}"
     path = results_dir / f"{dataset}__{model}__fold{fold}__{suffix}.json"
@@ -130,7 +131,7 @@ def _write_result(
         "auc": auc,
         "y_true": [1, 0, 1, 0],
         "y_score": [0.9, 0.8, 0.4, 0.1],
-        "_provenance": {"seed": 1, "folds_hash": "fixture", "folds_raw_source": "public_raw"},
+        "_provenance": {"seed": 1, "folds_hash": "fixture", "folds_raw_source": raw_source},
     }
     if ece is not None:
         payload["ece"] = ece
@@ -165,12 +166,40 @@ def test_join_reports_missing_cells_as_gaps(tmp_path: Path) -> None:
     } in summary["gaps"]
 
 
+def test_join_default_grid_has_accoding_and_can_be_gap_free(tmp_path: Path) -> None:
+    from research_comparison.kt.join import (
+        DEFAULT_DATASETS,
+        DEFAULT_FOLDS,
+        DEFAULT_K_VALUES,
+        DEFAULT_MODELS,
+        join_kt_results,
+    )
+
+    results_dir = tmp_path / "kt"
+    for dataset in DEFAULT_DATASETS:
+        for model in DEFAULT_MODELS:
+            for fold in DEFAULT_FOLDS:
+                for k in DEFAULT_K_VALUES:
+                    _write_result(results_dir, dataset=dataset, model=model, fold=fold, k=k)
+                _write_result(results_dir, dataset=dataset, model=model, fold=fold, k="ece", ece=0.2)
+    _write_result(results_dir, dataset="poj", model="dkt", fold=0, k="full", raw_source="smoke_fixture")
+
+    summary = join_kt_results(results_dir)
+
+    assert DEFAULT_DATASETS == ["nips2020", "accoding"]
+    assert summary["gaps"] == []
+    assert summary["_provenance"]["folds_raw_sources"] == ["public_raw"]
+    assert "poj" not in summary["full_seq_auc"]
+
+
 def test_join_boundary_does_not_import_torch_or_pykt() -> None:
     sys.modules.pop("research_comparison.kt.join", None)
+    sys.modules.pop("research_comparison.kt.pybkt_runner", None)
     sys.modules.pop("torch", None)
     sys.modules.pop("pykt", None)
 
     importlib.import_module("research_comparison.kt.join")
+    importlib.import_module("research_comparison.kt.pybkt_runner")
 
     assert "torch" not in sys.modules
     assert "pykt" not in sys.modules

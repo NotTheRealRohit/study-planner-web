@@ -10,7 +10,7 @@ from typing import Any, Iterable
 from research_comparison.plots.kt_coldstart import write_kt_plots
 from research_comparison.writers.tables import write_kt_auc_table, write_kt_ece_table
 
-DEFAULT_DATASETS = ["nips2020", "poj"]
+DEFAULT_DATASETS = ["nips2020", "accoding"]
 DEFAULT_MODELS = ["pybkt", "dkt", "akt", "deep_irt", "sakt", "clst"]
 DEFAULT_FOLDS = [0, 1, 2, 3, 4]
 DEFAULT_K_VALUES: list[str | int] = ["full", 3, 5, 10, 20]
@@ -127,6 +127,28 @@ def _gaps(
     return missing
 
 
+def _filter_expected_rows(
+    rows: list[dict[str, Any]],
+    *,
+    expected_datasets: Iterable[str],
+    expected_models: Iterable[str],
+    expected_folds: Iterable[int],
+    expected_k_values: Iterable[str | int],
+) -> list[dict[str, Any]]:
+    datasets = {str(value) for value in expected_datasets}
+    models = {str(value) for value in expected_models}
+    folds = {int(value) for value in expected_folds}
+    k_values = set(expected_k_values)
+    return [
+        row
+        for row in rows
+        if str(row["dataset"]) in datasets
+        and str(row["model"]) in models
+        and int(row["fold"]) in folds
+        and (row["k"] in k_values or row["k"] == "ece")
+    ]
+
+
 def join_kt_results(
     results_dir: Path,
     *,
@@ -135,7 +157,13 @@ def join_kt_results(
     expected_folds: Iterable[int] = DEFAULT_FOLDS,
     expected_k_values: Iterable[str | int] = DEFAULT_K_VALUES,
 ) -> dict[str, Any]:
-    rows = load_result_rows(results_dir)
+    rows = _filter_expected_rows(
+        load_result_rows(results_dir),
+        expected_datasets=expected_datasets,
+        expected_models=expected_models,
+        expected_folds=expected_folds,
+        expected_k_values=expected_k_values,
+    )
     full_rows = [row for row in rows if row["k"] == "full"]
     ece_rows = [row for row in rows if row["k"] == "ece"]
     raw_sources = sorted(

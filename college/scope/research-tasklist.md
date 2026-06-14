@@ -3,11 +3,22 @@ title: Research Tier — Master Build Tracker
 purpose: The phase-by-phase, small-task checklist for building the /research tier. This is the master tracker — check items off as they ship. Sequenced as a tracer bullet (one track end-to-end before fanning out).
 audience: candidate (***REMOVED***), future agents
 status: active tracker
-last_updated: 2026-06-13
+last_updated: 2026-06-14
 related:
   - ./research-build-plan.md
   - ./archetype-preregistration.md
+  - ../../handovers/2026-06-13-research-tier-status-and-blockers.md
+  - ../../handovers/2026-06-14-kt-datasets-acquired-plan-handoff.md
+  - ../../research/doc/2026-06-14-pillar-a-rigour-and-extensions.md
 ---
+
+> **2026-06-14 reconciliation.** This tracker had drifted: Phases 3, 4 and 7 shipped
+> (commit SHAs in [`plans/2026-06-13-research-tier-*.md`](../../plans/2026-06-13-research-tier.md);
+> status snapshot in [`handovers/2026-06-13-research-tier-status-and-blockers.md`](../../handovers/2026-06-13-research-tier-status-and-blockers.md))
+> but were still shown unstarted. Boxes below are now reconciled to that state.
+> **Phase 4 (KT bench) is complete on real public data** — the bench now runs on Eedi
+> `nips2020` + ACcoding with `folds_raw_source: public_raw`. Source of truth = the
+> verification commands in the plan files, not these markers.
 
 ## How to use this tracker
 
@@ -89,19 +100,23 @@ generated figure+table. **Depends on:** P1 DoD. **DoD:** `make compare` (calibra
 **Depends on:** P2 DoD (reuse its metric/aggregator/writer/plot spine). **DoD:** all four
 Pillar-A tracks emit stamped results, tables, and figures; sweep + oracle baselines run.
 
-- [ ] P3.1 Change-detection runner over the pace-ratio series (active subsequence).
-- [ ] P3.2 Detection baselines: EWMA control-chart, CSD indicators; incumbent = `py_progress.detect_regime_shifts` (CUSUM).
-- [ ] P3.3 Metric: detection latency vs false-alarm, **split by shift-type** (step vs drift); ROC across thresholds.
-- [ ] P3.4 Detection table + per-shift-type latency/FA figure.
-- [ ] P3.5 Projection runner (prequential burn-up forecast to finish date).
-- [ ] P3.6 Projection baselines: linear extrapolation, Kalman forecast; incumbent = `py_progress` GP.
-- [ ] P3.7 Metric: 95% CI coverage + interval sharpness + finish-date point error.
-- [ ] P3.8 Projection CI-reliability plot (nominal vs empirical coverage).
-- [ ] P3.9 Scheduling runner: feed (materials, capacity, deadline) — no learner execution.
-- [ ] P3.10 Scheduling candidates: `py_roadmap_engine` (greedy/constraint), DP (Islam), rule-based.
-- [ ] P3.11 Metric: deadline drift, capacity-violation rate, prereq-order correctness, gen time; report by material-mix.
-- [ ] P3.12 Oracle baselines (calibration/detection/projection) per pre-reg §9.
-- [ ] P3.13 Sensitivity-sweep runner over pre-reg §8 grid; robustness heatmap of ranking stability.
+- [x] P3.1 Change-detection runner over the pace-ratio series (active subsequence).
+- [x] P3.2 Detection baselines: EWMA control-chart, CSD indicators; incumbent = `py_progress.detect_regime_shifts` (CUSUM).
+- [x] P3.3 Metric: detection latency vs false-alarm, **split by shift-type** (step vs drift); ROC across thresholds.
+- [x] P3.4 Detection table + per-shift-type latency/FA figure.
+- [x] P3.5 Projection runner (prequential burn-up forecast to finish date).
+- [x] P3.6 Projection baselines: linear extrapolation, Kalman forecast; incumbent = `py_progress` GP.
+- [x] P3.7 Metric: 95% CI coverage + interval sharpness + finish-date point error.
+- [x] P3.8 Projection CI-reliability plot (nominal vs empirical coverage).
+- [x] P3.9 Scheduling runner: feed (materials, capacity, deadline) — no learner execution.
+- [x] P3.10 Scheduling candidates: `py_roadmap_engine` (greedy/constraint), DP (Islam), rule-based.
+- [x] P3.11 Metric: deadline drift, capacity-violation rate, prereq-order correctness, gen time; report by material-mix.
+- [x] P3.12 Oracle baselines (calibration/detection/projection) per pre-reg §9.
+- [x] P3.13 Sensitivity-sweep runner over pre-reg §8 grid; robustness heatmap of ranking stability.
+
+> ✅ **Phase 3 done & genuine** — all four Pillar-A tracks + sweep + oracles emit stamped
+> results over the 720-learner Monte-Carlo run (params hash `e716cd12dddc`, seed 0). See
+> `research/results/{detection,projection,scheduling,sweep}/*.json`.
 
 ## Phase 4 · Knowledge-tracing bench (Pillar B, isolated env)
 
@@ -110,15 +125,32 @@ Pillar-A tracks emit stamped results, tables, and figures; sweep + oracle baseli
 produces `results/kt/*.json` (full-seq AUC, cold-start curve, ECE) for pyBKT + ≥3 deep
 models on both datasets; pyBKT used identical folds.
 
-- [ ] P4.1 `kt-bench/` isolated venv: pinned torch + `pykt-toolkit` + wandb; `README` + `requirements.txt` (kept out of `uv.lock`).
-- [ ] P4.2 pyKT preprocess: `nips2020` (Eedi) + `poj`; **export fold indices** as the shared-split source of truth.
-- [ ] P4.3 Train deep models (5-fold): DKT, AKT, Deep-IRT, SAKT → full-seq AUC.
-- [ ] P4.4 Add cold-start method (CLST family) candidate.
-- [ ] P4.5 Cold-start harness: truncate to first `k ∈ {3,5,10,20}` interactions → cold-start AUC curve.
-- [ ] P4.6 pyBKT (clean env) on the **exported pyKT folds** → AUC (comparable to deep models).
-- [ ] P4.7 Mastery calibration: reliability diagram + ECE for each model.
-- [ ] P4.8 Result schema `results/kt/*.json` keyed `{dataset, model, fold, k}`; stamped.
-- [ ] P4.9 Join + tables: full-seq AUC (model × dataset), cold-start AUC curve, ECE; generated `.tex` + figures.
+> ✅ **Dataset status (updated 2026-06-14): real public-benchmark run complete.**
+> The pipeline (P4.1-P4.9) now runs end-to-end on public raw data with provenance
+> `folds_raw_source: public_raw`. The datasets used are:
+> - **Eedi / NeurIPS-2020 Tasks 3&4** (the `nips2020` MCQ modality) — `research/datasets/NeurIPS 2020.zip`
+>   → `data/train_data/train_task_3_4.csv` (1.38M interactions, exact pyKT `NIPS34` format)
+>   + `data/metadata/{question,subject,student,answer}_metadata*.csv`.
+> - **ACcoding** (substitute for the dead **POJ** coding log) — `research/datasets/acoding/ACcoding.zip`
+>   (MySQL dumps: `submissions.sql` ≈4.05M rows, `problems.sql`, `tags.sql`/`problem_tags.sql`
+>   = 100 KP tags). Maps to `poj_log.csv` (`creator_id`→User, `problem_id`→Problem, `AC`→correct);
+>   **caveat:** no submit-time column → use the auto-increment `id` as chronological order.
+>
+> The integration/re-run is tracked in
+> [`plans/2026-06-14-kt-realdata-integration.md`](../../plans/2026-06-14-kt-realdata-integration.md).
+
+- [x] P4.1 `kt-bench/` isolated venv: pinned torch + `pykt-toolkit` + wandb; `README` + `requirements.txt` (kept out of `uv.lock`).
+- [x] P4.2 pyKT preprocess: `nips2020` (Eedi) + `accoding`; **export fold indices** as the shared-split source of truth.
+- [x] P4.3 Train deep models (5-fold): DKT, AKT, Deep-IRT, SAKT → full-seq AUC.
+- [x] P4.4 Add cold-start method (CLST family) candidate.
+- [x] P4.5 Cold-start harness: truncate to first `k ∈ {3,5,10,20}` interactions → cold-start AUC curve.
+- [x] P4.6 pyBKT (clean env) on the **exported pyKT folds** → AUC (comparable to deep models).
+- [x] P4.7 Mastery calibration: reliability diagram + ECE for each model.
+- [x] P4.8 Result schema `results/kt/*.json` keyed `{dataset, model, fold, k}`; stamped.
+- [x] P4.9 Join + tables: full-seq AUC (model × dataset), cold-start AUC curve, ECE; generated `.tex` + figures.
+
+> ✅ **KT numbers are now real public-benchmark artifacts.** Joined artifacts report
+> `folds_raw_sources: ["public_raw"]` and zero grid gaps.
 
 ## Phase 5 · N=1 real-data validation
 
@@ -152,9 +184,32 @@ populated → `main.tex` compiles with 0 undefined refs; numbers identical in re
 **Depends on:** P2/P3. **DoD:** `--closed-loop` flag runs calibration→regen feedback; a
 closed-vs-open comparison runs for our completeness (not in the Phase-I report).
 
-- [ ] P7.1 `--closed-loop` flag: feed calibration multipliers back into roadmap regen within the sim.
-- [ ] P7.2 CUSUM regime-shift → replan-trigger wiring in the harness.
-- [ ] P7.3 Closed-vs-open comparison on adherence + finish-date drift (run, archive — do not put in Phase-I report).
+- [x] P7.1 `--closed-loop` flag: feed calibration multipliers back into roadmap regen within the sim.
+- [x] P7.2 CUSUM regime-shift → replan-trigger wiring in the harness.
+- [x] P7.3 Closed-vs-open comparison on adherence + finish-date drift (run, archive — do not put in Phase-I report).
+
+> ✅ **Phase 7 built and archived** — deliberately **not** shown in Phase I; it is the
+> headline novelty held for Phase II.
+
+## Phase 3+ · Pillar-A rigour & extensions (NEXT SESSION)
+
+**Goal:** drive Pillar-A errors down and harden the comparison so the synthetic-data
+result becomes thesis-grade. **Depends on:** Phase 3 DoD (met). Full rationale, candidate
+algorithms, and priority order in
+[`research/doc/2026-06-14-pillar-a-rigour-and-extensions.md`](../../research/doc/2026-06-14-pillar-a-rigour-and-extensions.md).
+Priority order is #1→#4 (most error-reduction per unit effort first).
+
+- [ ] PA+.1 **(#1) Projection coverage fix** — heteroscedastic / Student-t GP or a conformal-prediction wrapper → CI coverage ≈ nominal 0.95 (today ~0.2–0.68; likely caused by homoscedastic-Gaussian likelihood ignoring the lognormal-AR(1) noise).
+- [ ] PA+.2 **(#2) Calibration covariates + pooling** — add τ (time-of-day) + ν (day-of-week) effects and empirical-Bayes partial pooling; verify hierarchical Bayes finally beats pooled on the *small* band (today they tie).
+- [ ] PA+.3 **(#3) Statistical rigour** — 200+ seeds, bootstrap CIs on Δ, held-out archetypes (tune on some, score on unseen), multiple-comparison correction (Holm/BH).
+- [ ] PA+.4 New candidates per track — calibration: Kalman / particle; detection: BOCPD · Page-Hinkley · ADWIN · `ruptures` (upper bound); projection: conformal · BSTS · Monte-Carlo forward-sim; scheduling: ILP/CP-SAT optimum · local-search greedy repair · topological prereq scheduler.
+- [ ] PA+.5 Tweak winners — CUSUM: robust running-scale standardisation + per-shift-type k/h + drift arm + Pareto frontier; scheduling: greedy one-step lookahead + prereq-aware ordering (prereq correctness dipped <1.0 on anchor+practice).
+- [ ] PA+.6 Widen sweep (5+ pts/axis) + adversarial regimes (multi-shift, step+drift, bursty missingness); report flip cells and per-archetype worst case, not just the mean.
+- [ ] PA+.7 **(#4) Dataset-to-reality** — enrich generator (continuous archetype space, richer regimes, bursty dropout/return, heavy tails, logged-time misreporting); fit moments to OULAD / EdNet / Junyi and re-check the ranking holds (external validity); N=1 overlay (Phase 5).
+- [ ] PA+.8 Verify open code questions first — do calibrators use τ/ν? does the GP model AR(1)/heteroscedasticity? are any hyperparameters tuned on the same cells used to declare winners? (Drives PA+.1/PA+.2 and the circularity guard.)
+
+> Note: the **KT benchmark is irrelevant to Pillar A** — different target/data/metric (see
+> the doc's §0). Don't route KT effort here.
 
 ## Progress snapshot
 
@@ -163,11 +218,13 @@ closed-vs-open comparison runs for our completeness (not in the Phase-I report).
 | 0 | Scaffolding & environment | ✅ complete |
 | 1 | Synthetic generator | ✅ complete |
 | 2 | Metrics spine + calibration (tracer bullet) | ✅ complete |
-| 3 | Fan out Pillar-A tracks | ☐ not started |
-| 4 | KT bench (Pillar B) | ☐ not started |
+| 3 | Fan out Pillar-A tracks | ✅ complete (genuine — per handover 2026-06-13) |
+| 4 | KT bench (Pillar B) | ✅ complete (real public-benchmark numbers) |
 | 5 | N=1 validation | ☐ not started |
 | 6 | Outputs — report & journal | ☐ not started |
-| 7 | Closed-loop (built, held for Phase II) | ☐ not started |
+| 7 | Closed-loop (built, held for Phase II) | ✅ complete (built + archived; revealed in Phase II) |
+
+**Tally:** 6 of 8 phases fully complete (0–4, 7) · Phases 5–6 not started.
 
 ## See also
 
