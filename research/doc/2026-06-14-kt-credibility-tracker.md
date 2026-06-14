@@ -49,14 +49,14 @@
 | 4 | sakt | nips2020 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ credible | AUC .730/.703/.715/.715/.714 (mean .7154, std .0085, 95% lower .708); ECE mean .0355; epochs 5, smoke 0, n_pred 1503/1537/1481/1497/1528; cold-start means k3=.668, k5=.701, k10=.731, k20=.716. G7 rerun into `/private/tmp/kt-g7-nips-deep/results` reproduced full-seq fold AUCs exactly (mean Δ=0.000000; max fold Δ=0.000000). |
 | 5 | dkt_clst_config | nips2020 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ credible: relabeled config | AUC .759/.732/.748/.733/.743 (mean .7429, std .0100, 95% lower .734); ECE mean .0370; epochs 5, smoke 0, n_pred 1503/1537/1481/1497/1528; cold-start means k3=.707, k5=.714, k10=.752, k20=.741. G7 rerun into `/private/tmp/kt-g7-nips-deep/results` reproduced full-seq fold AUCs exactly (mean Δ=0.000000; max fold Δ=0.000000). This is DKT-backed `dkt_clst_config`, not a distinct CLST method. |
 | 6 | pybkt | nips2020 | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ⏳ | ⚠️ | 🛑 blocked: zero-mass pyBKT predictions | AUC 0.508–0.509 flat (mean 0.5087, std 0.0004) on ~224k preds/fold; ECE 0.485. S2/S4 audit found active artifacts hash-match a sane sidecar (57 skills, no `_` keys, no singleton skills) and every test-fold skill is present in train. Degeneration comes from trained pyBKT output: ~90% exact-zero `correct_predictions` on NIPS, not unseen-skill fallback. Exclude unless the pyBKT formulation/runner is changed and rerun. |
-| 7 | dkt | accoding | ✅ | ❌ | ✅ | ❌ | ✅ | ⏳ | ⏳ | ✅ | ❌ smoke | AUC 0.494; epochs 1, smoke 64, n_pred 64 |
-| 8 | akt | accoding | ✅ | ❌ | ✅ | ✅ | ✅ | ⏳ | ⏳ | ✅ | ❌ smoke | AUC 0.559; epochs 1, smoke 64 *(above-chance but smoke-depth → not credible)* |
-| 9 | deep_irt | accoding | ✅ | ❌ | ✅ | ❌ | ✅ | ⏳ | ⏳ | ✅ | ❌ smoke | AUC 0.442; epochs 1, smoke 64 |
-| 10 | sakt | accoding | ✅ | ❌ | ✅ | ❌ | ✅ | ⏳ | ⏳ | ✅ | ❌ smoke | AUC 0.476; epochs 1, smoke 64 |
-| 11 | dkt_clst_config | accoding | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ⏳ | ✅ | ⏳ not rerun | S1 relabel path selected: future artifacts use `dkt_clst_config`, explicitly backed by pyKT `dkt` with a different config. Legacy `clst` smoke rows are retired historical artifacts and remain non-reportable. |
+| 7 | dkt | accoding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 partial: pending S6 subsample stability | Full-depth rerun 2026-06-14: AUC .695/.672/.749/.723/.722 (mean .7122); ECE mean .0547; epochs 5, smoke 0, n_pred 575/575/634/604/620; cold-start means k3=.700, k5=.705, k10=.693, k20=.668; G7 scratch rerun reproduced all folds exactly (max Δ=0.000000). Not creditable until ACcoding S6 stability passes. |
+| 8 | akt | accoding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 partial: pending S6 subsample stability | Full-depth rerun 2026-06-14: AUC .690/.678/.753/.722/.748 (mean .7183); ECE mean .0494; epochs 5, smoke 0, n_pred 575/575/634/604/620; cold-start means k3=.694, k5=.696, k10=.679, k20=.676; G7 scratch rerun reproduced all folds exactly (max Δ=0.000000). Not creditable until ACcoding S6 stability passes. |
+| 9 | deep_irt | accoding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 partial: pending S6 subsample stability | Full-depth rerun 2026-06-14: AUC .649/.609/.630/.665/.618 (mean .6344); ECE mean .0422; epochs 5, smoke 0, n_pred 575/575/634/604/620; cold-start means k3=.603, k5=.610, k10=.589, k20=.644; G7 scratch rerun reproduced all folds exactly (max Δ=0.000000). Not creditable until ACcoding S6 stability passes. |
+| 10 | sakt | accoding | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ not credible (genuine G6 cold-start failure) | Full-depth rerun 2026-06-14: AUC .612/.593/.676/.659/.663 (mean .6407); ECE mean .0402; epochs 5, smoke 0, n_pred 575/575/634/604/620; cold-start means k3=.635, k5=.631, k10=.612, k20=.545, with k20 below chance on folds 1 (.470) and 3 (.486); G7 scratch rerun reproduced all folds exactly (max Δ=0.000000). |
+| 11 | dkt_clst_config | accoding | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🟡 partial: pending S6 subsample stability | Full-depth rerun 2026-06-14: AUC .694/.670/.750/.721/.722 (mean .7115); ECE mean .0546; epochs 5, smoke 0, n_pred 575/575/634/604/620; cold-start means k3=.700, k5=.705, k10=.694, k20=.667; G7 scratch rerun reproduced all folds exactly (max Δ=0.000000). Explicit DKT-backed relabel, not a distinct CLST claim; not creditable until ACcoding S6 stability passes. |
 | 12 | pybkt | accoding | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ⏳ | ✅ | 🟡 partial | AUC 0.606 (folds .608/.601/.608/.611/.604), n_pred matches test sidecar exactly; ECE 0.272 (>0.25 investigation threshold), 10/10 bins populated; cold-start means k3=.659, k5=.663, k10=.655, k20=.654; problem-id KC space sane (3,817 skills, no `_` keys). Active sample is `max_learners=3000` only, so OQ-K2 stability still pending. |
 
-**Snapshot tally:** 5 fully credible · 1 partial cell · 4 smoke-depth · 1 blocked pyBKT/NIPS cell · 1 relabeled-not-rerun `dkt_clst_config` accoding cell. Reportable allow-list = **DKT, AKT, Deep-IRT, SAKT, and DKT-compatible CLST config × nips2020**. Generated KT report artifacts cite only these green NIPS cells; the relabeled config is not a distinct CLST method claim.
+**Snapshot tally:** 5 fully credible NIPS cells · 5 partial ACcoding cells pending S6 or calibration/stability · 1 genuine not-credible ACcoding cell (`sakt`, G6 cold-start failure) · 1 blocked pyBKT/NIPS cell. Reportable allow-list = **DKT, AKT, Deep-IRT, SAKT, and DKT-compatible CLST config × nips2020**. Generated KT report artifacts cite only these green NIPS cells; the relabeled config is not a distinct CLST method claim.
 
 ---
 
@@ -82,7 +82,7 @@
 
 - [x] **S1 — CLST fidelity (G8).** Relabeled the silent `clst` alias to `dkt_clst_config`, added `research/kt-bench/model_registry.json`, and added the clean-env model-registry/reportable-allow-list guard. True distinct CLST implementation is deferred to a later research plan.
 - [x] **S2 — pyBKT KC keying audit (G8/G4).** Current active `pybkt × nips2020` artifacts hash-match `folds/nips2020_sequences.csv`, which has 57 numeric skills, no `_` compound keys, no singleton skills, and min skill count 21. The old compound-keying explanation is not supported by current evidence. Cell 6 remains ❌ under G4/G5; investigate pyBKT fit/prediction behavior before crediting.
-- [ ] **S3 — Full-depth deep re-run (G2).** NIPS side is now full-depth and G7-verified for `akt,deep_irt,sakt,dkt_clst_config`; together with already-credible `dkt`, all five NIPS pyKT cells are reportable. Still open for **accoding** `dkt,akt,deep_irt,sakt,dkt_clst_config` full-depth train/coldstart/calibrate.
+- [x] **S3 — Full-depth deep re-run (G2).** NIPS side is full-depth and G7-verified for `akt,deep_irt,sakt,dkt_clst_config`; together with already-credible `dkt`, all five NIPS pyKT cells are reportable. ACcoding `dkt,akt,deep_irt,sakt,dkt_clst_config` full-depth train/coldstart/calibrate completed on 2026-06-14: all five pass G2/G4/G5/G7, four pass G6, and `sakt × accoding` is a genuine G6 cold-start failure. ACcoding cells remain non-reportable until S6 subsample stability is resolved.
 - [ ] **S4 — pyBKT real fit on shared folds (G2/G4).** Cell 6 (`pybkt × nips2020`) is blocked/excluded on current evidence: fit artifacts use sane shared folds but trained pyBKT outputs ~90% exact-zero scores and remains flat at chance. Cell 12 (`pybkt × accoding`) passes G4/G6/G8 on current artifacts but fails G5 calibration (`ECE≈0.272`) and still needs S6 subsample stability.
 - [x] **S5 — Guard tests (auto gates).** Added clean-env guards for the reportable allow-list: G2 `test_no_smoke_in_reportable`, public provenance + matching folds hash, G7 seed/config metadata, AUC floor/degenerate band, cold-start sanity, model registry/no silent aliases, pyBKT skill-space policy, Accoding sampling provenance, and reportable-only artifact generation. Verified 18 passing tests.
 - [ ] **S6 — ACcoding subsample stability (OQ-K2).** Current active Accoding artifacts use a single deterministic `max_learners=3000` sample. The raw ACcoding zip is restored and adapter-readable, so the stability work is unblocked; re-run accoding cells at ≥2 `max_learners` values, confirm AUC stable, and record before any Accoding cell is creditable.
@@ -119,6 +119,56 @@ skill space:  356,380 sidecar rows; 1,944 fold users; 3,817 problem-id skills; 0
 gates:        G1✅ G2✅ G3✅ G4✅ G5❌ G6✅ G7⏳ G8✅
 status:       🟡 partial — not creditable until calibration is addressed or justified, G7 rerun passes, and S6 stability exists
 
+### dkt × accoding — T1 full-depth rerun 2026-06-14 @ current worktree
+
+depth:        epochs=5  smoke=0  n_pred/fold=[575,575,634,604,620]
+full-seq AUC: folds=[.694896,.671647,.749390,.723179,.722114]  mean=.712245  std=.026631
+ECE:          mean=.054673  (10-bin ECE rows written for all folds)
+cold-start:   k3=.699654 k5=.704898 k10=.693129 k20=.668136  monotone-ish? yes by guard rule; all folds/k > .50
+reproduce:    seed=20260613  scratch=`research/kt-bench/.work/g7-accoding-dkt/results`  max fold Δ=0.000000
+gates:        G1✅ G2✅ G3✅ G4✅ G5✅ G6✅ G7✅ G8✅
+status:       🟡 partial — G1-G8 pass, but not creditable until S6 subsample stability exists
+
+### akt × accoding — T1 full-depth rerun 2026-06-14 @ current worktree
+
+depth:        epochs=5  smoke=0  n_pred/fold=[575,575,634,604,620]
+full-seq AUC: folds=[.690384,.678042,.752716,.722103,.748414]  mean=.718332  std=.030019
+ECE:          mean=.049386  (10-bin ECE rows written for all folds)
+cold-start:   k3=.693917 k5=.695992 k10=.678787 k20=.675839  monotone-ish? yes by guard rule; all folds/k > .50
+reproduce:    seed=20260613  scratch=`research/kt-bench/.work/g7-accoding-deep/results`  max fold Δ=0.000000
+gates:        G1✅ G2✅ G3✅ G4✅ G5✅ G6✅ G7✅ G8✅
+status:       🟡 partial — G1-G8 pass, but not creditable until S6 subsample stability exists
+
+### deep_irt × accoding — T1 full-depth rerun 2026-06-14 @ current worktree
+
+depth:        epochs=5  smoke=0  n_pred/fold=[575,575,634,604,620]
+full-seq AUC: folds=[.649452,.608992,.630177,.664881,.618292]  mean=.634359  std=.020389
+ECE:          mean=.042229  (10-bin ECE rows written for all folds)
+cold-start:   k3=.602919 k5=.610021 k10=.589152 k20=.643616  monotone-ish? yes by guard rule; all folds/k > .50
+reproduce:    seed=20260613  scratch=`research/kt-bench/.work/g7-accoding-deep/results`  max fold Δ=0.000000
+gates:        G1✅ G2✅ G3✅ G4✅ G5✅ G6✅ G7✅ G8✅
+status:       🟡 partial — G1-G8 pass, but not creditable until S6 subsample stability exists
+
+### sakt × accoding — T1 full-depth rerun 2026-06-14 @ current worktree
+
+depth:        epochs=5  smoke=0  n_pred/fold=[575,575,634,604,620]
+full-seq AUC: folds=[.612388,.593357,.676042,.659070,.662696]  mean=.640711  std=.031979
+ECE:          mean=.040192  (10-bin ECE rows written for all folds)
+cold-start:   k3=.635444 k5=.630843 k10=.611546 k20=.544611  monotone-ish? no; k20 folds 1=.470323 and 3=.486230 are below chance
+reproduce:    seed=20260613  scratch=`research/kt-bench/.work/g7-accoding-deep/results`  max fold Δ=0.000000
+gates:        G1✅ G2✅ G3✅ G4✅ G5✅ G6❌ G7✅ G8✅
+status:       ❌ not credible (genuine full-depth G6 cold-start failure)
+
+### dkt_clst_config × accoding — T1 full-depth rerun 2026-06-14 @ current worktree
+
+depth:        epochs=5  smoke=0  n_pred/fold=[575,575,634,604,620]
+full-seq AUC: folds=[.693850,.670446,.749728,.721197,.722286]  mean=.711501  std=.027088
+ECE:          mean=.054610  (10-bin ECE rows written for all folds)
+cold-start:   k3=.699557 k5=.704623 k10=.693551 k20=.666821  monotone-ish? yes by guard rule; all folds/k > .50
+reproduce:    seed=20260613  scratch=`research/kt-bench/.work/g7-accoding-deep/results`  max fold Δ=0.000000
+gates:        G1✅ G2✅ G3✅ G4✅ G5✅ G6✅ G7✅ G8✅
+status:       🟡 partial — explicit DKT-backed relabel; G1-G8 pass, but not creditable until S6 subsample stability exists
+
 ---
 
 ## Changelog
@@ -138,4 +188,5 @@ status:       🟡 partial — not creditable until calibration is addressed or 
 | 2026-06-14 | current worktree | G7 completed for AKT, Deep-IRT, SAKT, and `dkt_clst_config` × NIPS: same-seed rerun to `/private/tmp/kt-g7-nips-deep/results` reproduced all 20 full-seq fold AUCs exactly (mean Δ=0.000000, max fold Δ=0.000000). Reportable allow-list expanded to the five green NIPS cells; `dkt_clst_config` remains an explicit relabel, not a distinct CLST method. |
 | 2026-06-14 | current worktree | Progress logging expanded across KT, comparison CLI scripts, and visible standalone Python scripts. Added `test_progress_logging.py` so new visible Python entrypoints must include progress logs. Test cleanup narrowed so synthetic smoke tests no longer delete `research/results/kt` or raw dataset directories. Restored `pybkt × accoding` local artifacts by rerunning `python -m research_comparison.kt.pybkt_runner --dataset accoding` (30 rows, full AUC folds .608/.601/.608/.611/.604, ECE mean still >0.25); focused KT guards pass (`18 passed`) and full comparison suite passes (`51 passed`). |
 | 2026-06-14 | current worktree | Restored raw archives are now usable without special paths: `.gitignore` allows `research/datasets/NeurIPS 2020.zip` and `research/datasets/ACcoding.zip`; `preprocess.py` safely fills missing NIPS landing files from the zip; `accoding_to_poj.py` defaults to the root-level ACcoding zip; `make kt` only generates `data/poj/poj_log.csv` if it is absent. Verified NIPS extraction into `/private/tmp/study-planner-web/kt-verify/nips-data`, ACcoding 1,000-row adapter smoke into `/private/tmp/study-planner-web/kt-verify/poj_log.csv`, and focused tests (`6 passed`). |
+| 2026-06-14 | current worktree | T1 ACcoding deep rerun completed: `dkt,akt,deep_irt,sakt,dkt_clst_config` now have full-depth train/cold-start/ECE rows plus scratch G7 reruns with max fold Δ=0.000000. `dkt`, `akt`, `deep_irt`, and `dkt_clst_config` pass G1-G8 but remain partial pending S6 subsample stability; `sakt × accoding` is a genuine full-depth G6 cold-start failure and remains non-reportable. |
 | _add as you go_ | | |
