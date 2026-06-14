@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.writers.tables import write_projection_winners_table
 
 
@@ -60,19 +61,30 @@ def write_projection_reliability_plot(results_path: Path, out_path: Path) -> Pat
     return out_path
 
 
-def write_projection_artifacts(results_path: Path | None = None) -> list[Path]:
+def write_projection_artifacts(
+    results_path: Path | None = None,
+    progress: ProgressLogger | None = None,
+) -> list[Path]:
     root = _repo_root()
     source = results_path or latest_projection_results()
+    if progress:
+        progress.log(0, "figs.projection.start", f"source={source}")
     payload = json.loads(source.read_text(encoding="utf-8"))
+    if progress:
+        progress.log(30, "figs.projection.loaded", f"rows={len(payload['rows'])} forecasts={len(payload['forecasts'])}")
     generated_dir = root / "college/mydeliverables/1st-Review/report/generated"
     pdf = write_projection_reliability_plot(
         source,
         generated_dir / "projection_reliability.pdf",
     )
+    if progress:
+        progress.log(65, "figs.projection.plot_written", str(pdf))
     table = write_projection_winners_table(
         payload["winner_by_band"],
         generated_dir / "projection_winners.tex",
     )
+    if progress:
+        progress.log(80, "figs.projection.table_written", str(table))
     provenance = generated_dir / "projection_reliability_provenance.txt"
     provenance.write_text(
         "Projection reliability generated from "
@@ -80,15 +92,19 @@ def write_projection_artifacts(results_path: Path | None = None) -> list[Path]:
         f"{payload['_provenance']['params_version_hash']}.\n",
         encoding="utf-8",
     )
+    if progress:
+        progress.log(100, "figs.projection.complete", "wrote=3")
     return [pdf, table, provenance]
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-path", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
+    logger = ProgressLogger(label="research-figs-projection", enabled=not args.quiet)
     source = Path(args.results_path) if args.results_path else None
-    for path in write_projection_artifacts(source):
+    for path in write_projection_artifacts(source, progress=logger):
         print(path)
 
 

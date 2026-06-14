@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "models": {
+    "pybkt": {
+      "runner": "pyBKT",
+      "underlying_model": "pyBKT.Model",
+      "distinct_method": true,
+      "status": "active",
+      "report_label": "pyBKT"
+    },
+    "dkt": {
+      "runner": "pyKT",
+      "underlying_model": "dkt",
+      "distinct_method": true,
+      "status": "active",
+      "report_label": "DKT"
+    },
+    "akt": {
+      "runner": "pyKT",
+      "underlying_model": "akt",
+      "distinct_method": true,
+      "status": "active",
+      "report_label": "AKT"
+    },
+    "deep_irt": {
+      "runner": "pyKT",
+      "underlying_model": "deep_irt",
+      "distinct_method": true,
+      "status": "active",
+      "report_label": "Deep-IRT"
+    },
+    "sakt": {
+      "runner": "pyKT",
+      "underlying_model": "sakt",
+      "distinct_method": true,
+      "status": "active",
+      "report_label": "SAKT"
+    },
+    "dkt_clst_config": {
+      "runner": "pyKT",
+      "underlying_model": "dkt",
+      "distinct_method": false,
+      "status": "active_relabeled",
+      "report_label": "DKT-compatible CLST config",
+      "alias_of": "dkt",
+      "alias_policy": "explicit_relabel",
+      "notes": "pyKT 0.0.38 has no distinct CLST implementation in this bench; this label preserves the DKT-backed recurrent config without claiming a CLST method."
+    }
+  },
+  "retired_labels": {
+    "clst": {
+      "replaced_by": "dkt_clst_config",
+      "reason": "Historical clst rows were a silent alias to pyKT dkt and are not reportable as CLST."
+    }
+  },
+  "pybkt_skill_space": {
+    "nips2020": {
+      "keying": "pyKT numeric concept ids exported from Eedi level-3 subjects",
+      "max_unique_skills": 1000,
+      "allow_compound_underscore_keys": false,
+      "allow_singleton_skills": false
+    },
+    "accoding": {
+      "keying": "problem id as concept",
+      "max_unique_skills": 10000,
+      "allow_compound_underscore_keys": false,
+      "allow_singleton_skills": true
+    }
+  },
+  "dataset_sampling": {
+    "accoding": {
+      "adapter": "adapters/accoding_to_poj.py",
+      "active_provenance": "data/poj/poj_log.provenance.json",
+      "active_max_learners": 3000,
+      "active_seed": 20260614,
+      "requires_subsample_stability": true,
+      "required_max_learners": [1000, 3000, 10000],
+      "status": "single_subsample_only",
+      "notes": "Active artifacts are tied to one deterministic ACcoding learner subsample. Do not credit ACcoding cells until at least two max_learners reruns show stable AUC."
+    }
+  },
+  "reportable_allowlist": [
+    {
+      "dataset": "nips2020",
+      "model": "dkt",
+      "status": "credible"
+    },
+    {
+      "dataset": "nips2020",
+      "model": "akt",
+      "status": "credible"
+    },
+    {
+      "dataset": "nips2020",
+      "model": "deep_irt",
+      "status": "credible"
+    },
+    {
+      "dataset": "nips2020",
+      "model": "sakt",
+      "status": "credible"
+    },
+    {
+      "dataset": "nips2020",
+      "model": "dkt_clst_config",
+      "status": "credible"
+    }
+  ]
+}

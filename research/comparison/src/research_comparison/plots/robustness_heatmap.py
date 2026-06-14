@@ -12,6 +12,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from research_comparison.progress_log import ProgressLogger
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[5]
@@ -60,11 +62,18 @@ def write_robustness_heatmap(results_path: Path, out_path: Path) -> Path:
     return out_path
 
 
-def write_robustness_artifacts(results_path: Path | None = None) -> list[Path]:
+def write_robustness_artifacts(
+    results_path: Path | None = None,
+    progress: ProgressLogger | None = None,
+) -> list[Path]:
     root = _repo_root()
     source = results_path or latest_sweep_results()
+    if progress:
+        progress.log(0, "figs.robustness.start", f"source={source}")
     generated_dir = root / "college/mydeliverables/1st-Review/report/generated"
     pdf = write_robustness_heatmap(source, generated_dir / "robustness_heatmap.pdf")
+    if progress:
+        progress.log(65, "figs.robustness.plot_written", str(pdf))
     payload = json.loads(source.read_text(encoding="utf-8"))
     provenance = generated_dir / "robustness_heatmap_provenance.txt"
     provenance.write_text(
@@ -72,15 +81,19 @@ def write_robustness_artifacts(results_path: Path | None = None) -> list[Path]:
         f"{payload['_provenance']['params_version_hash']}.\n",
         encoding="utf-8",
     )
+    if progress:
+        progress.log(100, "figs.robustness.complete", "wrote=2")
     return [pdf, provenance]
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-path", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
+    logger = ProgressLogger(label="research-figs-robustness", enabled=not args.quiet)
     source = Path(args.results_path) if args.results_path else None
-    for path in write_robustness_artifacts(source):
+    for path in write_robustness_artifacts(source, progress=logger):
         print(path)
 
 

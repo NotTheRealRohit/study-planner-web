@@ -64,7 +64,7 @@ The status markers are a fast read, but they are not the source of truth. The ph
 
 ## TL;DR
 
-Benchmark knowledge-tracing models on two public datasets — **Eedi (`nips2020`, MCQ)** and **POJ (coding)** — in a **quarantined** Python environment (`research/kt-bench/`) with pinned PyTorch + `pykt-toolkit` + wandb that is **not a `uv` workspace member and stays out of `uv.lock`** (decision #15). pyKT's preprocessed 5-fold splits are **exported once as the shared source of truth**; deep models (DKT, AKT, Deep-IRT, SAKT) plus a cold-start method (CLST family) train on them for full-sequence AUC, and a cold-start harness truncates to the first `k ∈ {3,5,10,20}` interactions to produce the **headline cold-start AUC curve**. `pyBKT` runs in the **clean** env on the **identical exported folds** so BKT-vs-deep is fair across environments (decision #16). Mastery calibration (reliability diagram + ECE) is reported alongside AUC. Every model writes `research/results/kt/*.json` keyed `{dataset, model, fold, k}` — the **only seam**: the main harness *reads* these JSONs and **never imports pyKT**, so a broken torch install can never break the Pillar-A pipeline.
+Benchmark knowledge-tracing models on two public datasets — **Eedi (`nips2020`, MCQ)** and **POJ (coding)** — in a **quarantined** Python environment (`research/kt-bench/`) with pinned PyTorch + `pykt-toolkit` + wandb that is **not a `uv` workspace member and stays out of `uv.lock`** (decision #15). pyKT's preprocessed 5-fold splits are **exported once as the shared source of truth**; deep models (DKT, AKT, Deep-IRT, SAKT) plus an explicitly relabeled DKT-backed CLST-config candidate (`dkt_clst_config`) train on them for full-sequence AUC, and a cold-start harness truncates to the first `k ∈ {3,5,10,20}` interactions to produce the **headline cold-start AUC curve**. `pyBKT` runs in the **clean** env on the **identical exported folds** so BKT-vs-deep is fair across environments (decision #16). Mastery calibration (reliability diagram + ECE) is reported alongside AUC. Every model writes `research/results/kt/*.json` keyed `{dataset, model, fold, k}` — the **only seam**: the main harness *reads* these JSONs and **never imports pyKT**, so a broken torch install can never break the Pillar-A pipeline.
 
 ## Context & background
 
@@ -129,7 +129,7 @@ Mirrors the frozen decisions (frozen 2026-06-13). The subset governing Phase 4:
 
 **Context:** Concept-level KT over LLM-generated items needs data that does not exist yet.
 
-**Decision:** Phase I runs Eedi `nips2020` (MCQ) + POJ (coding) with their native KC tags. CLST stays the extension-narrative base paper; concept-level KT over generated items is **Phase II**, not evaluated now.
+**Decision:** Phase I runs Eedi `nips2020` (MCQ) + POJ (coding) with their native KC tags. CLST stays the extension-narrative base paper, but the current bench does **not** implement a distinct CLST method; the historical silent alias is relabeled to `dkt_clst_config` until a later CLST implementation plan lands. Concept-level KT over generated items is **Phase II**, not evaluated now.
 
 **Reversibility:** easy.
 
@@ -142,7 +142,7 @@ research/
     requirements.txt              pinned versions
     README.md                     two-step run instructions (preprocess -> train -> predict)
     preprocess.py                 pyKT preprocess nips2020 + poj; EXPORT fold indices (D-14)
-    train.py                      DKT, AKT, Deep-IRT, SAKT, CLST (5-fold) -> full-seq AUC
+    train.py                      DKT, AKT, Deep-IRT, SAKT, dkt_clst_config (5-fold) -> full-seq AUC
     coldstart.py                  truncate to first k in {3,5,10,20} -> cold-start AUC
     calibrate.py                  reliability diagram data + ECE per model
     write_results.py              -> research/results/kt/*.json keyed {dataset,model,fold,k} (stamped)
@@ -160,7 +160,7 @@ research/
 flowchart LR
     subgraph iso [kt-bench — isolated torch/pyKT venv]
       PRE[preprocess.py\nnips2020 + poj] --> FOLDS[(folds/ shared\n5-fold indices)]
-      FOLDS --> DEEP[train.py: DKT/AKT/Deep-IRT/SAKT/CLST] --> RJ1[results/kt/*.json]
+      FOLDS --> DEEP[train.py: DKT/AKT/Deep-IRT/SAKT/dkt_clst_config] --> RJ1[results/kt/*.json]
       FOLDS --> CS[coldstart.py k=3,5,10,20] --> RJ1
       DEEP --> CAL[calibrate.py ECE] --> RJ1
     end
@@ -179,7 +179,7 @@ flowchart LR
 | `research/kt-bench/preprocess.py` | new | 4a | pyKT preprocess `nips2020` + `poj`; export fold indices |
 | `research/kt-bench/folds/` | new | 4a | Exported shared-split indices (tracked) |
 | `.gitignore` | modify | 4a | Ignore `research/kt-bench/.venv` (already added in Part 1 Phase 0 — verify) |
-| `research/kt-bench/train.py` | new | 4b | Train DKT, AKT, Deep-IRT, SAKT, CLST (5-fold) → full-seq AUC |
+| `research/kt-bench/train.py` | new | 4b | Train DKT, AKT, Deep-IRT, SAKT, `dkt_clst_config` (5-fold) → full-seq AUC |
 | `research/kt-bench/coldstart.py` | new | 4b | Truncate to first `k` → cold-start AUC curve |
 | `research/kt-bench/write_results.py` | new | 4b | Write `results/kt/*.json` keyed `{dataset,model,fold,k}` (stamped) |
 | `research/kt-bench/calibrate.py` | new | 4c | Reliability-diagram data + ECE per model |
@@ -272,7 +272,7 @@ records `raw_source: smoke_fixture` so public raw exports can replace them delib
 
 ---
 
-### Phase 4b: Deep models — full-seq AUC + cold-start curve + CLST
+### Phase 4b: Deep models — full-seq AUC + cold-start curve + relabeled CLST config
 
 **Status:** ✅ Complete — 32cb911bf9bbbe8043069d9aa1a37d099f157b4f
 **Depends on:** Phase 4a
@@ -296,7 +296,7 @@ ls folds/nips2020_folds.json folds/poj_folds.json
 
 1. **`research/kt-bench/train.py` (P4.3):** train **DKT, AKT, Deep-IRT, SAKT** on each dataset using the **exported folds** (5-fold) → full-sequence test AUC per `{dataset, model, fold}`. Use pyKT's training entry points (wandb sweeps optional; a fixed config is fine for reproducibility — record the config + seed).
 
-2. **Add CLST cold-start candidate (P4.4):** wire the CLST-family cold-start method as an additional model in `train.py` (the extension-narrative base paper — D-16 keeps it as a candidate, not the headline metric).
+2. **Add the CLST-narrative candidate (P4.4):** current credibility audit relabels the historical silent `clst` alias to `dkt_clst_config`, an explicitly DKT-backed config candidate. This preserves the D-16 research thread without claiming a distinct CLST method; a real CLST implementation is deferred to a later plan.
 
 3. **`research/kt-bench/coldstart.py` (P4.5):** the cold-start harness — for each model, evaluate AUC using only the first `k ∈ {3,5,10,20}` interactions per learner sequence → a cold-start AUC curve (the headline, parallel to the Pillar-A convergence curve).
 
@@ -314,7 +314,7 @@ ls folds/nips2020_folds.json folds/poj_folds.json
 
 ```bash
 cd research/kt-bench
-./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,clst --folds folds/nips2020_folds.json
+./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,dkt_clst_config --folds folds/nips2020_folds.json
 ./.venv/bin/python coldstart.py --dataset nips2020 --k 3,5,10,20
 ls ../results/kt/nips2020__dkt__fold0__kfull.json ../results/kt/nips2020__dkt__fold0__k5.json   # exist
 ./.venv/bin/python -c "import json,glob; [json.load(open(p)) for p in glob.glob('../results/kt/*.json')]; print('valid json')"

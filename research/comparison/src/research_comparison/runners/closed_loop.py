@@ -16,6 +16,7 @@ from research_comparison.metrics.closed_loop import (
     finish_date_drift_days,
 )
 from research_comparison.metrics.scheduling import planned_slots
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.runners.calibration import latest_dataset_dir
 from research_comparison.runners.detection import detect_cusum
 from research_comparison.runners.scheduling import scenario_from_learner, schedule_greedy
@@ -144,10 +145,16 @@ def run_closed_loop_for_scenario(
     }
 
 
-def run_closed_loop_archive(dataset_dir: str | None = None, out_dir: str | None = None) -> Path:
+def run_closed_loop_archive(
+    dataset_dir: str | None = None,
+    out_dir: str | None = None,
+    progress: ProgressLogger | None = None,
+) -> Path:
     root = _repo_root()
     dataset_path = Path(dataset_dir) if dataset_dir else latest_dataset_dir()
     result_root = Path(out_dir) if out_dir else root / "research/results/closed_loop"
+    if progress:
+        progress.log(0, "closed_loop.start", f"dataset={dataset_path}")
     raw_manifest = json.loads((dataset_path / "manifest.json").read_text(encoding="utf-8"))
     manifest = manifest_from_dataset(raw_manifest)
     sidecars = {
@@ -157,7 +164,11 @@ def run_closed_loop_archive(dataset_dir: str | None = None, out_dir: str | None 
 
     rows: list[dict[str, Any]] = []
     comparisons: list[dict[str, Any]] = []
-    for learner in _read_jsonl(dataset_path / "learners.jsonl")[:24]:
+    learners = _read_jsonl(dataset_path / "learners.jsonl")[:24]
+    total_learners = len(learners)
+    if progress:
+        progress.log(10, "closed_loop.loaded", f"scenarios={total_learners}")
+    for learner_index, learner in enumerate(learners, start=1):
         scenario = scenario_from_learner(learner, sidecars[learner["learner_id"]])
         open_result = run_closed_loop_for_scenario(
             scenario.scenario_id,
@@ -180,6 +191,16 @@ def run_closed_loop_archive(dataset_dir: str | None = None, out_dir: str | None 
                 **compare_closed_vs_open(open_result, closed_result),
             }
         )
+        if progress and (
+            learner_index == 1
+            or learner_index == total_learners
+            or learner_index % max(1, total_learners // 20) == 0
+        ):
+            progress.log(
+                10 + (learner_index / max(1, total_learners)) * 80,
+                "closed_loop.scenarios",
+                f"processed={learner_index}/{total_learners} rows={len(rows)}",
+            )
 
     payload = {
         "dataset_id": raw_manifest["dataset_id"],
@@ -187,7 +208,12 @@ def run_closed_loop_archive(dataset_dir: str | None = None, out_dir: str | None 
         "rows": rows,
         "comparisons": comparisons,
     }
-    return write_stamped_json(result_root / "closed_loop_results.json", payload, manifest)
+    if progress:
+        progress.log(95, "closed_loop.write", f"rows={len(rows)} comparisons={len(comparisons)}")
+    out_path = write_stamped_json(result_root / "closed_loop_results.json", payload, manifest)
+    if progress:
+        progress.log(100, "closed_loop.complete", str(out_path))
+    return out_path
 
 
 def main() -> None:
@@ -195,8 +221,10 @@ def main() -> None:
     parser.add_argument("--closed-loop", action="store_true")
     parser.add_argument("--dataset-dir", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
-    print(run_closed_loop_archive(dataset_dir=args.dataset_dir, out_dir=args.out_dir))
+    logger = ProgressLogger(label="research-closed-loop", enabled=not args.quiet)
+    print(run_closed_loop_archive(dataset_dir=args.dataset_dir, out_dir=args.out_dir, progress=logger))
 
 
 if __name__ == "__main__":

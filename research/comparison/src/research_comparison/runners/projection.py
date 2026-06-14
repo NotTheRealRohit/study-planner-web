@@ -15,6 +15,7 @@ from research_comparison.baselines.projection import (
 )
 from research_comparison.metrics.projection import projection_metrics, winner_by_band
 from research_comparison.oracles.projection import forecast_projection_oracle
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.runners.calibration import latest_dataset_dir
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
@@ -161,10 +162,16 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
 
 
-def run_projection_track(dataset_dir: str | None = None, out_dir: str | None = None) -> Path:
+def run_projection_track(
+    dataset_dir: str | None = None,
+    out_dir: str | None = None,
+    progress: ProgressLogger | None = None,
+) -> Path:
     root = _repo_root()
     dataset_path = Path(dataset_dir) if dataset_dir else latest_dataset_dir()
     result_root = Path(out_dir) if out_dir else root / "research/results/projection"
+    if progress:
+        progress.log(0, "projection.start", f"dataset={dataset_path}")
     raw_manifest = json.loads((dataset_path / "manifest.json").read_text(encoding="utf-8"))
     manifest = manifest_from_dataset(raw_manifest)
     sidecars = {
@@ -174,13 +181,27 @@ def run_projection_track(dataset_dir: str | None = None, out_dir: str | None = N
 
     rows: list[dict[str, Any]] = []
     forecasts: list[dict[str, Any]] = []
-    for learner in _read_jsonl(dataset_path / "learners.jsonl"):
+    learners = _read_jsonl(dataset_path / "learners.jsonl")
+    total_learners = len(learners)
+    if progress:
+        progress.log(10, "projection.loaded", f"learners={total_learners}")
+    for learner_index, learner in enumerate(learners, start=1):
         learner_rows, learner_forecasts = run_projection_for_learner(
             learner,
             sidecars[learner["learner_id"]],
         )
         rows.extend(learner_rows)
         forecasts.extend(learner_forecasts)
+        if progress and (
+            learner_index == 1
+            or learner_index == total_learners
+            or learner_index % max(1, total_learners // 20) == 0
+        ):
+            progress.log(
+                10 + (learner_index / max(1, total_learners)) * 80,
+                "projection.learners",
+                f"processed={learner_index}/{total_learners} rows={len(rows)} forecasts={len(forecasts)}",
+            )
 
     payload = {
         "dataset_id": raw_manifest["dataset_id"],
@@ -188,15 +209,22 @@ def run_projection_track(dataset_dir: str | None = None, out_dir: str | None = N
         "forecasts": forecasts,
         "winner_by_band": winner_by_band(rows),
     }
-    return write_stamped_json(result_root / "projection_results.json", payload, manifest)
+    if progress:
+        progress.log(95, "projection.write", f"rows={len(rows)} forecasts={len(forecasts)}")
+    out_path = write_stamped_json(result_root / "projection_results.json", payload, manifest)
+    if progress:
+        progress.log(100, "projection.complete", str(out_path))
+    return out_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
-    print(run_projection_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir))
+    logger = ProgressLogger(label="research-projection", enabled=not args.quiet)
+    print(run_projection_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir, progress=logger))
 
 
 if __name__ == "__main__":

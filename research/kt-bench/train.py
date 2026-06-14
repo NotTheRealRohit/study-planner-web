@@ -19,7 +19,8 @@ from sklearn import metrics
 from torch.nn.functional import one_hot
 from torch.utils.data import DataLoader
 
-from write_results import FoldSpec, default_results_dir, load_folds, write_kt_result
+from progress_log import ProgressLogger, run_with_heartbeat
+from write_results import FoldSpec, default_results_dir, file_sha256, load_folds, result_filename, write_kt_result
 
 os.environ.setdefault("WANDB_MODE", "offline")
 
@@ -38,9 +39,9 @@ MODEL_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "deep_irt": {"dim_s": 32, "size_m": 32, "dropout": 0.1},
     "sakt": {"seq_len": 200, "emb_size": 32, "num_attn_heads": 4, "dropout": 0.1, "num_en": 1},
-    "clst": {"emb_size": 32, "dropout": 0.15},
+    "dkt_clst_config": {"emb_size": 32, "dropout": 0.15},
 }
-PYKT_MODEL = {"clst": "dkt"}
+PYKT_MODEL = {"dkt_clst_config": "dkt"}
 SEQUENCE_COLUMNS = ("questions", "concepts", "responses", "timestamps", "usetimes", "selectmasks")
 
 
@@ -229,6 +230,61 @@ def load_best_checkpoint(model: torch.nn.Module, ckpt_dir: Path) -> None:
         model.load_state_dict(torch.load(ckpt, map_location=_device()))
 
 
+def _existing_full_result_is_complete(
+    *,
+    path: Path,
+    dataset: str,
+    public_model: str,
+    pykt_model: str,
+    fold: FoldSpec,
+    seed: int,
+    folds_path: Path,
+    epochs: int,
+    batch_size: int,
+    learning_rate: float,
+    smoke: int,
+    expected_predictions: int,
+) -> tuple[bool, str]:
+    if not path.exists():
+        return False, "missing result"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return False, f"invalid json: {exc}"
+
+    provenance = payload.get("_provenance", {})
+    training_config = payload.get("training_config", {})
+    tolerance = max(1, int(round(expected_predictions * 0.05)))
+
+    checks = {
+        "dataset": payload.get("dataset") == dataset,
+        "model": payload.get("model") == public_model,
+        "fold": int(payload.get("fold", -1)) == fold.fold,
+        "k": payload.get("k") == "full",
+        "seed": provenance.get("seed") == seed,
+        "folds_hash": provenance.get("folds_hash") == file_sha256(folds_path),
+        "runner": training_config.get("runner") == "pyKT",
+        "pykt_model": training_config.get("pykt_model") == pykt_model,
+        "model_config": training_config.get("model_config") == model_config(public_model),
+        "epochs": int(training_config.get("epochs", 0)) >= epochs,
+        "batch_size": int(training_config.get("batch_size", 0)) == batch_size,
+        "learning_rate": float(training_config.get("learning_rate", -1)) == float(learning_rate),
+        "smoke": int(training_config.get("smoke_sequences_per_fold", -1)) == smoke,
+        "n_predictions": abs(int(payload.get("n_predictions", -1)) - expected_predictions) <= tolerance,
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    if failed:
+        return False, "failed checks: " + ",".join(failed)
+    return True, f"auc={float(payload.get('auc', 0.0)):.6f} n_predictions={payload.get('n_predictions')}"
+
+
+def _sequence_prediction_counts(data_config: dict[str, Any], dataset_key: str) -> dict[int, int]:
+    current_config = data_config[dataset_key]
+    sequence_path = Path(current_config["dpath"]) / current_config["train_valid_file"]
+    frame = pd.read_csv(sequence_path, usecols=["fold"])
+    return {int(fold): int(count) for fold, count in frame.groupby("fold").size().items()}
+
+
 def train_one(
     *,
     dataset: str,
@@ -242,7 +298,13 @@ def train_one(
     learning_rate: float,
     smoke: int,
     checkpoints_dir: Path,
+    logger: ProgressLogger,
+    percent_start: float,
+    percent_end: float,
+    heartbeat_seconds: float,
 ) -> dict[str, Any]:
+    detail = f"dataset={dataset} model={public_model} fold={fold.fold}"
+    logger.log(percent_start, "train.fold.setup", detail)
     set_seed(seed + fold.fold)
     patch_pykt_cpu_tensors()
     pykt_model = public_to_pykt_model(public_model)
@@ -259,18 +321,36 @@ def train_one(
         raise RuntimeError(f"pyKT failed to initialize model {public_model}")
     opt = torch.optim.Adam(model.parameters(), lr=learning_rate)
     ckpt_dir = checkpoint_dir(checkpoints_dir, dataset, public_model, fold.fold, smoke)
-    train_model(
-        model,
-        train_loader,
-        valid_loader,
-        epochs,
-        opt,
-        str(ckpt_dir),
-        save_model=True,
+    logger.log(
+        percent_start + (percent_end - percent_start) * 0.25,
+        "train.fold.training",
+        f"{detail} epochs={epochs} batch_size={batch_size} smoke={smoke}",
     )
+    run_with_heartbeat(
+        lambda: train_model(
+            model,
+            train_loader,
+            valid_loader,
+            epochs,
+            opt,
+            str(ckpt_dir),
+            save_model=True,
+        ),
+        logger=logger,
+        percent=percent_start + (percent_end - percent_start) * 0.5,
+        state="train.fold.training",
+        detail=detail,
+        heartbeat_seconds=heartbeat_seconds,
+    )
+    logger.log(percent_start + (percent_end - percent_start) * 0.75, "train.fold.evaluate", detail)
     load_best_checkpoint(model, ckpt_dir)
     y_true, y_score = collect_predictions(model=model, loader=valid_loader, pykt_model=pykt_model)
     auc, accuracy = summarize_predictions(y_true, y_score)
+    logger.log(
+        percent_end,
+        "train.fold.evaluated",
+        f"{detail} auc={auc:.6f} accuracy={accuracy:.6f} n_predictions={len(y_true)}",
+    )
     return {
         "dataset": dataset,
         "model": public_model,
@@ -308,9 +388,20 @@ def run(
     smoke: int,
     run_root: Path,
     checkpoints_dir: Path,
+    progress: bool = True,
+    heartbeat_seconds: float = 30.0,
+    skip_complete: bool = False,
 ) -> list[Path]:
+    logger = ProgressLogger(label="kt-train", enabled=progress)
+    model_list = list(models)
+    logger.log(
+        0,
+        "train.start",
+        f"dataset={dataset} models={','.join(model_list)} epochs={epochs} smoke={smoke}",
+    )
     folds_meta, folds = load_folds(folds_path)
     dataset_key = str(folds_meta["pykt_dataset"])
+    logger.log(2, "train.prepare_config", f"dataset={dataset} pykt_dataset={dataset_key}")
     run_config = prepare_run_config(
         dataset=dataset,
         dataset_key=dataset_key,
@@ -318,11 +409,46 @@ def run(
         smoke=smoke,
         run_root=run_root,
     )
+    logger.log(5, "train.config_ready", f"dataset={dataset} folds={len(folds)}")
+    expected_predictions_by_fold = _sequence_prediction_counts(run_config, dataset_key)
 
     out_paths: list[Path] = []
-    for public_model in models:
-        public_to_pykt_model(public_model)
+    total_units = max(1, len(model_list) * len(folds))
+    completed = 0
+    for public_model in model_list:
+        pykt_model = public_to_pykt_model(public_model)
         for fold in folds:
+            percent_start = 5 + (completed / total_units) * 90
+            percent_end = 5 + ((completed + 1) / total_units) * 90
+            existing_path = results_dir / result_filename(dataset, public_model, fold.fold, "full")
+            if skip_complete:
+                complete, reason = _existing_full_result_is_complete(
+                    path=existing_path,
+                    dataset=dataset,
+                    public_model=public_model,
+                    pykt_model=pykt_model,
+                    fold=fold,
+                    seed=seed,
+                    folds_path=folds_path,
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    smoke=smoke,
+                    expected_predictions=expected_predictions_by_fold[fold.fold],
+                )
+                if complete:
+                    logger.log(
+                        percent_end,
+                        "train.fold.skip_complete",
+                        f"dataset={dataset} model={public_model} fold={fold.fold} {reason}",
+                    )
+                    completed += 1
+                    continue
+                logger.log(
+                    percent_start,
+                    "train.fold.resume_needed",
+                    f"dataset={dataset} model={public_model} fold={fold.fold} {reason}",
+                )
             result = train_one(
                 dataset=dataset,
                 dataset_key=dataset_key,
@@ -335,23 +461,29 @@ def run(
                 learning_rate=learning_rate,
                 smoke=smoke,
                 checkpoints_dir=checkpoints_dir,
+                logger=logger,
+                percent_start=percent_start,
+                percent_end=percent_end,
+                heartbeat_seconds=heartbeat_seconds,
             )
-            out_paths.append(
-                write_kt_result(
-                    result=result,
-                    results_dir=results_dir,
-                    seed=seed,
-                    folds_path=folds_path,
-                    folds_meta=folds_meta,
-                )
+            out_path = write_kt_result(
+                result=result,
+                results_dir=results_dir,
+                seed=seed,
+                folds_path=folds_path,
+                folds_meta=folds_meta,
             )
+            out_paths.append(out_path)
+            logger.log(percent_end, "train.fold.wrote", str(out_path))
+            completed += 1
+    logger.log(100, "train.complete", f"dataset={dataset} wrote={len(out_paths)}")
     return out_paths
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
-    parser.add_argument("--models", default="dkt,akt,deep_irt,sakt,clst")
+    parser.add_argument("--models", default="dkt,akt,deep_irt,sakt,dkt_clst_config")
     parser.add_argument("--folds", type=Path, required=True)
     parser.add_argument("--results-dir", type=Path, default=default_results_dir())
     parser.add_argument("--seed", type=int, default=20260613)
@@ -362,6 +494,9 @@ def main() -> int:
     parser.add_argument("--smoke", type=int, default=0, help="cap sequences per fold; 0 means full")
     parser.add_argument("--run-root", type=Path, default=Path(".work/kt-runs"))
     parser.add_argument("--checkpoints-dir", type=Path, default=Path(".work/kt-checkpoints"))
+    parser.add_argument("--progress-interval", type=float, default=30.0, help="seconds between training heartbeats")
+    parser.add_argument("--skip-complete", action="store_true", help="skip matching full-depth kfull result rows")
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
 
     epochs = args.epochs or (1 if args.smoke else 5)
@@ -378,6 +513,9 @@ def main() -> int:
         smoke=args.smoke,
         run_root=args.run_root,
         checkpoints_dir=args.checkpoints_dir,
+        progress=not args.quiet,
+        heartbeat_seconds=args.progress_interval,
+        skip_complete=args.skip_complete,
     )
     for path in out_paths:
         print(f"wrote {path}")

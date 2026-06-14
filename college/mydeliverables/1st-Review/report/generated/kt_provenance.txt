@@ -1,2 +1,9 @@
-KT artifacts generated from /Users/rsaji/projects/1/college-mtech/study-planner-web/research/results/kt with 360 JSON rows.
+KT artifacts generated from /Users/rsaji/projects/1/college-mtech/study-planner-web/research/results/kt with 150 JSON rows.
+Mode: reportable_allowlist.
+Reportable allow-list:
+- dkt x nips2020 (credible)
+- akt x nips2020 (credible)
+- deep_irt x nips2020 (credible)
+- sakt x nips2020 (credible)
+- dkt_clst_config x nips2020 (credible)
 Fold raw sources: public_raw.

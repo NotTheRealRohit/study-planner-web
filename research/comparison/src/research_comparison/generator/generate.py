@@ -27,6 +27,7 @@ from research_comparison.params import (
     PARAMS_VERSION_HASH,
     ROLE_RHO,
 )
+from research_comparison.progress_log import ProgressLogger
 
 DEFAULT_ARCHETYPE_MIX = {
     "steady": 1,
@@ -234,6 +235,7 @@ def generate_dataset(
     bands: list[str] | None = None,
     seeds: list[int] | None = None,
     out_dir: str | None = None,
+    progress: ProgressLogger | None = None,
 ) -> str:
     mix = archetype_mix or DEFAULT_ARCHETYPE_MIX
     selected_bands = bands or DEFAULT_BANDS
@@ -243,6 +245,8 @@ def generate_dataset(
     dataset_id = f"synthetic-{PARAMS_VERSION_HASH}-seed{selected_seeds[0]}-n{n_learners}"
     dataset_dir = out_root / dataset_id
     dataset_dir.mkdir(parents=True, exist_ok=True)
+    if progress:
+        progress.log(0, "dataset.start", f"dataset_id={dataset_id} learners={n_learners}")
 
     learners_path = dataset_dir / "learners.jsonl"
     sidecars_path = dataset_dir / "sidecars.jsonl"
@@ -279,6 +283,17 @@ def generate_dataset(
                             + "\n"
                         )
                         learner_index += 1
+                        if progress and (
+                            learner_index == 1
+                            or learner_index == n_learners
+                            or learner_index % max(1, n_learners // 20) == 0
+                        ):
+                            percent = 5 + (learner_index / n_learners) * 75
+                            progress.log(
+                                percent,
+                                "dataset.learners",
+                                f"generated={learner_index}/{n_learners} seed={seed} band={band} archetype={archetype}",
+                            )
 
     manifest = build_manifest(seed=selected_seeds[0], archetype_mix=mix, n_learners=n_learners)
     manifest_dict = {
@@ -291,7 +306,11 @@ def generate_dataset(
         json.dumps(manifest_dict, indent=2, sort_keys=True),
         encoding="utf-8",
     )
+    if progress:
+        progress.log(85, "dataset.manifest_written", str(dataset_dir / "manifest.json"))
     export_face_validity(str(dataset_dir))
+    if progress:
+        progress.log(100, "dataset.complete", str(dataset_dir))
     return dataset_id
 
 
@@ -336,11 +355,16 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
+    logger = ProgressLogger(label="research-dataset", enabled=not args.quiet)
     if args.stub:
-        print(write_stub())
+        logger.log(0, "dataset.stub_start")
+        path = write_stub()
+        logger.log(100, "dataset.stub_complete", str(path))
+        print(path)
         return
-    print(generate_dataset(out_dir=args.out_dir))
+    print(generate_dataset(out_dir=args.out_dir, progress=logger))
 
 
 if __name__ == "__main__":

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import csv
+import hashlib
 import json
 import importlib
 import importlib.util
+import statistics
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -13,6 +16,8 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FOLDS_DIR = REPO_ROOT / "research" / "kt-bench" / "folds"
 KT_BENCH_DIR = REPO_ROOT / "research" / "kt-bench"
+MODEL_REGISTRY_PATH = KT_BENCH_DIR / "model_registry.json"
+RESULTS_DIR = REPO_ROOT / "research" / "results" / "kt"
 POJ_ALLOWED_RESULTS = {
     "Accepted",
     "Wrong Answer",
@@ -36,6 +41,51 @@ def _load_accoding_adapter():
     sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _load_model_registry() -> dict:
+    return json.loads(MODEL_REGISTRY_PATH.read_text(encoding="utf-8"))
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as fh:
+        for block in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _result_path(dataset: str, model: str, fold: int, k: str | int) -> Path:
+    suffix = "ece" if k == "ece" else f"k{k}"
+    return RESULTS_DIR / f"{dataset}__{model}__fold{fold}__{suffix}.json"
+
+
+def _read_result(dataset: str, model: str, fold: int, k: str | int) -> dict:
+    path = _result_path(dataset, model, fold, k)
+    assert path.exists(), f"missing KT result: {path}"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _allowlist_candidates() -> list[tuple[str, str]]:
+    registry = _load_model_registry()
+    return [
+        (str(item["dataset"]), str(item["model"]))
+        for item in registry["reportable_allowlist"]
+        if item["status"] in {"credible", "candidate_pending_g7"}
+    ]
+
+
+def _pykt_fold_sequence_counts(dataset: str) -> dict[int, int]:
+    folds_meta = json.loads((FOLDS_DIR / f"{dataset}_folds.json").read_text(encoding="utf-8"))
+    sequence_path = KT_BENCH_DIR / "data" / str(folds_meta["pykt_dataset"]) / "train_valid_sequences.csv"
+    assert sequence_path.exists(), f"missing pyKT sequence file: {sequence_path}"
+
+    counts: dict[int, int] = {}
+    with sequence_path.open(encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            fold = int(row["fold"])
+            counts[fold] = counts.get(fold, 0) + 1
+    return counts
 
 
 def test_folds_schema() -> None:
@@ -70,6 +120,68 @@ def test_sequences_sidecar_schema() -> None:
         assert int(order) >= 0
         assert skill
         assert correct in {"0", "1"}
+
+
+def test_pybkt_skill_space_matches_registry_policy() -> None:
+    registry = _load_model_registry()
+    policies = registry["pybkt_skill_space"]
+
+    for dataset, policy in policies.items():
+        path = FOLDS_DIR / f"{dataset}_sequences.csv"
+        with path.open(encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+
+        skill_counts: dict[str, int] = {}
+        for row in rows:
+            skill = str(row["skill"])
+            skill_counts[skill] = skill_counts.get(skill, 0) + 1
+
+        assert len(skill_counts) <= int(policy["max_unique_skills"])
+        if not policy["allow_compound_underscore_keys"]:
+            assert all("_" not in skill for skill in skill_counts)
+        if not policy["allow_singleton_skills"]:
+            assert min(skill_counts.values()) > 1
+
+
+def test_accoding_subsample_provenance_matches_sampling_policy() -> None:
+    registry = _load_model_registry()
+    sampling = registry["dataset_sampling"]["accoding"]
+
+    assert sampling["requires_subsample_stability"] is True
+    assert len(set(sampling["required_max_learners"])) >= 2
+    if sampling["status"] == "stable":
+        assert len(set(sampling["completed_max_learners"])) >= 2
+    else:
+        assert sampling["status"] == "single_subsample_only"
+
+    provenance_path = KT_BENCH_DIR / sampling["active_provenance"]
+    data_txt_path = KT_BENCH_DIR / "data" / "poj" / "data.txt"
+    first_result_path = _result_path("accoding", "pybkt", 0, "full")
+    if not provenance_path.exists() or not data_txt_path.exists() or not first_result_path.exists():
+        pytest.skip("ACcoding subsample artifacts are generated locally")
+
+    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+    assert provenance["max_learners"] == sampling["active_max_learners"]
+    assert provenance["seed"] == sampling["active_seed"]
+    assert provenance["max_rows"] == 0
+    assert provenance["rows_kept"] > 0
+    assert provenance["unique_learners_kept"] > 0
+
+    folds_path = FOLDS_DIR / "accoding_folds.json"
+    sequence_path = FOLDS_DIR / "accoding_sequences.csv"
+    folds_meta = json.loads(folds_path.read_text(encoding="utf-8"))
+    assert folds_meta["raw_source"] == "public_raw"
+    assert folds_meta["source_sequences_sha256"] == _sha256(data_txt_path)
+
+    folds_hash = _sha256(folds_path)
+    sequences_hash = _sha256(sequence_path)
+    for fold in range(5):
+        for k in ["full", 3, 5, 10, 20, "ece"]:
+            payload = _read_result("accoding", "pybkt", fold, k)
+            result_provenance = payload["_provenance"]
+            assert result_provenance["folds_raw_source"] == "public_raw"
+            assert result_provenance["folds_hash"] == folds_hash
+            assert result_provenance["sequences_hash"] == sequences_hash
 
 
 def test_accoding_log_schema_fixture(tmp_path: Path) -> None:
@@ -135,8 +247,25 @@ def _write_result(
     }
     if ece is not None:
         payload["ece"] = ece
+        payload["reliability_bins"] = [
+            {"lower": 0.0, "upper": 0.5, "count": 2, "accuracy": 0.5, "confidence": 0.25},
+            {"lower": 0.5, "upper": 1.0, "count": 2, "accuracy": 0.5, "confidence": 0.85},
+        ]
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _write_registry(path: Path, allowlist: list[dict[str, str]]) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "reportable_allowlist": allowlist,
+            },
+            indent=2,
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_join_reports_missing_cells_as_gaps(tmp_path: Path) -> None:
@@ -190,6 +319,208 @@ def test_join_default_grid_has_accoding_and_can_be_gap_free(tmp_path: Path) -> N
     assert summary["gaps"] == []
     assert summary["_provenance"]["folds_raw_sources"] == ["public_raw"]
     assert "poj" not in summary["full_seq_auc"]
+
+
+def test_join_expected_pairs_avoids_allowlist_cross_product(tmp_path: Path) -> None:
+    from research_comparison.kt.join import join_kt_results
+
+    results_dir = tmp_path / "kt"
+    for fold in range(5):
+        for k in ["full", 3, 5, 10, 20]:
+            _write_result(results_dir, dataset="nips2020", model="dkt", fold=fold, k=k, auc=0.75)
+            _write_result(results_dir, dataset="accoding", model="pybkt", fold=fold, k=k, auc=0.60)
+            _write_result(results_dir, dataset="accoding", model="dkt", fold=fold, k=k, auc=0.49)
+        _write_result(results_dir, dataset="nips2020", model="dkt", fold=fold, k="ece", ece=0.04)
+        _write_result(results_dir, dataset="accoding", model="pybkt", fold=fold, k="ece", ece=0.20)
+        _write_result(results_dir, dataset="accoding", model="dkt", fold=fold, k="ece", ece=0.30)
+
+    summary = join_kt_results(
+        results_dir,
+        expected_datasets=["nips2020", "accoding"],
+        expected_models=["dkt", "pybkt"],
+        expected_pairs=[("nips2020", "dkt"), ("accoding", "pybkt")],
+    )
+
+    assert summary["gaps"] == []
+    assert summary["full_seq_auc"] == {
+        "accoding": {"pybkt": pytest.approx(0.60)},
+        "nips2020": {"dkt": pytest.approx(0.75)},
+    }
+    assert "dkt" not in summary["full_seq_auc"]["accoding"]
+
+
+def test_write_joined_artifacts_defaults_to_credible_allowlist(tmp_path: Path) -> None:
+    from research_comparison.kt.join import write_joined_artifacts
+
+    results_dir = tmp_path / "kt"
+    generated_dir = tmp_path / "generated"
+    summary_path = tmp_path / "kt_summary.json"
+    registry_path = tmp_path / "model_registry.json"
+    _write_registry(
+        registry_path,
+        [{"dataset": "nips2020", "model": "dkt", "status": "credible"}],
+    )
+
+    for fold in range(5):
+        for k in ["full", 3, 5, 10, 20]:
+            _write_result(results_dir, dataset="nips2020", model="dkt", fold=fold, k=k, auc=0.75)
+            _write_result(results_dir, dataset="accoding", model="dkt", fold=fold, k=k, auc=0.49)
+        _write_result(results_dir, dataset="nips2020", model="dkt", fold=fold, k="ece", ece=0.04)
+        _write_result(results_dir, dataset="accoding", model="dkt", fold=fold, k="ece", ece=0.30)
+
+    outputs = write_joined_artifacts(
+        results_dir=results_dir,
+        generated_dir=generated_dir,
+        summary_path=summary_path,
+        registry_path=registry_path,
+    )
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["gaps"] == []
+    assert summary["_provenance"]["mode"] == "reportable_allowlist"
+    assert summary["_provenance"]["result_count"] == 30
+    assert summary["full_seq_auc"] == {"nips2020": {"dkt": pytest.approx(0.75)}}
+    assert "accoding" not in summary["full_seq_auc"]
+    assert "accoding" not in (generated_dir / "kt_auc.tex").read_text(encoding="utf-8")
+    assert "dkt x nips2020 (credible)" in (generated_dir / "kt_provenance.txt").read_text(encoding="utf-8")
+    assert summary_path in outputs
+
+
+def test_model_registry_has_no_silent_aliases_and_allowlist_is_registered() -> None:
+    from research_comparison.kt.join import DEFAULT_DATASETS, DEFAULT_MODELS
+
+    registry = _load_model_registry()
+    models = registry["models"]
+
+    assert set(models) == set(DEFAULT_MODELS)
+    assert "clst" not in DEFAULT_MODELS
+    assert registry["retired_labels"]["clst"]["replaced_by"] == "dkt_clst_config"
+
+    for model, metadata in models.items():
+        if metadata["distinct_method"]:
+            continue
+        alias_of = metadata.get("alias_of")
+        assert alias_of in models
+        assert metadata["alias_policy"] == "explicit_relabel"
+        assert metadata["underlying_model"] == models[alias_of]["underlying_model"]
+        assert model.startswith(f"{alias_of}_")
+
+    allowlist = {
+        (item["dataset"], item["model"], item["status"])
+        for item in registry["reportable_allowlist"]
+    }
+    assert allowlist == {
+        ("nips2020", "dkt", "credible"),
+        ("nips2020", "akt", "credible"),
+        ("nips2020", "deep_irt", "credible"),
+        ("nips2020", "sakt", "credible"),
+        ("nips2020", "dkt_clst_config", "credible"),
+    }
+    for dataset, model, _status in allowlist:
+        assert dataset in DEFAULT_DATASETS
+        assert model in DEFAULT_MODELS
+
+
+def test_allowlist_candidates_have_public_raw_matching_provenance() -> None:
+    for dataset, model in _allowlist_candidates():
+        folds_path = FOLDS_DIR / f"{dataset}_folds.json"
+        folds_hash = _sha256(folds_path)
+        folds_meta = json.loads(folds_path.read_text(encoding="utf-8"))
+        assert folds_meta["raw_source"] == "public_raw"
+
+        for fold in range(5):
+            for k in ["full", 3, 5, 10, 20, "ece"]:
+                payload = _read_result(dataset, model, fold, k)
+                provenance = payload["_provenance"]
+                assert provenance["folds_raw_source"] == "public_raw"
+                assert provenance["folds_hash"] == folds_hash
+
+
+def test_no_smoke_in_reportable() -> None:
+    for dataset, model in _allowlist_candidates():
+        pykt_counts = _pykt_fold_sequence_counts(dataset)
+
+        for fold_id, expected_predictions in pykt_counts.items():
+            payload = _read_result(dataset, model, fold_id, "full")
+            training_config = payload["training_config"]
+
+            assert training_config["smoke_sequences_per_fold"] == 0
+            assert training_config["epochs"] >= 5
+            assert payload["n_predictions"] == pytest.approx(expected_predictions, rel=0.05)
+
+
+def test_allowlist_candidates_record_reproducibility_config() -> None:
+    required_pykt_training_fields = {
+        "runner",
+        "pykt_model",
+        "model_config",
+        "epochs",
+        "batch_size",
+        "learning_rate",
+        "smoke_sequences_per_fold",
+        "checkpoint_dir",
+    }
+    required_pybkt_training_fields = {
+        "runner",
+        "pybkt_model_class",
+        "num_fits",
+        "parallel",
+        "defaults",
+        "forgets",
+        "seed",
+    }
+
+    for dataset, model in _allowlist_candidates():
+        for fold in range(5):
+            for k in ["full", 3, 5, 10, 20, "ece"]:
+                payload = _read_result(dataset, model, fold, k)
+                provenance = payload["_provenance"]
+                training_config = payload.get("training_config")
+
+                assert isinstance(provenance["seed"], int)
+                assert training_config is not None
+                if model == "pybkt":
+                    assert required_pybkt_training_fields <= set(training_config)
+                    assert training_config["runner"] == "pyBKT"
+                    assert training_config["seed"] == provenance["seed"]
+                    assert training_config["num_fits"] >= 1
+                else:
+                    assert required_pykt_training_fields <= set(training_config)
+                    assert isinstance(training_config["model_config"], dict)
+                    assert training_config["runner"] == "pyKT"
+                    assert training_config["epochs"] >= 5
+                    assert training_config["batch_size"] > 0
+                    assert training_config["learning_rate"] > 0
+                    assert training_config["smoke_sequences_per_fold"] == 0
+                    if k not in {"full", "ece"}:
+                        assert training_config["coldstart_k"] == k
+
+
+def test_allowlist_candidates_auc_above_chance_floor() -> None:
+    for dataset, model in _allowlist_candidates():
+        aucs = [
+            float(_read_result(dataset, model, fold, "full")["auc"])
+            for fold in range(5)
+        ]
+        mean_auc = statistics.fmean(aucs)
+        std_auc = statistics.pstdev(aucs)
+
+        assert mean_auc > 0.52
+        assert not (0.49 <= mean_auc <= 0.52 and std_auc < 0.01)
+
+
+def test_allowlist_candidates_coldstart_curve_is_sane() -> None:
+    for dataset, model in _allowlist_candidates():
+        mean_by_k = {
+            k: statistics.fmean(
+                float(_read_result(dataset, model, fold, k)["auc"])
+                for fold in range(5)
+            )
+            for k in [3, 5, 10, 20]
+        }
+
+        assert all(auc > 0.5 for auc in mean_by_k.values())
+        assert mean_by_k[10] >= mean_by_k[3] - 0.02
 
 
 def test_join_boundary_does_not_import_torch_or_pykt() -> None:

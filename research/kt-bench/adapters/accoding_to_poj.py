@@ -4,11 +4,16 @@ import argparse
 import csv
 import hashlib
 import json
+import sys
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable, Iterator, TextIO
+
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
+from progress_log import ProgressLogger  # noqa: E402
 
 BASE = datetime(2016, 1, 1, 0, 0, 0)
 DROP_RESULTS = {"WT", "JG"}
@@ -26,6 +31,18 @@ POJ_ALLOWED_RESULTS = {
     "Validator Error",
 }
 TOTAL_ACCODING_LEARNERS = 27_444
+
+
+def default_accoding_zip() -> Path:
+    research_root = Path(__file__).resolve().parents[2]
+    candidates = [
+        research_root / "datasets" / "ACcoding.zip",
+        research_root / "datasets" / "acoding" / "ACcoding.zip",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 @dataclass(frozen=True)
@@ -161,20 +178,36 @@ def convert_sql_to_poj(
     max_learners: int,
     max_rows: int,
     seed: int,
+    logger: ProgressLogger | None = None,
+    estimated_rows: int = 4_046_652,
 ) -> AdapterStats:
+    logger = logger or ProgressLogger(label="kt-accoding", enabled=False)
     out.parent.mkdir(parents=True, exist_ok=True)
     total = kept = dropped = skipped = 0
     learners_seen: set[int] = set()
     learners_kept: set[int] = set()
+    denominator = max_rows if max_rows > 0 else estimated_rows
+    denominator = max(1, denominator)
+    next_percent = 5
 
     with out.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.writer(fh)
         writer.writerow(["User", "Problem", "Result", "Submit Time"])
+        logger.log(5, "accoding.convert.rows", f"out={out} max_learners={max_learners} max_rows={max_rows}")
         for block in iter_insert_value_blocks(sql):
             for raw_row in iter_rows(block):
                 if max_rows > 0 and total >= max_rows:
+                    logger.log(95, "accoding.convert.row_cap", f"rows_in={total} rows_kept={kept}")
                     return AdapterStats(total, kept, dropped, skipped, len(learners_seen), len(learners_kept))
                 total += 1
+                current_percent = min(95, 5 + (total / denominator) * 90)
+                if current_percent >= next_percent:
+                    logger.log(
+                        current_percent,
+                        "accoding.convert.rows",
+                        f"rows_in={total} rows_kept={kept} dropped={dropped} skipped={skipped}",
+                    )
+                    next_percent += 5
                 try:
                     fields = split_sql_fields(raw_row)
                     creator_id = int(fields[-3])
@@ -192,6 +225,7 @@ def convert_sql_to_poj(
                 writer.writerow(row)
                 kept += 1
 
+    logger.log(95, "accoding.convert.rows_done", f"rows_in={total} rows_kept={kept}")
     return AdapterStats(total, kept, dropped, skipped, len(learners_seen), len(learners_kept))
 
 
@@ -218,15 +252,20 @@ def write_provenance(path: Path, stats: AdapterStats, args: argparse.Namespace) 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--zip", type=Path, default=Path("../datasets/acoding/ACcoding.zip"))
+    parser.add_argument("--zip", type=Path, default=default_accoding_zip())
     parser.add_argument("--member", default="submissions.sql")
     parser.add_argument("--out", type=Path, default=Path("data/poj/poj_log.csv"))
     parser.add_argument("--max-learners", type=int, default=3000)
     parser.add_argument("--max-rows", type=int, default=0, help="0 means no row cap")
     parser.add_argument("--seed", type=int, default=20260614)
+    parser.add_argument("--estimated-rows", type=int, default=4_046_652)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args(argv)
+    logger = ProgressLogger(label="kt-accoding", enabled=not args.quiet)
 
+    logger.log(0, "accoding.start", f"zip={args.zip} member={args.member}")
     with zipfile.ZipFile(args.zip) as archive:
+        logger.log(3, "accoding.open_zip", f"member={args.member}")
         with archive.open(args.member) as raw_sql:
             text_sql = (line.decode("utf-8", errors="replace") for line in raw_sql)
             stats = convert_sql_to_poj(
@@ -235,13 +274,17 @@ def main(argv: list[str] | None = None) -> int:
                 max_learners=args.max_learners,
                 max_rows=args.max_rows,
                 seed=args.seed,
+                logger=logger,
+                estimated_rows=args.estimated_rows,
             )
+    logger.log(97, "accoding.write_provenance", str(args.out.with_suffix(".provenance.json")))
     write_provenance(args.out.with_suffix(".provenance.json"), stats, args)
     print(
         f"wrote {args.out}: kept {stats.rows_kept}/{stats.rows_in} rows "
         f"across {stats.unique_learners_kept} learners "
         f"(dropped {stats.rows_dropped_nonterminal} non-terminal, skipped {stats.rows_skipped_parse_error})"
     )
+    logger.log(100, "accoding.complete", f"rows_in={stats.rows_in} rows_kept={stats.rows_kept}")
     return 0
 
 

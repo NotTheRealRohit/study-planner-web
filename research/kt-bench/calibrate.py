@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Iterable
 
+from progress_log import ProgressLogger
+
 
 def repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -58,13 +60,24 @@ def expected_calibration_error(
     return ece, bins
 
 
-def calibrate_dataset(dataset: str, results_dir: Path, models: list[str]) -> list[Path]:
+def calibrate_dataset(dataset: str, results_dir: Path, models: list[str], *, progress: bool = True) -> list[Path]:
+    logger = ProgressLogger(label="kt-calibrate", enabled=progress)
+    logger.log(0, "calibrate.start", f"dataset={dataset} models={','.join(models)}")
     outputs = []
-    for source in sorted(results_dir.glob(f"{dataset}__*__fold*__kfull.json")):
+    sources = sorted(results_dir.glob(f"{dataset}__*__fold*__kfull.json"))
+    selected_sources = []
+    for source in sources:
         payload = json.loads(source.read_text(encoding="utf-8"))
         model = str(payload["model"])
-        if model not in models:
-            continue
+        if model in models:
+            selected_sources.append((source, payload))
+    total = max(1, len(selected_sources))
+    logger.log(5, "calibrate.files_ready", f"dataset={dataset} full_seq_files={len(selected_sources)}")
+    for index, (source, payload) in enumerate(selected_sources, start=1):
+        model = str(payload["model"])
+        fold = int(payload["fold"])
+        percent_start = 5 + ((index - 1) / total) * 90
+        logger.log(percent_start, "calibrate.fold.compute", f"source={source.name} model={model} fold={fold}")
         ece, bins = expected_calibration_error(
             y_true=payload["y_true"],
             y_score=payload["y_score"],
@@ -77,22 +90,26 @@ def calibrate_dataset(dataset: str, results_dir: Path, models: list[str]) -> lis
             "ece": ece,
             "reliability_bins": bins,
             "n_predictions": int(payload["n_predictions"]),
+            "training_config": payload.get("training_config"),
             "_provenance": payload.get("_provenance", {}),
         }
-        out_path = result_path(results_dir, dataset, model, int(payload["fold"]))
+        out_path = result_path(results_dir, dataset, model, fold)
         out_path.write_text(json.dumps(out_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         outputs.append(out_path)
+        logger.log(5 + (index / total) * 90, "calibrate.fold.wrote", f"{out_path} ece={ece:.6f}")
+    logger.log(100, "calibrate.complete", f"dataset={dataset} wrote={len(outputs)}")
     return outputs
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", required=True)
-    parser.add_argument("--models", default="dkt,akt,deep_irt,sakt,clst")
+    parser.add_argument("--models", default="dkt,akt,deep_irt,sakt,dkt_clst_config")
     parser.add_argument("--results-dir", type=Path, default=repo_root() / "research/results/kt")
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
     models = [item.strip() for item in args.models.split(",") if item.strip()]
-    for path in calibrate_dataset(args.dataset, args.results_dir, models):
+    for path in calibrate_dataset(args.dataset, args.results_dir, models, progress=not args.quiet):
         print(path)
     return 0
 

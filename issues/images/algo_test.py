@@ -12,8 +12,24 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
+import sys
+import time
+
+_PROGRESS_STARTED_AT = time.monotonic()
+
+
+def log_progress(percent, state, detail=""):
+    pct = max(0, min(100, int(round(percent))))
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elapsed = int(time.monotonic() - _PROGRESS_STARTED_AT)
+    suffix = f" detail={detail}" if detail else ""
+    print(
+        f"[algo-test-progress] {timestamp} {pct:03d}% state={state} elapsed={elapsed}s{suffix}",
+        file=sys.stderr,
+        flush=True,
+    )
 
 # ---------------------------------------------------------------------------
 # 1. Synthetic Data Generation
@@ -485,8 +501,13 @@ def main():
     output_dir = os.path.dirname(os.path.abspath(__file__))
 
     profiles = ['steady', 'improver', 'fatiguer', 'erratic', 'regime_shift']
+    total_profiles = len(profiles)
+    log_progress(0, "algo_test.start", f"profiles={total_profiles} output_dir={output_dir}")
 
-    for profile in profiles:
+    for profile_index, profile in enumerate(profiles, 1):
+        base_percent = 5 + ((profile_index - 1) / total_profiles) * 90
+        profile_span = 90 / total_profiles
+        log_progress(base_percent, "algo_test.profile.start", f"profile={profile} index={profile_index}/{total_profiles}")
         print(f"\n{'='*60}")
         print(f"Profile: {profile.upper()}")
         print(f"{'='*60}")
@@ -494,22 +515,26 @@ def main():
         # Generate data
         n_sessions = rng.integers(30, 51)
         sessions = generate_sessions(profile, rng, n_sessions)
+        log_progress(base_percent + profile_span * 0.15, "algo_test.profile.generated", f"profile={profile} sessions={n_sessions}")
         print(f"  Sessions: {n_sessions}")
         print(f"  Pace range: [{sessions['pace'].min():.3f}, {sessions['pace'].max():.3f}]")
         print(f"  Pace mean: {sessions['pace'].mean():.3f}, std: {sessions['pace'].std():.3f}")
 
         # Run algorithms
         bayesian = run_bayesian(sessions)
+        log_progress(base_percent + profile_span * 0.35, "algo_test.profile.bayesian_done", f"profile={profile}")
         print(f"  Bayesian final global mu: {bayesian['global_mu'][-1]:.4f}")
         for role, rd in bayesian['roles'].items():
             if len(rd['mu']) > 0:
                 print(f"    {role}: mu={rd['mu'][-1]:.4f} (n={len(rd['mu'])})")
 
         cusum = run_cusum(sessions, bayesian)
+        log_progress(base_percent + profile_span * 0.50, "algo_test.profile.cusum_done", f"profile={profile}")
         print(f"  CUSUM breakpoints: {cusum['breakpoints'] if cusum['breakpoints'] else 'None'}")
         print(f"  CUSUM threshold h: {cusum['h']:.4f}")
 
         kalman = run_kalman(sessions, cusum)
+        log_progress(base_percent + profile_span * 0.65, "algo_test.profile.kalman_done", f"profile={profile}")
         print(f"  Kalman phases: {len(kalman)}")
         for pi, phase in enumerate(kalman):
             final_level = phase['level'][-1]
@@ -518,6 +543,7 @@ def main():
                   f"level={final_level:.4f}, slope={final_slope:+.5f}/session")
 
         gp = run_gp(sessions)
+        log_progress(base_percent + profile_span * 0.80, "algo_test.profile.gp_done", f"profile={profile}")
         # GP prediction at end of extrapolation
         extrap_mean = gp['gp_mean'][-1]
         extrap_std = gp['gp_std'][-1]
@@ -532,7 +558,9 @@ def main():
         # Plot
         output_path = os.path.join(output_dir, f"algo_test_{profile}.png")
         plot_profile(sessions, bayesian, cusum, kalman, gp, output_path)
+        log_progress(base_percent + profile_span, "algo_test.profile.complete", f"profile={profile} output={output_path}")
 
+    log_progress(100, "algo_test.complete", f"figures={total_profiles}")
     print(f"\nAll 5 figures saved to {output_dir}/")
 
 

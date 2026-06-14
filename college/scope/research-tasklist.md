@@ -9,16 +9,19 @@ related:
   - ./archetype-preregistration.md
   - ../../handovers/2026-06-13-research-tier-status-and-blockers.md
   - ../../handovers/2026-06-14-kt-datasets-acquired-plan-handoff.md
+  - ../../research/doc/2026-06-14-kt-credibility-tracker.md
   - ../../research/doc/2026-06-14-pillar-a-rigour-and-extensions.md
 ---
 
-> **2026-06-14 reconciliation.** This tracker had drifted: Phases 3, 4 and 7 shipped
+> **2026-06-14 reconciliation.** This tracker had drifted: Phases 3 and 7 shipped
 > (commit SHAs in [`plans/2026-06-13-research-tier-*.md`](../../plans/2026-06-13-research-tier.md);
 > status snapshot in [`handovers/2026-06-13-research-tier-status-and-blockers.md`](../../handovers/2026-06-13-research-tier-status-and-blockers.md))
-> but were still shown unstarted. Boxes below are now reconciled to that state.
-> **Phase 4 (KT bench) is complete on real public data** — the bench now runs on Eedi
-> `nips2020` + ACcoding with `folds_raw_source: public_raw`. Source of truth = the
-> verification commands in the plan files, not these markers.
+> but were still shown unstarted. Boxes below are now reconciled to that state. **Phase 4
+> infrastructure also runs on real public data**, but its credibility audit is not fully complete:
+> five NIPS pyKT cells are currently reportable (`dkt`, `akt`, `deep_irt`, `sakt`,
+> `dkt_clst_config`); Accoding and pyBKT cells remain unresolved. Source of truth for KT claims is
+> [`research/doc/2026-06-14-kt-credibility-tracker.md`](../../research/doc/2026-06-14-kt-credibility-tracker.md),
+> not these high-level phase markers.
 
 ## How to use this tracker
 
@@ -125,9 +128,11 @@ Pillar-A tracks emit stamped results, tables, and figures; sweep + oracle baseli
 produces `results/kt/*.json` (full-seq AUC, cold-start curve, ECE) for pyBKT + ≥3 deep
 models on both datasets; pyBKT used identical folds.
 
-> ✅ **Dataset status (updated 2026-06-14): real public-benchmark run complete.**
-> The pipeline (P4.1-P4.9) now runs end-to-end on public raw data with provenance
-> `folds_raw_source: public_raw`. The datasets used are:
+> ⚠️ **Dataset status (updated 2026-06-14): real public data wired, credible set constrained.**
+> The pipeline (P4.1-P4.9) can run end-to-end on public raw data with provenance
+> `folds_raw_source: public_raw`, but the credibility tracker currently allows reporting only
+> the five G1-G8-green NIPS pyKT cells. Other cells are smoke-depth, partial, blocked, or not rerun.
+> The datasets used are:
 > - **Eedi / NeurIPS-2020 Tasks 3&4** (the `nips2020` MCQ modality) — `research/datasets/NeurIPS 2020.zip`
 >   → `data/train_data/train_task_3_4.csv` (1.38M interactions, exact pyKT `NIPS34` format)
 >   + `data/metadata/{question,subject,student,answer}_metadata*.csv`.
@@ -141,16 +146,20 @@ models on both datasets; pyBKT used identical folds.
 
 - [x] P4.1 `kt-bench/` isolated venv: pinned torch + `pykt-toolkit` + wandb; `README` + `requirements.txt` (kept out of `uv.lock`).
 - [x] P4.2 pyKT preprocess: `nips2020` (Eedi) + `accoding`; **export fold indices** as the shared-split source of truth.
-- [x] P4.3 Train deep models (5-fold): DKT, AKT, Deep-IRT, SAKT → full-seq AUC.
-- [x] P4.4 Add cold-start method (CLST family) candidate.
+- [ ] P4.3 Train deep models (5-fold): DKT, AKT, Deep-IRT, SAKT → full-seq AUC. **Credibility note:** NIPS `dkt`, `akt`, `deep_irt`, and `sakt` are full-depth and G7-verified; Accoding deep cells still need full-depth reruns before credit.
+- [x] P4.4 Add cold-start method (CLST family) candidate. **Credibility note:** historical `clst` was relabeled to `dkt_clst_config`; true distinct CLST is deferred to a later research plan.
 - [x] P4.5 Cold-start harness: truncate to first `k ∈ {3,5,10,20}` interactions → cold-start AUC curve.
-- [x] P4.6 pyBKT (clean env) on the **exported pyKT folds** → AUC (comparable to deep models).
-- [x] P4.7 Mastery calibration: reliability diagram + ECE for each model.
+- [x] P4.6 pyBKT (clean env) on the **exported pyKT folds** → AUC (comparable to deep models). **Credibility note:** `pybkt × nips2020` is blocked; `pybkt × accoding` remains partial.
+- [x] P4.7 Mastery calibration: reliability diagram + ECE for each model. **Credibility note:** generated report artifacts now include only the five-cell credible NIPS allow-list.
 - [x] P4.8 Result schema `results/kt/*.json` keyed `{dataset, model, fold, k}`; stamped.
-- [x] P4.9 Join + tables: full-seq AUC (model × dataset), cold-start AUC curve, ECE; generated `.tex` + figures.
+- [x] P4.9 Join + tables: full-seq AUC, cold-start AUC curve, ECE; generated `.tex` + figures from the credible allow-list.
 
-> ✅ **KT numbers are now real public-benchmark artifacts.** Joined artifacts report
-> `folds_raw_sources: ["public_raw"]` and zero grid gaps.
+> ✅ **Reportable KT artifact status.** Joined report artifacts now run in `reportable_allowlist`
+> mode and cite only five NIPS pyKT cells: `dkt` (`AUC=0.7426`, `ECE=0.0374`),
+> `akt` (`AUC=0.7629`, `ECE=0.0359`), `deep_irt` (`AUC=0.7341`, `ECE=0.0382`),
+> `sakt` (`AUC=0.7154`, `ECE=0.0355`), and `dkt_clst_config`
+> (`AUC=0.7429`, `ECE=0.0370`; relabeled DKT-backed config, not distinct CLST).
+> Allow-list provenance is `public_raw` with `gaps=[]`. The full model×dataset grid is not yet credible; see the tracker.
 
 ## Phase 5 · N=1 real-data validation
 
@@ -219,12 +228,12 @@ Priority order is #1→#4 (most error-reduction per unit effort first).
 | 1 | Synthetic generator | ✅ complete |
 | 2 | Metrics spine + calibration (tracer bullet) | ✅ complete |
 | 3 | Fan out Pillar-A tracks | ✅ complete (genuine — per handover 2026-06-13) |
-| 4 | KT bench (Pillar B) | ✅ complete (real public-benchmark numbers) |
+| 4 | KT bench (Pillar B) | ◐ partial (real data wired; 1 credible reportable cell) |
 | 5 | N=1 validation | ☐ not started |
 | 6 | Outputs — report & journal | ☐ not started |
 | 7 | Closed-loop (built, held for Phase II) | ✅ complete (built + archived; revealed in Phase II) |
 
-**Tally:** 6 of 8 phases fully complete (0–4, 7) · Phases 5–6 not started.
+**Tally:** 5 of 8 phases fully complete (0–3, 7) · Phase 4 partially credible · Phases 5–6 not started.
 
 ## See also
 

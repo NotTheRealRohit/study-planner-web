@@ -24,10 +24,12 @@ import sys
 import time
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
 _SSL_CTX = ssl._create_unverified_context()
+_PROGRESS_STARTED_AT = time.monotonic()
 
 SCRIPT_DIR = Path(__file__).parent
 
@@ -151,6 +153,20 @@ CLUSTERS = {
         "weight": 0.8,
     },
 }
+
+
+def log_progress(percent, state, detail="", *, enabled=True):
+    if not enabled:
+        return
+    pct = max(0, min(100, int(round(percent))))
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elapsed = int(time.monotonic() - _PROGRESS_STARTED_AT)
+    suffix = f" detail={detail}" if detail else ""
+    print(
+        f"[evaluate-papers-progress] {timestamp} {pct:03d}% state={state} elapsed={elapsed}s{suffix}",
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def _http_get(url: str, accept: str = "application/json", timeout: int = 15) -> bytes | None:
@@ -664,6 +680,7 @@ def main():
     doi_file = SCRIPT_DIR / "dois.txt"
     single_entry = None
     out_file = SCRIPT_DIR / "evaluated_papers.json"
+    progress_enabled = True
 
     args = sys.argv[1:]
     i = 0
@@ -677,13 +694,18 @@ def main():
         elif args[i] == "--out" and i + 1 < len(args):
             out_file = Path(args[i + 1])
             i += 2
+        elif args[i] == "--quiet":
+            progress_enabled = False
+            i += 1
         else:
             i += 1
 
+    log_progress(0, "evaluate_papers.start", f"out={out_file}", enabled=progress_enabled)
     if single_entry:
         entries = [single_entry.strip()]
     else:
         if not doi_file.exists():
+            log_progress(100, "evaluate_papers.error", f"missing_file={doi_file}", enabled=progress_enabled)
             print(f"File not found: {doi_file}")
             sys.exit(1)
         text = doi_file.read_text()
@@ -694,6 +716,7 @@ def main():
         ]
 
     if not entries:
+        log_progress(100, "evaluate_papers.error", "no_entries", enabled=progress_enabled)
         print("No entries found.")
         sys.exit(1)
 
@@ -704,11 +727,17 @@ def main():
     print(f"  Adaptive Study Planning with Bayesian Calibration and")
     print(f"  Closed-Loop Schedule Optimization for Self-Directed Learners")
     print(f"\nEvaluating {len(entries)} entries ({doi_count} DOIs, {url_count} URLs)...\n")
+    log_progress(5, "evaluate_papers.entries_loaded", f"entries={len(entries)} dois={doi_count} urls={url_count}", enabled=progress_enabled)
 
     results = []
     for i, entry in enumerate(entries, 1):
+        start_percent = 5 + ((i - 1) / len(entries)) * 85
+        log_progress(start_percent, "evaluate_papers.entry.start", f"index={i}/{len(entries)}", enabled=progress_enabled)
         result = fetch_and_evaluate(entry, i)
         results.append(result)
+        end_percent = 5 + (i / len(entries)) * 85
+        status = "failed" if "error" in result else "evaluated"
+        log_progress(end_percent, "evaluate_papers.entry.complete", f"index={i}/{len(entries)} status={status}", enabled=progress_enabled)
         time.sleep(0.4)
 
     valid = [r for r in results if "evaluation" in r]
@@ -752,9 +781,11 @@ def main():
         for f in failed:
             print(f"    - {f.get('original_entry', '?')[:80]} — {f.get('error')}")
 
+    log_progress(95, "evaluate_papers.write_results", f"out={out_file}", enabled=progress_enabled)
     with open(out_file, "w") as f:
         json.dump(results, f, indent=2, default=str)
     print(f"\n  Full results saved to: {out_file}")
+    log_progress(100, "evaluate_papers.complete", f"valid={len(valid)} failed={len(failed)}", enabled=progress_enabled)
 
 
 if __name__ == "__main__":

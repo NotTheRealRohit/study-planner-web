@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 import time
 import warnings
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
@@ -15,6 +14,7 @@ import pandas as pd
 from sklearn import metrics
 
 from research_comparison.kt.join import expected_calibration_error
+from research_comparison.kt.progress_log import ProgressLogger
 
 
 def _repo_root() -> Path:
@@ -172,9 +172,8 @@ def _write_result(path: Path, payload: dict[str, Any]) -> Path:
     return path
 
 
-def _progress(enabled: bool, message: str) -> None:
-    if enabled:
-        print(f"[pybkt] {message}", file=sys.stderr, flush=True)
+def _progress(logger: ProgressLogger, percent: float, state: str, detail: str = "") -> None:
+    logger.log(percent, state, detail)
 
 
 def _sequence_sidecar_path(folds_path: Path, dataset: str) -> Path:
@@ -231,7 +230,8 @@ def _fit_skill_with_heartbeat(
     dataset: str,
     fold_id: int,
     skill: str,
-    progress: bool,
+    logger: ProgressLogger,
+    percent: float,
     heartbeat_seconds: float,
 ) -> Any:
     started = time.monotonic()
@@ -242,7 +242,12 @@ def _fit_skill_with_heartbeat(
                 return future.result(timeout=heartbeat_seconds)
             except TimeoutError:
                 elapsed = int(time.monotonic() - started)
-                _progress(progress, f"{dataset} fold {fold_id}: still fitting skill {skill} ({elapsed}s elapsed)")
+                _progress(
+                    logger,
+                    percent,
+                    "pybkt.skill.fit",
+                    f"dataset={dataset} fold={fold_id} skill={skill} still_running={elapsed}s",
+                )
 
 
 def _should_log_skill(index: int, total: int) -> bool:
@@ -255,16 +260,19 @@ def _fit_models_with_progress(
     dataset: str,
     fold_id: int,
     seed: int,
-    progress: bool,
+    logger: ProgressLogger,
+    percent_start: float,
+    percent_end: float,
     heartbeat_seconds: float = 15.0,
 ) -> dict[str, Any]:
     skill_count = int(train["skill_name"].nunique())
     learner_count = int(train["user_id"].nunique())
     row_count = len(train)
     _progress(
-        progress,
-        f"{dataset} fold {fold_id}: fitting pyBKT on {row_count} rows, "
-        f"{learner_count} learners, {skill_count} skills",
+        logger,
+        percent_start,
+        "pybkt.fold.fit_start",
+        f"dataset={dataset} fold={fold_id} rows={row_count} learners={learner_count} skills={skill_count}",
     )
     started = time.monotonic()
     models: dict[str, Any] = {}
@@ -273,10 +281,12 @@ def _fit_models_with_progress(
         skill_name = str(skill)
         if _should_log_skill(index, skill_count):
             elapsed = int(time.monotonic() - started)
+            percent = percent_start + (index / max(1, skill_count)) * (percent_end - percent_start)
             _progress(
-                progress,
-                f"{dataset} fold {fold_id}: fitting skill {index}/{skill_count} "
-                f"({skill_name}, {len(skill_train)} rows, {elapsed}s elapsed)",
+                logger,
+                percent,
+                "pybkt.skill.fit",
+                f"dataset={dataset} fold={fold_id} skill_index={index}/{skill_count} skill={skill_name} rows={len(skill_train)} elapsed={elapsed}s",
             )
         models[skill_name] = _fit_skill_with_heartbeat(
             skill_train.reset_index(drop=True),
@@ -284,11 +294,12 @@ def _fit_models_with_progress(
             dataset=dataset,
             fold_id=fold_id,
             skill=skill_name,
-            progress=progress,
+            logger=logger,
+            percent=percent_start + (index / max(1, skill_count)) * (percent_end - percent_start),
             heartbeat_seconds=heartbeat_seconds,
         )
     elapsed = int(time.monotonic() - started)
-    _progress(progress, f"{dataset} fold {fold_id}: fit complete ({elapsed}s)")
+    _progress(logger, percent_end, "pybkt.fold.fit_complete", f"dataset={dataset} fold={fold_id} elapsed={elapsed}s")
     return models
 
 
@@ -316,16 +327,17 @@ def run_pybkt(
     k_values: Iterable[int] = (3, 5, 10, 20),
     progress: bool = False,
 ) -> list[Path]:
-    _progress(progress, f"{dataset}: loading folds from {folds_path}")
+    logger = ProgressLogger(label="kt-pybkt", enabled=progress)
+    logger.log(0, "pybkt.start", f"dataset={dataset} folds={folds_path}")
     model_class = _pybkt_model_class().__name__
     folds_meta, folds = _load_folds(folds_path)
     sequence_path = _sequence_sidecar_path(folds_path, dataset)
-    _progress(progress, f"{dataset}: loading sequences from {sequence_path}")
+    logger.log(3, "pybkt.load_sequences", f"dataset={dataset} sequences={sequence_path}")
     sequences = _load_sequences(sequence_path)
-    _progress(
-        progress,
-        f"{dataset}: loaded {len(sequences)} sequence rows, "
-        f"{sequences['user_id'].nunique()} learners, {sequences['skill_name'].nunique()} skills",
+    logger.log(
+        5,
+        "pybkt.sequences_ready",
+        f"dataset={dataset} rows={len(sequences)} learners={sequences['user_id'].nunique()} skills={sequences['skill_name'].nunique()}",
     )
     provenance = {
         "seed": seed,
@@ -335,10 +347,23 @@ def run_pybkt(
         "sequences_hash": _sha256(sequence_path),
         "folds_raw_source": folds_meta.get("raw_source"),
     }
+    training_config = {
+        "runner": "pyBKT",
+        "pybkt_model_class": model_class,
+        "num_fits": 1,
+        "parallel": False,
+        "defaults": None,
+        "forgets": False,
+        "seed": seed,
+    }
     outputs: list[Path] = []
-    for fold in folds:
+    total_folds = max(1, len(folds))
+    for fold_index, fold in enumerate(folds):
         fold_id = int(fold["fold"])
-        _progress(progress, f"{dataset} fold {fold_id}: preparing train/test frames")
+        fold_start = 5 + (fold_index / total_folds) * 90
+        fold_end = 5 + ((fold_index + 1) / total_folds) * 90
+        fit_end = fold_start + (fold_end - fold_start) * 0.75
+        logger.log(fold_start, "pybkt.fold.prepare", f"dataset={dataset} fold={fold_id}")
         train = _fold_frame(sequences, fold["train_indices"])
         test = _fold_frame(sequences, fold["test_indices"])
         model = _fit_models_with_progress(
@@ -346,10 +371,14 @@ def run_pybkt(
             dataset=dataset,
             fold_id=fold_id,
             seed=seed + fold_id,
-            progress=progress,
+            logger=logger,
+            percent_start=fold_start + (fold_end - fold_start) * 0.05,
+            percent_end=fit_end,
         )
-        for k in ["full", *k_values]:
-            _progress(progress, f"{dataset} fold {fold_id}: predicting k={k}")
+        prediction_keys = ["full", *k_values]
+        for key_index, k in enumerate(prediction_keys):
+            percent = fit_end + (key_index / max(1, len(prediction_keys) + 1)) * (fold_end - fit_end)
+            logger.log(percent, "pybkt.fold.predict", f"dataset={dataset} fold={fold_id} k={k}")
             y_true, y_score = _predict(model, _truncate_first_k(test, k))
             auc = _safe_auc(y_true, y_score)
             labels = [1 if score >= 0.5 else 0 for score in y_score]
@@ -363,13 +392,14 @@ def run_pybkt(
                 "n_predictions": len(y_true),
                 "y_true": y_true,
                 "y_score": [round(score, 6) for score in y_score],
+                "training_config": training_config,
                 "_provenance": provenance,
             }
             out_path = _write_result(_result_path(results_dir, dataset, fold_id, k), payload)
             outputs.append(out_path)
-            _progress(progress, f"{dataset} fold {fold_id}: wrote {out_path}")
+            logger.log(percent, "pybkt.fold.wrote", f"{out_path} auc={auc:.6f} n_predictions={len(y_true)}")
 
-        _progress(progress, f"{dataset} fold {fold_id}: computing reliability/ECE")
+        logger.log(fold_end - 1, "pybkt.fold.ece", f"dataset={dataset} fold={fold_id}")
         y_true, y_score = _predict(model, test)
         ece, bins = expected_calibration_error(y_true=y_true, y_score=y_score)
         out_path = _write_result(
@@ -382,12 +412,13 @@ def run_pybkt(
                 "ece": ece,
                 "reliability_bins": bins,
                 "n_predictions": len(y_true),
+                "training_config": training_config,
                 "_provenance": provenance,
             },
         )
         outputs.append(out_path)
-        _progress(progress, f"{dataset} fold {fold_id}: wrote {out_path}")
-    _progress(progress, f"{dataset}: complete, wrote {len(outputs)} result files")
+        logger.log(fold_end, "pybkt.fold.complete", f"{out_path} ece={ece:.6f}")
+    logger.log(100, "pybkt.complete", f"dataset={dataset} wrote={len(outputs)}")
     return outputs
 
 

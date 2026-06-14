@@ -16,6 +16,7 @@ from research_comparison.metrics.paired import paired_difference
 from research_comparison.metrics.prequential import prequential_absolute_errors
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
 from research_comparison.oracles.calibration import calibration_oracle_estimate
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
 
@@ -111,10 +112,16 @@ def _paired_by_candidate(rows: list[dict[str, Any]]) -> dict[str, dict[str, dict
     return paired
 
 
-def run_calibration_track(dataset_dir: str | None = None, out_dir: str | None = None) -> Path:
+def run_calibration_track(
+    dataset_dir: str | None = None,
+    out_dir: str | None = None,
+    progress: ProgressLogger | None = None,
+) -> Path:
     root = _repo_root()
     dataset_path = Path(dataset_dir) if dataset_dir else latest_dataset_dir()
     result_root = Path(out_dir) if out_dir else root / "research/results/calibration"
+    if progress:
+        progress.log(0, "calibration.start", f"dataset={dataset_path}")
     raw_manifest = json.loads((dataset_path / "manifest.json").read_text(encoding="utf-8"))
     manifest = manifest_from_dataset(raw_manifest)
     learners = _read_jsonl(dataset_path / "learners.jsonl")
@@ -126,7 +133,10 @@ def run_calibration_track(dataset_dir: str | None = None, out_dir: str | None = 
     rows: list[dict[str, Any]] = []
     convergence: list[dict[str, Any]] = []
     candidates = calibration_candidates()
-    for learner in learners:
+    total_learners = len(learners)
+    if progress:
+        progress.log(10, "calibration.loaded", f"learners={total_learners} candidates={len(candidates) + 1}")
+    for learner_index, learner in enumerate(learners, start=1):
         truth = sidecars[learner["learner_id"]]
         active_sessions, active_targets = _active_sessions_with_targets(
             learner["sessions"], truth["r_star"]
@@ -191,6 +201,16 @@ def run_calibration_track(dataset_dir: str | None = None, out_dir: str | None = 
                 }
                 for t, estimate in estimates
             )
+        if progress and (
+            learner_index == 1
+            or learner_index == total_learners
+            or learner_index % max(1, total_learners // 20) == 0
+        ):
+            progress.log(
+                10 + (learner_index / max(1, total_learners)) * 80,
+                "calibration.learners",
+                f"processed={learner_index}/{total_learners} rows={len(rows)}",
+            )
 
     payload = {
         "dataset_id": raw_manifest["dataset_id"],
@@ -200,7 +220,12 @@ def run_calibration_track(dataset_dir: str | None = None, out_dir: str | None = 
         "winner_per_band": winner_per_band(rows),
         "paired_vs_incumbent": _paired_by_candidate(rows),
     }
-    return write_stamped_json(result_root / "calibration_results.json", payload, manifest)
+    if progress:
+        progress.log(95, "calibration.write", f"rows={len(rows)} convergence={len(convergence)}")
+    out_path = write_stamped_json(result_root / "calibration_results.json", payload, manifest)
+    if progress:
+        progress.log(100, "calibration.complete", str(out_path))
+    return out_path
 
 
 def main() -> None:
@@ -208,11 +233,16 @@ def main() -> None:
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--dataset-dir", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
+    logger = ProgressLogger(label="research-calibration", enabled=not args.quiet)
     if args.stub:
-        print(write_stub())
+        logger.log(0, "calibration.stub_start")
+        path = write_stub()
+        logger.log(100, "calibration.stub_complete", str(path))
+        print(path)
         return
-    print(run_calibration_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir))
+    print(run_calibration_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir, progress=logger))
 
 
 if __name__ == "__main__":

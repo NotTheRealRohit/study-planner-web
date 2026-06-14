@@ -17,15 +17,29 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import sys
+import time
 import warnings
 warnings.filterwarnings('ignore')
 
 OUTPUT_DIR = os.path.dirname(os.path.abspath(__file__))
 SEEDS_PER_PROFILE = 20
 N_WEEKS = 10
+_PROGRESS_STARTED_AT = time.monotonic()
+
+
+def log_progress(percent, state, detail=""):
+    pct = max(0, min(100, int(round(percent))))
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elapsed = int(time.monotonic() - _PROGRESS_STARTED_AT)
+    suffix = f" detail={detail}" if detail else ""
+    print(
+        f"[hyperparam-sweep-progress] {timestamp} {pct:03d}% state={state} elapsed={elapsed}s{suffix}",
+        file=sys.stderr,
+        flush=True,
+    )
 
 # ============================================================================
 # 1. Realistic Synthetic Data Generation
@@ -1229,9 +1243,11 @@ def main():
     print()
 
     profiles = ['carla', 'ian', 'fiona', 'carlos', 'riley']
+    log_progress(0, "hyperparam_sweep.start", f"profiles={len(profiles)} seeds_per_profile={SEEDS_PER_PROFILE}")
 
     # --- Generate all synthetic data ---
     print("[1/6] Generating synthetic data...")
+    log_progress(5, "hyperparam_sweep.generate.start")
     all_data = {}
     for p_idx, profile in enumerate(profiles):
         all_data[profile] = []
@@ -1239,14 +1255,17 @@ def main():
             seed = 1000 + p_idx * 100 + s_idx
             data = generate_sessions(profile, seed)
             all_data[profile].append(data)
+        log_progress(5 + ((p_idx + 1) / len(profiles)) * 10, "hyperparam_sweep.generate.profile_done", f"profile={profile}")
         print(f"  {profile}: {SEEDS_PER_PROFILE} datasets, "
               f"avg {np.mean([d['n'] for d in all_data[profile]]):.1f} sessions each")
     print()
 
     # --- CUSUM Sweep ---
     print("[2/6] CUSUM threshold sweep...")
+    log_progress(20, "hyperparam_sweep.cusum.start")
     h_values = [2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0]
     cusum_results = sweep_cusum(all_data, h_values)
+    log_progress(35, "hyperparam_sweep.cusum.complete", f"h_values={len(h_values)}")
 
     print("  Results by h:")
     for h in h_values:
@@ -1265,10 +1284,12 @@ def main():
 
     # --- Kalman Sweep ---
     print("[3/6] Kalman filter process noise sweep...")
+    log_progress(40, "hyperparam_sweep.kalman.start")
     q_levels = [0.001, 0.003, 0.005, 0.01, 0.02, 0.05]
     q_slopes = [0.0001, 0.0003, 0.0005, 0.001, 0.003, 0.005]
 
     kalman_results = sweep_kalman(all_data, q_levels, q_slopes)
+    log_progress(55, "hyperparam_sweep.kalman.complete", f"q_levels={len(q_levels)} q_slopes={len(q_slopes)}")
 
     best_ql, best_qs = find_best_kalman(kalman_results, q_levels, q_slopes)
     print(f"  >>> Best Q[0,0] = {best_ql:.3f}, Q[1,1] = {best_qs:.4f}")
@@ -1289,10 +1310,12 @@ def main():
 
     # --- GP Sweep ---
     print("[4/6] GP hyperparameter sweep...")
+    log_progress(60, "hyperparam_sweep.gp.start")
     length_scales = [3, 5, 7, 10, 14, 21]
     noise_ratios = [0.01, 0.05, 0.1, 0.2, 0.5]
 
     gp_results = sweep_gp(all_data, length_scales, noise_ratios)
+    log_progress(75, "hyperparam_sweep.gp.complete", f"length_scales={len(length_scales)} noise_ratios={len(noise_ratios)}")
 
     best_ls, best_nr = find_best_gp(gp_results, length_scales, noise_ratios)
     print(f"  >>> Best length_scale = {best_ls} days, noise_ratio = {best_nr:.2f}")
@@ -1313,16 +1336,21 @@ def main():
 
     # --- Generate Sweep Plots ---
     print("[5/6] Generating sweep plots...")
+    log_progress(80, "hyperparam_sweep.plots.start", f"output_dir={OUTPUT_DIR}")
     plot_cusum_sweep(cusum_results, h_values,
                       os.path.join(OUTPUT_DIR, 'cusum_sweep.png'))
+    log_progress(84, "hyperparam_sweep.plots.cusum_written")
     plot_kalman_sweep(kalman_results, q_levels, q_slopes,
                        os.path.join(OUTPUT_DIR, 'kalman_sweep.png'))
+    log_progress(88, "hyperparam_sweep.plots.kalman_written")
     plot_gp_sweep(gp_results, length_scales, noise_ratios,
                    os.path.join(OUTPUT_DIR, 'gp_sweep.png'))
+    log_progress(90, "hyperparam_sweep.plots.gp_written")
     print()
 
     # --- Generate Best-Params Visualizations ---
     print("[6/6] Generating best-params diagnostic plots...")
+    log_progress(92, "hyperparam_sweep.best_params.start")
     for profile in profiles:
         # Use seed 0 for the canonical visualization
         seed = 1000 + profiles.index(profile) * 100
@@ -1330,6 +1358,7 @@ def main():
         output_path = os.path.join(OUTPUT_DIR, f'best_params_{profile}.png')
         plot_best_params(data, best_h, best_ql, best_qs, best_ls, best_nr,
                           output_path)
+        log_progress(92 + ((profiles.index(profile) + 1) / len(profiles)) * 6, "hyperparam_sweep.best_params.profile_written", f"profile={profile}")
     print()
 
     # --- Print Final Recommendation Table ---
@@ -1387,6 +1416,7 @@ def main():
         print(f"  - best_params_{profile}.png")
     print()
     print("Done.")
+    log_progress(100, "hyperparam_sweep.complete")
 
 
 if __name__ == '__main__':

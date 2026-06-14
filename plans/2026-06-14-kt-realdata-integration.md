@@ -64,7 +64,7 @@ The status markers are a fast read, but they are not the source of truth. The ph
 
 ## TL;DR
 
-Take the two acquired raw datasets — **Eedi/NeurIPS-2020 Tasks 3&4** (`research/datasets/NeurIPS 2020.zip`, the `nips2020` MCQ modality) and **ACcoding** (`research/datasets/acoding/ACcoding.zip`, substitute for the dead POJ coding log) — land them where `research/kt-bench/preprocess.py` expects them, then re-run the bench in `--mode raw`. Three vertical slices: **(R1)** land Eedi with its co-located `metadata/` dir and build `research/kt-bench/adapters/accoding_to_poj.py` (stream `submissions.sql` → `poj_log.csv`), add an honest `accoding` `DatasetSpec` aliasing pyKT's `poj` reader, and confirm `preprocess.py --mode raw` emits **real folds** with `raw_source: public_raw`; **(R2)** replace the synthetic prediction stubs in `train.py`/`coldstart.py` with actual pyKT model training/prediction (DKT, AKT, Deep-IRT, SAKT, CLST) on the exported folds; **(R3)** make the clean-env `pybkt_runner.py` fit a **real pyBKT** on the identical folds (via an exported long-format sequence sidecar — the clean env still never imports pyKT), then regenerate `report/generated/kt_*` and flip the provenance stamp.
+Take the two acquired raw datasets — **Eedi/NeurIPS-2020 Tasks 3&4** (`research/datasets/NeurIPS 2020.zip`, the `nips2020` MCQ modality) and **ACcoding** (`research/datasets/acoding/ACcoding.zip`, substitute for the dead POJ coding log) — land them where `research/kt-bench/preprocess.py` expects them, then re-run the bench in `--mode raw`. Three vertical slices: **(R1)** land Eedi with its co-located `metadata/` dir and build `research/kt-bench/adapters/accoding_to_poj.py` (stream `submissions.sql` → `poj_log.csv`), add an honest `accoding` `DatasetSpec` aliasing pyKT's `poj` reader, and confirm `preprocess.py --mode raw` emits **real folds** with `raw_source: public_raw`; **(R2)** replace the synthetic prediction stubs in `train.py`/`coldstart.py` with actual pyKT model training/prediction (DKT, AKT, Deep-IRT, SAKT, and the explicitly DKT-backed `dkt_clst_config` candidate) on the exported folds; **(R3)** make the clean-env `pybkt_runner.py` fit a **real pyBKT** on the identical folds (via an exported long-format sequence sidecar — the clean env still never imports pyKT), then regenerate `report/generated/kt_*` and flip the provenance stamp.
 
 > **Scope correction the next agent must internalise (D-17).** The handover frames this as "feed it real data + an adapter, not rebuilding models — keep it tight." That is **half true**. `preprocess.py` genuinely calls pyKT and *will* produce real folds from real data. But `train.py`, `coldstart.py`, and `pybkt_runner.py` as shipped in Phase 4b/4c **emit deterministic synthetic predictions from a hard-coded `MODEL_STRENGTH` table and a hash-based jitter — they never read interaction data and never train a model** (`train.py:18-56`, `pybkt_runner.py:63-76`). Feeding real folds to those stubs would still produce fake AUC. So the real-data swap **requires wiring real model runs** (R2, R3), not just data plumbing (R1). This is the single biggest risk in the plan; it is called out again in each affected phase.
 
@@ -188,7 +188,7 @@ research/
       poj/poj_log.csv                          ← adapter output (R1)
     adapters/accoding_to_poj.py                NEW (R1): stream submissions.sql -> poj_log.csv (D-19/21)
     preprocess.py                              MODIFY (R1): add `accoding` spec (D-18) + sequence sidecar export (D-22)
-    train.py                                   REWRITE (R2): real pyKT DKT/AKT/Deep-IRT/SAKT/CLST -> AUC (D-17)
+    train.py                                   REWRITE (R2): real pyKT DKT/AKT/Deep-IRT/SAKT/dkt_clst_config -> AUC (D-17)
     coldstart.py                               REWRITE (R2): real first-k truncation eval (D-17)
     calibrate.py                               (works as-is once predictions are real)
     folds/{nips2020,accoding}_folds.json       re-exported with raw_source: public_raw (R1)
@@ -450,11 +450,11 @@ cd research/kt-bench && ./.venv/bin/python -c "import pykt, torch; print('env ok
 
 #### Steps
 
-1. **Rewrite `train.py` to actually train (D-17).** Replace `synthetic_predictions`/`MODEL_STRENGTH` with real pyKT training. Per `{dataset, model, fold}`: build pyKT's dataset config from the exported `data_config.json`, restrict to the fold's `train_indices`/`test_indices` (the rows of `train_valid.csv`), train DKT/AKT/Deep-IRT/SAKT (and CLST) with a **fixed config + seed** (no wandb sweep; `WANDB_MODE=offline`), then predict on the test fold and collect `(y_true, y_score)` at the **last response per sequence** (full-seq). Keep writing via `write_kt_result(...)` so the filename/stamp/schema are identical to today. Record the fixed config + seed in `_provenance`.
+1. **Rewrite `train.py` to actually train (D-17).** Replace `synthetic_predictions`/`MODEL_STRENGTH` with real pyKT training. Per `{dataset, model, fold}`: build pyKT's dataset config from the exported `data_config.json`, restrict to the fold's `train_indices`/`test_indices` (the rows of `train_valid.csv`), train DKT/AKT/Deep-IRT/SAKT plus the explicitly DKT-backed `dkt_clst_config` candidate with a **fixed config + seed** (no wandb sweep; `WANDB_MODE=offline`), then predict on the test fold and collect `(y_true, y_score)` at the **last response per sequence** (full-seq). Keep writing via `write_kt_result(...)` so the filename/stamp/schema are identical to today. Record the fixed config + seed in `_provenance`.
 
    > Use pyKT's own training entry points (`pykt.models.train_model` / the per-model constructors) rather than hand-rolling models — "wire pyKT, don't rebuild models" is the intent of D-16. The non-trivial work is the fold-restricted data loader and the prediction harvest, not the model.
 
-2. **CLST cold-start candidate (P4.4).** Keep `clst` in the model list as the extension-narrative base paper (a candidate, not the headline metric).
+2. **CLST cold-start candidate (P4.4).** The credibility audit relabels the historical silent `clst` alias to `dkt_clst_config`, an explicitly DKT-backed config candidate. This keeps the D-16 extension narrative visible without claiming a distinct CLST implementation; true CLST is deferred to a later research plan.
 
 3. **Rewrite `coldstart.py` (P4.5).** For each model and `k ∈ {3,5,10,20}`, truncate each test sequence to its first `k` interactions before prediction → AUC-at-`k`. The headline cold-start curve. Reuse the trained model from step 1 (load checkpoint) rather than retraining per `k`.
 
@@ -472,7 +472,7 @@ cd research/kt-bench && ./.venv/bin/python -c "import pykt, torch; print('env ok
 
 ```bash
 cd research/kt-bench
-WANDB_MODE=offline ./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,clst --folds folds/nips2020_folds.json --smoke 64
+WANDB_MODE=offline ./.venv/bin/python train.py --dataset nips2020 --models dkt,akt,deep_irt,sakt,dkt_clst_config --folds folds/nips2020_folds.json --smoke 64
 WANDB_MODE=offline ./.venv/bin/python coldstart.py --dataset nips2020 --k 3,5,10,20 --smoke 64
 python3 -c "import json,glob; rows=[json.load(open(p)) for p in glob.glob('../results/kt/nips2020__dkt__*')]; assert all(r['_provenance']['folds_raw_source']=='public_raw' for r in rows); print('real provenance ok', len(rows))"
 cd ../..
@@ -486,7 +486,7 @@ cd ../..
 
 #### Notes (filled in during implementation)
 
-Implemented real training/evaluation runners with a smoke guard. `train.py` now uses pyKT models for DKT, AKT, Deep-IRT, and SAKT, trains per fold from the real R1 split artifacts, saves checkpoints under `.work/kt-checkpoints`, and writes the existing `{dataset,model,fold,k}` JSON schema via `write_kt_result`. `coldstart.py` reloads those checkpoints and evaluates first-k truncated sequences for `k={3,5,10,20}`. pyKT 0.0.38 has no CLST class, so the `clst` result label is backed by a documented DKT-compatible recurrent pyKT run in `training_config.pykt_model`. The R2 smoke run generated 300 deep-model rows across `nips2020` and `accoding`, all stamped `public_raw`; full-grid literature-band numbers remain the manual offline run per the plan preamble.
+Implemented real training/evaluation runners with a smoke guard. `train.py` now uses pyKT models for DKT, AKT, Deep-IRT, SAKT, and the explicitly relabeled `dkt_clst_config`, trains per fold from the real R1 split artifacts, saves checkpoints under `.work/kt-checkpoints`, and writes the existing `{dataset,model,fold,k}` JSON schema via `write_kt_result`. `coldstart.py` reloads those checkpoints and evaluates first-k truncated sequences for `k={3,5,10,20}`. pyKT 0.0.38 has no distinct CLST class in this bench, so the former `clst` result label is retired; future rows must use `dkt_clst_config` and must not be reported as CLST. The R2 smoke run generated 300 deep-model rows across `nips2020` and `accoding`, all stamped `public_raw`; full-grid literature-band numbers remain the manual offline run per the plan preamble.
 
 ---
 

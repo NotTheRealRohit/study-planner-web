@@ -15,6 +15,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.writers.tables import write_detection_winners_table
 
 
@@ -72,16 +73,27 @@ def write_detection_latency_plot(results_path: Path, out_path: Path) -> Path:
     return out_path
 
 
-def write_detection_artifacts(results_path: Path | None = None) -> list[Path]:
+def write_detection_artifacts(
+    results_path: Path | None = None,
+    progress: ProgressLogger | None = None,
+) -> list[Path]:
     root = _repo_root()
     source = results_path or latest_detection_results()
+    if progress:
+        progress.log(0, "figs.detection.start", f"source={source}")
     payload = json.loads(source.read_text(encoding="utf-8"))
+    if progress:
+        progress.log(30, "figs.detection.loaded", f"rows={len(payload['rows'])} roc={len(payload['roc'])}")
     generated_dir = root / "college/mydeliverables/1st-Review/report/generated"
     pdf = write_detection_latency_plot(source, generated_dir / "detection_latency.pdf")
+    if progress:
+        progress.log(65, "figs.detection.plot_written", str(pdf))
     table = write_detection_winners_table(
         payload["winner_by_shift_type"],
         generated_dir / "detection_winners.tex",
     )
+    if progress:
+        progress.log(80, "figs.detection.table_written", str(table))
     provenance = generated_dir / "detection_latency_provenance.txt"
     provenance.write_text(
         "Detection latency generated from "
@@ -89,15 +101,19 @@ def write_detection_artifacts(results_path: Path | None = None) -> list[Path]:
         f"{payload['_provenance']['params_version_hash']}.\n",
         encoding="utf-8",
     )
+    if progress:
+        progress.log(100, "figs.detection.complete", "wrote=3")
     return [pdf, table, provenance]
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-path", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
+    logger = ProgressLogger(label="research-figs-detection", enabled=not args.quiet)
     source = Path(args.results_path) if args.results_path else None
-    for path in write_detection_artifacts(source):
+    for path in write_detection_artifacts(source, progress=logger):
         print(path)
 
 

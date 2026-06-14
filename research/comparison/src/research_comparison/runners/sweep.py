@@ -10,6 +10,7 @@ from typing import Any
 from research_comparison.manifest import build_manifest
 from research_comparison.params import SWEEP_GRID
 from research_comparison.generator.generate import generate_learner
+from research_comparison.progress_log import ProgressLogger
 from research_comparison.runners.detection import run_detection_for_learner
 from research_comparison.runners.projection import run_projection_for_learner
 from research_comparison.runners.scheduling import (
@@ -157,11 +158,19 @@ def _default_winners() -> dict[str, str]:
     }
 
 
-def run_sweep(out_dir: str | None = None, grid: dict[str, list[float]] | None = None) -> Path:
+def run_sweep(
+    out_dir: str | None = None,
+    grid: dict[str, list[float]] | None = None,
+    progress: ProgressLogger | None = None,
+) -> Path:
     root = _repo_root()
     result_root = Path(out_dir) if out_dir else root / "research/results/sweep"
     points = sweep_grid_points(grid)
+    if progress:
+        progress.log(0, "sweep.start", f"points={len(points)}")
     default_winners = _default_winners()
+    if progress:
+        progress.log(10, "sweep.default_winners", json.dumps(default_winners, sort_keys=True))
 
     rows: list[dict[str, Any]] = []
     for point_index, point in enumerate(points):
@@ -183,6 +192,17 @@ def run_sweep(out_dir: str | None = None, grid: dict[str, list[float]] | None = 
                     "ranking_status": "held" if winner == default_winner else "flipped",
                 }
             )
+        processed = point_index + 1
+        if progress and (
+            processed == 1
+            or processed == len(points)
+            or processed % max(1, len(points) // 20) == 0
+        ):
+            progress.log(
+                10 + (processed / max(1, len(points))) * 80,
+                "sweep.points",
+                f"processed={processed}/{len(points)} rows={len(rows)}",
+            )
 
     manifest = build_manifest(seed=0, archetype_mix={"sweep": 2}, n_learners=len(points) * 2)
     payload = {
@@ -190,14 +210,21 @@ def run_sweep(out_dir: str | None = None, grid: dict[str, list[float]] | None = 
         "rows": rows,
         "stability": ranking_stability(rows),
     }
-    return write_stamped_json(result_root / "sweep_results.json", payload, manifest)
+    if progress:
+        progress.log(95, "sweep.write", f"rows={len(rows)}")
+    out_path = write_stamped_json(result_root / "sweep_results.json", payload, manifest)
+    if progress:
+        progress.log(100, "sweep.complete", str(out_path))
+    return out_path
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
-    print(run_sweep(out_dir=args.out_dir))
+    logger = ProgressLogger(label="research-sweep", enabled=not args.quiet)
+    print(run_sweep(out_dir=args.out_dir, progress=logger))
 
 
 if __name__ == "__main__":

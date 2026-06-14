@@ -2,10 +2,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
-import shutil
-import subprocess
-from pathlib import Path
 
 from research_comparison.baselines.calibration import (
     EWMACalibrator,
@@ -13,12 +9,13 @@ from research_comparison.baselines.calibration import (
     PooledBayesianCalibrator,
     SMACalibrator,
 )
+from research_comparison.generator.generate import generate_dataset
 from research_comparison.generator.generate import generate_learner
 from research_comparison.metrics.aggregate import winner_per_band
 from research_comparison.metrics.paired import paired_difference
+from research_comparison.plots.convergence import write_convergence_artifacts
 from research_comparison.runners.calibration import prequential_calibration
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
+from research_comparison.runners.calibration import run_calibration_track
 
 
 def _flat_sessions(ratio: float = 1.08, n: int = 18):
@@ -84,24 +81,28 @@ def test_winner_per_band_chooses_lower_error_candidate():
     assert winners["medium"]["winner"] == "a"
 
 
-def test_tracer_bullet_make_dataset_compare_figs_produces_artifacts():
-    shutil.rmtree(REPO_ROOT / "research/datasets", ignore_errors=True)
-    shutil.rmtree(REPO_ROOT / "research/results", ignore_errors=True)
-    generated = REPO_ROOT / "college/mydeliverables/1st-Review/report/generated"
-    for artifact in [
-        generated / "calibration_convergence.pdf",
-        generated / "calibration_winners.tex",
-        generated / "calibration_convergence_provenance.txt",
-    ]:
-        artifact.unlink(missing_ok=True)
+def test_tracer_bullet_dataset_compare_figs_produces_artifacts_in_temp_workspace(tmp_path):
+    workspace = tmp_path / "research-comparison-tracer"
+    datasets_root = workspace / "datasets"
+    results_root = workspace / "results"
+    generated = workspace / "generated"
 
-    env = os.environ.copy()
-    env["PATH"] = f"{Path.home() / '.local/bin'}:{env['PATH']}"
-    subprocess.run(["make", "dataset", "compare", "figs"], cwd=REPO_ROOT, env=env, check=True)
+    dataset_id = generate_dataset(
+        archetype_mix={"steady": 1},
+        bands=["small"],
+        seeds=[0],
+        out_dir=str(datasets_root),
+    )
+    dataset_dir = datasets_root / dataset_id
+    result_path = run_calibration_track(
+        dataset_dir=str(dataset_dir),
+        out_dir=str(results_root / "calibration"),
+    )
+    write_convergence_artifacts(result_path, generated_dir=generated)
 
     pdf = generated / "calibration_convergence.pdf"
     table = generated / "calibration_winners.tex"
-    result_files = sorted((REPO_ROOT / "research/results/calibration").glob("*.json"))
+    result_files = sorted((results_root / "calibration").glob("*.json"))
 
     assert pdf.exists() and pdf.stat().st_size > 0
     assert table.exists() and table.stat().st_size > 0
