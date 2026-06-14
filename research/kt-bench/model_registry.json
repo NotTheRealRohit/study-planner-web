@@ -79,6 +79,15 @@
       "notes": "Active artifacts are tied to one deterministic ACcoding learner subsample. Do not credit ACcoding cells until at least two max_learners reruns show stable AUC."
     }
   },
+  "calibration_policy": {
+    "accoding__pybkt": {
+      "status": "accepted_uncalibrated_limitation",
+      "ece_mean": 0.2716,
+      "ece_threshold": 0.25,
+      "decision": "No post-hoc calibration applied in this runbook pass; keep the cell partial and report high ECE honestly.",
+      "reason": "Full-sequence AUC is reproducible and above chance, but ECE exceeds the investigation threshold. A calibration fix would need an explicit train-fold-only held-out design to avoid test leakage."
+    }
+  },
   "reportable_allowlist": [
     {
       "dataset": "nips2020",
