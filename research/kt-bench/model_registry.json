@@ -75,8 +75,44 @@
       "active_seed": 20260614,
       "requires_subsample_stability": true,
       "required_max_learners": [1000, 3000, 10000],
-      "status": "single_subsample_only",
-      "notes": "Active artifacts are tied to one deterministic ACcoding learner subsample. Do not credit ACcoding cells until at least two max_learners reruns show stable AUC."
+      "completed_max_learners": [1000, 3000, 10000],
+      "status": "stable",
+      "stability": {
+        "metric": "pybkt_full_sequence_auc_mean",
+        "threshold_spread": 0.02,
+        "observed_spread": 0.009065,
+        "runs": [
+          {
+            "max_learners": 1000,
+            "rows_kept": 151457,
+            "learners_kept": 856,
+            "fold_auc": [0.605939, 0.599864, 0.6095, 0.60026, 0.59575],
+            "mean_auc": 0.602263,
+            "ece_mean": 0.268447,
+            "results_dir": ".work/sub_1000/results"
+          },
+          {
+            "max_learners": 3000,
+            "rows_kept": 445837,
+            "learners_kept": 2523,
+            "fold_auc": [0.608155, 0.60079, 0.607649, 0.610874, 0.603661],
+            "mean_auc": 0.606226,
+            "ece_mean": 0.2716,
+            "results_dir": "../../research/results/kt"
+          },
+          {
+            "max_learners": 10000,
+            "rows_kept": 1445579,
+            "learners_kept": 8320,
+            "fold_auc": [0.611964, 0.609186, 0.616192, 0.608606, 0.610689],
+            "mean_auc": 0.611327,
+            "ece_mean": 0.271463,
+            "results_dir": ".work/sub_10000/results"
+          }
+        ],
+        "decision": "Stable across the required learner subsamples; ACcoding cells may be credited by their own gates."
+      },
+      "notes": "Required learner subsamples are stable for pyBKT full-sequence mean AUC (spread 0.009065 <= 0.02)."
     }
   },
   "calibration_policy": {
