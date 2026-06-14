@@ -36,3 +36,4 @@ research/results/
 research/kt-bench/.venv/
 research/kt-bench/.work/
 research/kt-bench/data/
+research/kt-bench/folds/*_sequences.csv

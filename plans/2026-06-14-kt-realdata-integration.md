@@ -246,7 +246,7 @@ flowchart LR
 
 ### Phase R1: Land both datasets + ACcoding adapter + real folds export
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — a6edad2
 **Depends on:** Part 3 phases 4a/4b/4c `✅ Complete`; the two zips present under `research/datasets/`
 **Estimated scope:** 1 new file (~180 lines) + `preprocess.py` edits + folds/sequence re-export
 
@@ -424,7 +424,7 @@ git check-ignore research/kt-bench/data/poj/poj_log.csv && echo "landing ignored
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+Implemented as planned with two local-data wrinkles handled in code. The ACcoding adapter streamed `submissions.sql` from the zip and wrote `data/poj/poj_log.csv` with 445,837 kept rows, 2,523 kept learners, 5 non-terminal drops, and 0 parse skips under the deterministic 3,000-learner cap. pyKT's POJ reader on this pandas version emits single-column group keys as tuple-looking UID lines such as `(17,),578`; `preprocess.py` now normalizes those UID lines before `split_concept`. Sequence sidecars were generated and verified locally, but are ignored because `nips2020_sequences.csv` is 15 MB and `accoding_sequences.csv` is 5.4 MB.
 
 ---
 

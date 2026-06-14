@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import platform
@@ -29,6 +30,11 @@ DATASETS = {
     ),
     "poj": DatasetSpec(
         public_name="poj",
+        pykt_name="poj",
+        raw_file="poj_log.csv",
+    ),
+    "accoding": DatasetSpec(
+        public_name="accoding",
         pykt_name="poj",
         raw_file="poj_log.csv",
     ),
@@ -123,8 +129,23 @@ def preprocess_raw(spec: DatasetSpec, raw_root: Path, config_path: Path) -> tupl
 
     ensure_dataset_config(config_path, spec.pykt_name)
     dname, data_txt = process_raw_data(spec.pykt_name, {spec.pykt_name: str(raw_path)})
+    if spec.pykt_name == "poj":
+        normalize_poj_uid_lines(Path(data_txt))
     split_concept(dname, data_txt, spec.pykt_name, str(config_path), 3, 200, 5)
     return Path(dname), Path(data_txt), "public_raw"
+
+
+def normalize_poj_uid_lines(path: Path) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    normalized: list[str] = []
+    for index, line in enumerate(lines):
+        if index % 6 == 0 and line.startswith("("):
+            prefix, _, rest = line.partition("),")
+            uid = prefix.strip("()").rstrip(",")
+            normalized.append(f"{uid},{rest}")
+        else:
+            normalized.append(line)
+    path.write_text("\n".join(normalized) + "\n", encoding="utf-8")
 
 
 def preprocess_smoke(spec: DatasetSpec, work_dir: Path, config_path: Path) -> tuple[Path, Path, str]:
@@ -182,6 +203,43 @@ def export_folds(
     return out_path
 
 
+def _split_sequence(raw: object) -> list[str]:
+    return [item.strip() for item in str(raw).split(",") if item.strip() and item.strip() != "-1"]
+
+
+def export_sequence_sidecar(
+    *,
+    spec: DatasetSpec,
+    dataset_dir: Path,
+    folds_dir: Path,
+) -> Path:
+    train_valid_path = dataset_dir / "train_valid.csv"
+    frame = pd.read_csv(train_valid_path)
+    required = {"concepts", "responses"}
+    missing = required - set(frame.columns)
+    if missing:
+        raise ValueError(f"{train_valid_path} is missing required sequence columns: {sorted(missing)}")
+
+    folds_dir.mkdir(parents=True, exist_ok=True)
+    out_path = folds_dir / f"{spec.public_name}_sequences.csv"
+    with out_path.open("w", newline="", encoding="utf-8") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(["row_index", "order", "skill", "correct"])
+        for row_index, row in frame.iterrows():
+            concepts = _split_sequence(row["concepts"])
+            responses = _split_sequence(row["responses"])
+            if len(concepts) != len(responses):
+                raise ValueError(
+                    f"{train_valid_path} row {row_index} has {len(concepts)} concepts "
+                    f"but {len(responses)} responses"
+                )
+            for order, (skill, correct) in enumerate(zip(concepts, responses)):
+                if correct not in {"0", "1"}:
+                    raise ValueError(f"{train_valid_path} row {row_index} has non-binary response {correct!r}")
+                writer.writerow([row_index, order, skill, correct])
+    return out_path
+
+
 def preprocess_dataset(
     *,
     spec: DatasetSpec,
@@ -202,18 +260,21 @@ def preprocess_dataset(
         else:
             dataset_dir, data_txt, raw_source = preprocess_smoke(spec, work_dir, config_path)
 
-    return export_folds(
+    folds_path = export_folds(
         spec=spec,
         dataset_dir=dataset_dir,
         data_txt=data_txt,
         raw_source=raw_source,
         folds_dir=folds_dir,
     )
+    sidecar_path = export_sequence_sidecar(spec=spec, dataset_dir=dataset_dir, folds_dir=folds_dir)
+    print(f"wrote {sidecar_path}")
+    return folds_path
 
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--datasets", default="nips2020,poj")
+    parser.add_argument("--datasets", default="nips2020,accoding")
     parser.add_argument("--mode", choices=("auto", "raw", "smoke"), default="auto")
     parser.add_argument("--raw-root", type=Path, default=Path("data"))
     parser.add_argument("--work-dir", type=Path, default=Path(".work"))
