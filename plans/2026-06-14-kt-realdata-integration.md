@@ -246,7 +246,7 @@ flowchart LR
 
 ### Phase R1: Land both datasets + ACcoding adapter + real folds export
 
-**Status:** ✅ Complete — a6edad2
+**Status:** ✅ Complete — 7295d30
 **Depends on:** Part 3 phases 4a/4b/4c `✅ Complete`; the two zips present under `research/datasets/`
 **Estimated scope:** 1 new file (~180 lines) + `preprocess.py` edits + folds/sequence re-export
 
@@ -430,7 +430,7 @@ Implemented as planned with two local-data wrinkles handled in code. The ACcodin
 
 ### Phase R2: Real deep-model runs — replace the synthetic stubs (isolated env)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase R1
 **Estimated scope:** `train.py` + `coldstart.py` rewrite (~250 lines), isolated env, manual-run
 
