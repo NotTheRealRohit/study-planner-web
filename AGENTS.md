@@ -77,23 +77,54 @@ study-planner-web/
 | `design/` | Marginalia design system HTML document |
 | `DEPLOYMENT.md` | Vercel + DNS setup guide |
 
+## Codex Project Scope
+
+At session start, after `/init`, or before making project changes, inspect the
+current repo files first. Treat this checkout as the source of truth instead of
+using stale memory, user-level defaults, or sibling checkouts.
+
+For this project, Codex skills and rules are project-local only:
+
+- Rules live under `/Users/rsaji/projects/1/college-mtech/study-planner-web/.agents/rules/`.
+- Skills live under `/Users/rsaji/projects/1/college-mtech/study-planner-web/.agents/skills/`.
+- When a rule applies, read the matching `.agents/rules/*.agents.md` file before
+  changing code, tests, docs, runtime setup, or build configuration.
+- When a skill is named or triggered, read `.agents/skills/<skill>/SKILL.md` and
+  follow that local copy.
+- Do not use `.opencode/`, `.codex/`, `.claude/`, plugin-cache, or user-home
+  skill/rule copies for this repo unless the user explicitly asks for an
+  external fallback.
+- Keep future `/init` updates aligned with this project-scope routing.
+
 ## Project Rules
 
 Patterns, rules, and learnings from past development sessions. **Always check these before making changes** to avoid repeating mistakes.
 
-See [`.opencode/rules/`](.opencode/rules/):
+See [`.agents/rules/`](.agents/rules/):
 
 | Rule File | Prevents |
 |---|---|
-| [`css-workspace-packages.md`](.opencode/rules/css-workspace-packages.md) | CSS imports failing to resolve in workspace packages |
-| [`playwright-config.md`](.opencode/rules/playwright-config.md) | E2E tests failing due to config issues |
-| [`astro-selectors.md`](.opencode/rules/astro-selectors.md) | Selector strict mode violations in Astro dev mode |
-| [`react-router-v7-basename.md`](.opencode/rules/react-router-v7-basename.md) | Double basename prefixes in navigation |
-| [`auth-testing-fakes.md`](.opencode/rules/auth-testing-fakes.md) | Brittle Supabase mock tests |
-| [`form-design-spacing.md`](.opencode/rules/form-design-spacing.md) | Collapsed form field groups |
-| [`auth-init-timeout.md`](.opencode/rules/auth-init-timeout.md) | React hanging on slow auth init |
-| [`eventstore-per-user-db.md`](.opencode/rules/eventstore-per-user-db.md) | Cross-account data bleed and data loss in shared IndexedDB |
-| [`dexie-test-setup.md`](.opencode/rules/dexie-test-setup.md) | Dexie tests failing due to fake-indexeddb or stale DB state |
+| [`astro-selectors.agents.md`](.agents/rules/astro-selectors.agents.md) | Selector strict mode violations in Astro dev mode |
+| [`auth-architecture.agents.md`](.agents/rules/auth-architecture.agents.md) | Auth layer drift from the DI deep-module pattern |
+| [`auth-init-timeout.agents.md`](.agents/rules/auth-init-timeout.agents.md) | React hanging on slow auth init |
+| [`auth-testing-fakes.agents.md`](.agents/rules/auth-testing-fakes.agents.md) | Brittle Supabase mock tests |
+| [`css-workspace-packages.agents.md`](.agents/rules/css-workspace-packages.agents.md) | CSS imports failing to resolve in workspace packages |
+| [`dexie-schema-migration.agents.md`](.agents/rules/dexie-schema-migration.agents.md) | IndexedDB schema migration mistakes |
+| [`dexie-test-setup.agents.md`](.agents/rules/dexie-test-setup.agents.md) | Dexie tests failing due to fake-indexeddb or stale DB state |
+| [`docker-colima-setup.agents.md`](.agents/rules/docker-colima-setup.agents.md) | Docker, Buildx, Compose, CA, and Colima port-forwarding failures |
+| [`eventstore-architecture.agents.md`](.agents/rules/eventstore-architecture.agents.md) | EventStore drift from the local-first deep-module pattern |
+| [`eventstore-per-user-db.agents.md`](.agents/rules/eventstore-per-user-db.agents.md) | Cross-account data bleed and data loss in shared IndexedDB |
+| [`flow-diagram-tikz-gen.agents.md`](.agents/rules/flow-diagram-tikz-gen.agents.md) | Inconsistent generated TikZ flow diagrams |
+| [`form-design-spacing.agents.md`](.agents/rules/form-design-spacing.agents.md) | Collapsed form field groups |
+| [`latex-report-build.agents.md`](.agents/rules/latex-report-build.agents.md) | Report build and LaTeX workflow regressions |
+| [`onboarding-architecture.agents.md`](.agents/rules/onboarding-architecture.agents.md) | Onboarding flow architecture drift |
+| [`playwright-config.agents.md`](.agents/rules/playwright-config.agents.md) | E2E tests failing due to config issues |
+| [`pnpm-build-registry.agents.md`](.agents/rules/pnpm-build-registry.agents.md) | Corepack/pnpm build failures on this machine |
+| [`react-router-v7-basename.agents.md`](.agents/rules/react-router-v7-basename.agents.md) | Double basename prefixes in navigation |
+| [`roadmap-engine.agents.md`](.agents/rules/roadmap-engine.agents.md) | Roadmap engine architecture drift |
+| [`supabase-schema.agents.md`](.agents/rules/supabase-schema.agents.md) | Supabase schema and migration drift |
+| [`sync-architecture.agents.md`](.agents/rules/sync-architecture.agents.md) | Sync architecture drift |
+| [`sync-provider-testing.agents.md`](.agents/rules/sync-provider-testing.agents.md) | Brittle sync provider tests |
 
 ## Commands
 
