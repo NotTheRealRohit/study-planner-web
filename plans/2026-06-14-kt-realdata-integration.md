@@ -430,7 +430,7 @@ Implemented as planned with two local-data wrinkles handled in code. The ACcodin
 
 ### Phase R2: Real deep-model runs — replace the synthetic stubs (isolated env)
 
-**Status:** ✅ Complete — 11b5c8e
+**Status:** ✅ Complete — 0789554
 **Depends on:** Phase R1
 **Estimated scope:** `train.py` + `coldstart.py` rewrite (~250 lines), isolated env, manual-run
 
@@ -492,7 +492,7 @@ Implemented real training/evaluation runners with a smoke guard. `train.py` now 
 
 ### Phase R3: Real pyBKT on shared folds + regenerate report + flip provenance
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase R2
 **Estimated scope:** `pybkt_runner.py` rewrite (~150 lines) + `join.py` 1-line default + report regen + tracker flip
 
