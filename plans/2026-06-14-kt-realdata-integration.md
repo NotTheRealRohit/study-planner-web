@@ -492,7 +492,7 @@ Implemented real training/evaluation runners with a smoke guard. `train.py` now 
 
 ### Phase R3: Real pyBKT on shared folds + regenerate report + flip provenance
 
-**Status:** ✅ Complete — 5dc2885
+**Status:** ✅ Complete — 100080a
 **Depends on:** Phase R2
 **Estimated scope:** `pybkt_runner.py` rewrite (~150 lines) + `join.py` 1-line default + report regen + tracker flip
 
