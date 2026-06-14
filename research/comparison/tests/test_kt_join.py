@@ -415,6 +415,10 @@ def test_model_registry_has_no_silent_aliases_and_allowlist_is_registered() -> N
         ("nips2020", "deep_irt", "credible"),
         ("nips2020", "sakt", "credible"),
         ("nips2020", "dkt_clst_config", "credible"),
+        ("accoding", "dkt", "credible"),
+        ("accoding", "akt", "credible"),
+        ("accoding", "deep_irt", "credible"),
+        ("accoding", "dkt_clst_config", "credible"),
     }
     for dataset, model, _status in allowlist:
         assert dataset in DEFAULT_DATASETS
