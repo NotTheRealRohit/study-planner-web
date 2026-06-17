@@ -27,7 +27,7 @@ def _compute_kernel_matrix(
     xs: list[float],
     length_scale: float,
     signal_variance: float,
-    noise_variance: float,
+    noise_variance: float | list[float],
 ) -> list[list[float]]:
     n = len(xs)
     k: list[list[float]] = [[0.0] * n for _ in range(n)]
@@ -35,7 +35,10 @@ def _compute_kernel_matrix(
         for j in range(n):
             k[i][j] = rbf_kernel(xs[i], xs[j], length_scale, signal_variance)
             if i == j:
-                k[i][j] += noise_variance
+                if isinstance(noise_variance, list):
+                    k[i][j] += noise_variance[i]
+                else:
+                    k[i][j] += noise_variance
     return k
 
 
@@ -106,11 +109,44 @@ def _linear_fit(xs: list[float], ys: list[float]) -> tuple[float, float]:
     return slope, intercept
 
 
+def _estimate_ar1_phi(residuals: list[float]) -> float:
+    if len(residuals) < 3:
+        return 0.0
+    left = residuals[:-1]
+    right = residuals[1:]
+    left_mean = sum(left) / len(left)
+    right_mean = sum(right) / len(right)
+    numerator = sum((x - left_mean) * (y - right_mean) for x, y in zip(left, right))
+    denominator = sum((x - left_mean) ** 2 for x in left)
+    if denominator <= 0:
+        return 0.0
+    return max(-0.90, min(0.90, numerator / denominator))
+
+
+def _heteroscedastic_noise(
+    residuals: list[float],
+    base_noise_variance: float,
+) -> list[float]:
+    if not residuals:
+        return []
+    mean_abs = max(sum(abs(r) for r in residuals) / len(residuals), 1e-6)
+    return [
+        max(base_noise_variance * 0.25, base_noise_variance * (0.5 + abs(r) / mean_abs))
+        for r in residuals
+    ]
+
+
 def gp_regression(
     train_x: list[float],
     train_y: list[float],
     test_x: list[float],
+    *,
+    likelihood: str = "gaussian",
+    ar1: bool = False,
 ) -> dict[str, list[float]]:
+    if likelihood not in {"gaussian", "student_t"}:
+        raise ValueError("likelihood must be 'gaussian' or 'student_t'")
+
     n = len(train_x)
     if n == 0:
         return {
@@ -133,7 +169,12 @@ def gp_regression(
     signal_variance = residual_variance
     noise_variance = GP_NOISE_RATIO * signal_variance
 
-    k = _compute_kernel_matrix(train_x, GP_LENGTH_SCALE, signal_variance, noise_variance)
+    if likelihood == "gaussian" and not ar1:
+        train_noise: float | list[float] = noise_variance
+    else:
+        train_noise = _heteroscedastic_noise(residuals, noise_variance)
+
+    k = _compute_kernel_matrix(train_x, GP_LENGTH_SCALE, signal_variance, train_noise)
     ks = _cross_kernel_matrix(train_x, test_x, GP_LENGTH_SCALE, signal_variance)
     kss = _compute_kernel_matrix(test_x, GP_LENGTH_SCALE, signal_variance, 0.0)
 
@@ -152,6 +193,16 @@ def gp_regression(
         v = _forward_solve(chol, ks_col)
         v_squared_sum = sum(vi**2 for vi in v)
         variance[j] = max(kss[j][j] - v_squared_sum, 0.0)
+
+    if likelihood == "student_t" or ar1:
+        inflation = 1.0
+        if likelihood == "student_t":
+            df = max(3.0, float(n - 1))
+            inflation *= df / max(df - 2.0, 1.0)
+        if ar1:
+            phi = abs(_estimate_ar1_phi(residuals))
+            inflation *= 1.0 / max(1.0 - phi**2, 0.20)
+        variance = [v * inflation + noise_variance * (inflation - 1.0) for v in variance]
 
     mean = [mu_resid[j] + slope * test_x[j] + intercept for j in range(m)]
 
@@ -175,6 +226,9 @@ def fit_burn_up_gp(
     start_date: str,
     end_date: str,
     today: str,
+    *,
+    likelihood: str = "gaussian",
+    ar1: bool = False,
 ) -> list[GPPoint]:
     if not actual_points:
         return []
@@ -188,7 +242,7 @@ def fit_burn_up_gp(
 
     test_x_values = list(range(extra_end + 1))
 
-    result = gp_regression(train_x, train_y, test_x_values)
+    result = gp_regression(train_x, train_y, test_x_values, likelihood=likelihood, ar1=ar1)
 
     gp_points: list[GPPoint] = []
     for i, x in enumerate(test_x_values):

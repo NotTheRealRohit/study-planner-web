@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from research_comparison.baselines.projection import (
+    forecast_conformal_finish,
     forecast_gp_finish,
+    forecast_gp_hetero_t_finish,
     forecast_kalman_finish,
     forecast_linear_finish,
 )
@@ -40,6 +42,24 @@ def projection_candidates() -> list[ProjectionCandidate]:
         ProjectionCandidate(
             "linear",
             lambda sessions, total, _start, _end: forecast_linear_finish(sessions, total),
+        ),
+        ProjectionCandidate(
+            "conformal",
+            lambda sessions, total, start, end: forecast_conformal_finish(
+                sessions,
+                total,
+                start_date=start,
+                horizon_end_date=end,
+            ),
+        ),
+        ProjectionCandidate(
+            "gp_hetero_t",
+            lambda sessions, total, start, end: forecast_gp_hetero_t_finish(
+                sessions,
+                total,
+                start_date=start,
+                horizon_end_date=end,
+            ),
         ),
         ProjectionCandidate(
             "kalman",
