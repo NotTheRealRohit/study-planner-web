@@ -333,7 +333,7 @@ Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ar
 
 ### Phase A2: Calibration covariates + empirical-Bayes pooling (PA+.2)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase A0 (A1 not required)
 **Estimated scope:** `baselines/calibration.py` (+2 candidates) + `py-progress/bayesian.py` helper + re-run calibration track
 
