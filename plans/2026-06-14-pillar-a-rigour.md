@@ -215,7 +215,7 @@ Candidate rosters after this plan (★ = shipped incumbent, ✚ = added here):
 
 ### Phase A0: Lock findings + rigour scaffolding
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Part 2 (Phases 3 & 7) `✅ Complete`
 **Estimated scope:** 1 new module (~150 lines) + tests; no track re-run yet
 
@@ -263,7 +263,7 @@ uv run --package research-comparison python -c "from research_comparison.metrics
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+Added the pure A0 rigour utility module and focused tests only; no track runners or result artifacts were changed. The PA+.8 open-code-question evidence is recorded in the `metrics/rigour.py` module docstring with current file:line references. Verification passed with the A0 focused pytest command and import check; `uv` commands required sandbox escalation only because the local uv cache lives under `/Users/rsaji/.cache/uv`.
 
 ---
 

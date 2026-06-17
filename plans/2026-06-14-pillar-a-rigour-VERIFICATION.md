@@ -20,7 +20,7 @@
 
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
-| A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ☐ Not started | — |
+| A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — pending | — |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ☐ Not started | — |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
@@ -53,11 +53,11 @@ git diff <baseline-sha> <sha> -- research/results | head   # expect empty (no re
 
 ### Implementer report (Codex/Sonnet fills)
 
-- Commit SHA: `…`
-- Files changed: `…`
-- What I did: `…`
-- Deviations + why: `…`
-- Self-check vs criteria (A0.1–A0.4): `…`
+- Commit SHA: `pending`
+- Files changed: `research/comparison/src/research_comparison/metrics/rigour.py`; `research/comparison/tests/test_rigour.py`; `plans/2026-06-14-pillar-a-rigour.md`; `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`
+- What I did: Added the A0 rigour utility module with percentile bootstrap CIs for paired deltas, Holm and Benjamini-Hochberg rejection masks, and the declared held-out archetype split. Recorded the resolved open-code-question evidence in the module docstring with current file:line references. Added focused tests for bootstrap CI bracketing, hand-computed Holm/BH masks, and deterministic disjoint held-out splitting.
+- Deviations + why: No implementation deviation. The local `uv` verification commands were run with sandbox escalation because uv needs its cache under `/Users/rsaji/.cache/uv`; the commands and code paths are otherwise the plan's commands.
+- Self-check vs criteria (A0.1–A0.4): A0.1 met by `metrics/rigour.py`; A0.2 met by the module docstring evidence note; A0.3 met by `uv run --package research-comparison pytest research/comparison/tests/test_rigour.py -q` passing with 3 tests; A0.4 met by no track re-run and empty `git diff -- research/results`.
 
 ### Reviewer findings (Cowork fills)
 
