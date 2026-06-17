@@ -269,7 +269,7 @@ Added the pure A0 rigour utility module and focused tests only; no track runners
 
 ### Phase A1: Projection coverage fix — the one red result → green (PA+.1)
 
-**Status:** ✅ Complete — 833fdd2
+**Status:** ✅ Complete — pending
 **Depends on:** Phase A0
 **Estimated scope:** `baselines/projection.py` (+2 candidates) + optional `py-progress/gp.py` flag + re-run projection track + reliability figure
 
@@ -315,7 +315,7 @@ test -s college/mydeliverables/1st-Review/report/generated/projection_reliabilit
 
 #### Notes (filled in during implementation)
 
-Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ard`. The `gp_hetero_t` variant is flag-gated through `gp_regression(..., likelihood="student_t", ar1=True)` / `fit_burn_up_gp(..., likelihood="student_t", ar1=True)`; the default Gaussian/no-AR path is covered by a regression test and the existing py-progress fixture suite. Re-ran the frozen projection track and regenerated `projection_reliability.pdf`; conformal coverage moved from GP-ARD's max/medium/small `0.200/0.322/0.440` to `0.910/0.970/0.999`, with interval sharpness reported as `101.0/65.0/25.4` days.
+Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ard`. The `gp_hetero_t` variant is flag-gated through `gp_regression(..., likelihood="student_t", ar1=True)` / `fit_burn_up_gp(..., likelihood="student_t", ar1=True)`; the default Gaussian/no-AR path is covered by a regression test and the existing py-progress fixture suite. After A1 review, removed the invalid tuned `4.20` conformal width multiplier and replaced it with a residual-phi AR(1) variance inflation. Re-ran the frozen projection track and regenerated `projection_reliability.pdf`; honest conformal coverage is max/medium/small `0.501/0.669/0.849`, with interval sharpness `29.4/19.3/7.7` days, so the remaining under-coverage is reported rather than tuned away.
 
 ---
 

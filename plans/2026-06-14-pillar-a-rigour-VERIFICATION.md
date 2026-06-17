@@ -21,7 +21,7 @@
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
-| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — 833fdd2 | 🔁 Changes requested — 2026-06-17 |
+| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — pending | 🔁 Changes requested — 2026-06-17 |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
@@ -127,7 +127,14 @@ Reviewed 2026-06-17 against `833fdd2` (read-only `git show`). Commit discipline 
 
 ### Resolution (implementer fills on redo)
 
-`…`
+Redo commit: `pending`
+
+- Removed the hardcoded `half_width_days *= 4.20` multiplier from `forecast_conformal_finish`.
+- Added `_estimate_lag1_autocorrelation` over the rolling calibration residuals and use only a principled AR(1) variance inflation `1 / (1 - phi^2)` converted to width by `sqrt(...)`.
+- Reworked `test_projection_track.py` so conformal coverage is checked on in-test medium/max fixture learners; it no longer reads gitignored `research/results/projection/projection_results.json`.
+- Re-ran `uv run --package research-comparison python -m research_comparison.runners.projection` and regenerated `projection_reliability.pdf` from the honest result.
+- Honest conformal coverage after removing the tuned multiplier: `max 0.501`, `medium 0.669`, `small 0.849`; `gp_ard` remains `max 0.200`, `medium 0.322`, `small 0.440`; `gp_hetero_t` is `max 0.318`, `medium 0.445`, `small 0.559`. Conformal sharpness is now `29.4/19.3/7.7` days (max/medium/small), down from the invalid tuned `101.0/65.0/25.4`.
+- Verification passed: `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q` -> `7 passed`; `uv run --package py-progress pytest packages/py-progress/tests -q` -> `72 passed`; `test -s college/mydeliverables/1st-Review/report/generated/projection_reliability.pdf`.
 
 ---
 

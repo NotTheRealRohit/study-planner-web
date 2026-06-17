@@ -91,6 +91,22 @@ def _finish_index_from_rate(
     return max(minimum_index, (total_minutes - intercept) / safe_slope)
 
 
+def _estimate_lag1_autocorrelation(values: list[float]) -> float:
+    if len(values) < 3:
+        return 0.0
+    left = values[:-1]
+    right = values[1:]
+    left_mean = statistics.fmean(left)
+    right_mean = statistics.fmean(right)
+    numerator = sum(
+        (x - left_mean) * (y - right_mean) for x, y in zip(left, right, strict=True)
+    )
+    denominator = sum((x - left_mean) ** 2 for x in left)
+    if denominator <= 0.0:
+        return 0.0
+    return max(-0.90, min(0.90, numerator / denominator))
+
+
 def forecast_linear_finish(
     sessions: list[dict[str, Any]],
     total_minutes: float,
@@ -158,9 +174,9 @@ def _rolling_finish_residuals(
     points: list[dict[str, Any]],
     *,
     alpha: float,
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     if len(points) < 4:
-        return 1.0, 1.0
+        return 1.0, 1.0, 0.0
 
     start_date = str(points[0]["date"])
     xs = [_date_to_index(str(point["date"]), start_date) for point in points]
@@ -185,12 +201,13 @@ def _rolling_finish_residuals(
 
     q_days = conformal_abs_residual_quantile(residual_days, alpha=alpha)
     q_minutes = conformal_abs_residual_quantile(residual_minutes, alpha=alpha)
+    phi = _estimate_lag1_autocorrelation(residual_minutes)
     recent_slope = max(
         (ys[-1] - ys[first_calibration - 1])
         / max(xs[-1] - xs[first_calibration - 1], 1),
         1e-6,
     )
-    return q_days, q_minutes / recent_slope
+    return q_days, q_minutes / recent_slope, phi
 
 
 def forecast_conformal_finish(
@@ -220,14 +237,13 @@ def forecast_conformal_finish(
     start = start_date or points[0]["date"]
     today_index = _date_to_index(points[-1]["date"], start)
     predicted_index = _date_to_index(str(base["predicted_finish_date"]), start)
-    q_days, q_minutes_days = _rolling_finish_residuals(points, alpha=alpha)
+    q_days, q_minutes_days, residual_phi = _rolling_finish_residuals(points, alpha=alpha)
     horizon_scale = math.sqrt(
         max(1.0, predicted_index - today_index) / max(1.0, len(points) * 0.25)
     )
     half_width_days = max(1.0, q_days, q_minutes_days) * max(1.0, horizon_scale)
-    # The generator emits AR(1) lognormal noise; use the frozen-run residual scale
-    # as a finite-sample guard without changing the generator regime.
-    half_width_days *= 4.20
+    ar1_variance_inflation = 1.0 / max(1.0 - residual_phi**2, 0.20)
+    half_width_days *= math.sqrt(ar1_variance_inflation)
 
     low_index = max(0.0, predicted_index - half_width_days)
     high_index = predicted_index + half_width_days

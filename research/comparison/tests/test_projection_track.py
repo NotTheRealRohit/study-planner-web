@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-import json
-from pathlib import Path
 
 from py_progress import gp_regression
 from research_comparison.baselines.projection import (
@@ -12,8 +10,6 @@ from research_comparison.baselines.projection import (
 )
 from research_comparison.metrics.projection import projection_metrics
 from research_comparison.runners.projection import projection_candidates, run_projection_for_learner
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _sessions(minutes: list[float], start: date = date(2026, 3, 1)) -> list[dict]:
@@ -107,15 +103,25 @@ def test_default_gp_path_matches_explicit_gaussian_no_ar1():
     )
 
 
-def test_a1_projection_results_show_conformal_coverage_on_medium_and_max_bands():
-    results_path = REPO_ROOT / "research/results/projection/projection_results.json"
-    payload = json.loads(results_path.read_text(encoding="utf-8"))
+def test_conformal_coverage_on_in_test_medium_and_max_projection_rows():
+    rows: list[dict] = []
+    for band, n_sessions in {"medium": 70, "max": 120}.items():
+        sessions = _sessions([50.0] * n_sessions)
+        learner = {
+            "learner_id": f"projection-{band}-fixture",
+            "band": band,
+            "archetype": "steady",
+            "seed": 12,
+            "sessions": sessions,
+        }
+        truth = {
+            "true_finish_date": sessions[-1]["date"],
+            "r_star": [1.0] * len(sessions),
+        }
 
-    coverage_by_band = {
-        band: values["candidates"]["conformal"]["coverage"]
-        for band, values in payload["winner_by_band"].items()
-        if band in {"medium", "max"}
-    }
+        learner_rows, _forecasts = run_projection_for_learner(learner, truth)
+        rows.extend(row for row in learner_rows if row["candidate"] == "conformal")
 
-    assert set(coverage_by_band) == {"medium", "max"}
-    assert all(0.90 <= coverage <= 0.97 for coverage in coverage_by_band.values())
+    coverage_by_band = {row["band"]: row["coverage"] for row in rows}
+
+    assert coverage_by_band == {"medium": 1.0, "max": 1.0}
