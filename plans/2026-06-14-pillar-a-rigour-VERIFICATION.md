@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — pending (redo) | 🔁 Changes requested — 2026-06-17 (data leakage) |
+| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `c601725` (redo) | 🔁 Changes requested — 2026-06-17 (data leakage) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -211,7 +211,7 @@ Reviewed 2026-06-17 against `716f6f9` (read-only `git show`); small-band numbers
 
 ### Resolution (implementer fills on redo)
 
-Redo commit: `pending`
+Redo commit: `c601725`
 
 - Removed the leakage from `CovariateBayesCalibrator`: `research_comparison.baselines.calibration` no longer imports `ROLE_RHO` or `TAU_GENERIC`, and the ridge penalty now shrinks every role/time/day coefficient toward neutral `0.0` in log-space (`1.0` multiplier).
 - Changed `covariate_bayes` ridge strength from the scoring-cell-winning `20.0` to a neutral fixed `1.0`; any future tuning belongs in A3's held-out-archetype protocol.
