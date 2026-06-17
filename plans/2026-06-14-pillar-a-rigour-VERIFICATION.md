@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
+| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — pending | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -178,9 +178,18 @@ uv run --package research-comparison pytest research/comparison/tests/test_calib
 git diff <baseline-sha> <sha> -- packages/py-progress/src/py_progress/bayesian.py   # only adds infer_day_of_week + helpers; existing call sites intact
 ```
 
-### Implementer report / Reviewer findings / Resolution
+### Implementer report (Codex fills)
 
-- Implementer — SHA / files / small-band Δ + CI / deviations / self-check (A2.1–A2.7): `…`
+- Commit SHA: `pending`
+- Files changed: `packages/py-progress/src/py_progress/__init__.py`; `packages/py-progress/src/py_progress/bayesian.py`; `packages/py-progress/src/py_progress/types.py`; `research/comparison/src/research_comparison/baselines/calibration.py`; `research/comparison/src/research_comparison/runners/calibration.py`; `research/comparison/tests/test_calibration_track.py`; `plans/2026-06-14-pillar-a-rigour.md`; `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`. Runtime artifact refreshed but gitignored: `research/results/calibration/calibration_results.json`.
+- Small-band Δ + CI: `covariate_bayes` vs incumbent has `delta = -0.010577`, `delta_ci_low = -0.017542`, `delta_ci_high = -0.003564`, `p_value = 0.005652`; the CI excludes 0 in `covariate_bayes`'s favour. `eb_partial_pool` is registered but does not beat pooled on the frozen run (`delta = +0.005990`, CI `[+0.003874, +0.008064]`), so D-A2 success is via `covariate_bayes`.
+- What I did: Added deterministic `infer_day_of_week` to `py-progress` and exported it. Added `CovariateBayesCalibrator` and `EBPartialPoolCalibrator`, registered both alongside the unchanged incumbent and existing baselines, and added bootstrap `delta_ci_low/high` fields to calibration `paired_vs_incumbent`. Extended calibration tests for day-of-week determinism, planted covariate-effect recovery, and an EB small-band fixture where partial pooling beats pooled.
+- Deviations + why: `covariate_bayes.fit_global` returns a de-contextualized global pace estimate rather than a next-context ratio because the existing calibration runner's recovery metric scores against `truth["m_global"]`; returning a contextual ratio would make the phase success criterion unmeasurable in the shipped runner. The covariate fit uses prior centers from the declared role/time defaults (`ROLE_RHO`, `TAU_GENERIC`) with ridge shrinkage, not sidecar truth or score-cell tuning.
+- Self-check vs criteria (A2.1–A2.7): A2.1 met by `infer_day_of_week`; A2.2 met by `CovariateBayesCalibrator`; A2.3 met by `EBPartialPoolCalibrator`; A2.4 met by `calibration_candidates()` containing `hierarchical_bayes`, `covariate_bayes`, `eb_partial_pool`, `sma`, `ewma`, and `pooled_bayes`; A2.5 met by rerunning `uv run --package research-comparison python -m research_comparison.runners.calibration`; A2.6 met by the small-band `covariate_bayes` CI excluding 0 in its favour; A2.7 met by `uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q` passing `8 passed`.
+- Extra verification: `uv run --package research-comparison pytest research/comparison/tests -q` passed `61 passed`; `uv run --package py-progress pytest packages/py-progress/tests -q` passed `72 passed`; `git diff --check` clean.
+
+### Reviewer findings / Resolution
+
 - Reviewer — per-criterion verdict / issues / **Status**: `…`
 - Resolution (on redo): `…`
 

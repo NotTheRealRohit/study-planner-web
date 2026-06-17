@@ -4,6 +4,8 @@ import json
 import math
 
 from research_comparison.baselines.calibration import (
+    CovariateBayesCalibrator,
+    EBPartialPoolCalibrator,
     EWMACalibrator,
     IncumbentCalibration,
     PooledBayesianCalibrator,
@@ -16,6 +18,7 @@ from research_comparison.metrics.paired import paired_difference
 from research_comparison.plots.convergence import write_convergence_artifacts
 from research_comparison.runners.calibration import prequential_calibration
 from research_comparison.runners.calibration import run_calibration_track
+from py_progress import infer_day_of_week
 
 
 def _flat_sessions(ratio: float = 1.08, n: int = 18):
@@ -32,6 +35,99 @@ def _flat_sessions(ratio: float = 1.08, n: int = 18):
         }
         for index in range(n)
     ]
+
+
+def _session(
+    index: int,
+    *,
+    ratio: float,
+    role: str,
+    started_at: str,
+    planned: float = 50.0,
+) -> dict:
+    return {
+        "date": started_at[:10],
+        "source": "active",
+        "plannedMinutes": planned,
+        "activeMinutes": planned * ratio,
+        "duration": planned * ratio,
+        "materialRole": role,
+        "startedAt": started_at,
+        "sessionId": f"structured-{index}",
+    }
+
+
+def _structured_covariate_sessions() -> list[dict]:
+    role_effect = {"anchor": 1.12, "foundation": 1.0, "practice": 0.90}
+    time_effect = {"morning": 0.88, "afternoon": 1.0, "evening": 1.14}
+    day_effect = {"weekday": 1.0, "weekend": 1.08}
+    started_at_by_time_day = {
+        ("morning", "weekday"): "2026-01-05T08:00:00",
+        ("afternoon", "weekday"): "2026-01-06T14:00:00",
+        ("evening", "weekday"): "2026-01-07T20:00:00",
+        ("morning", "weekend"): "2026-01-10T08:00:00",
+        ("afternoon", "weekend"): "2026-01-11T14:00:00",
+        ("evening", "weekend"): "2026-01-11T20:00:00",
+    }
+    sessions: list[dict] = []
+    index = 0
+    for _repeat in range(4):
+        for role, role_multiplier in role_effect.items():
+            for (time_of_day, day_kind), started_at in started_at_by_time_day.items():
+                ratio = role_multiplier * time_effect[time_of_day] * day_effect[day_kind]
+                sessions.append(
+                    _session(index, ratio=ratio, role=role, started_at=started_at)
+                )
+                index += 1
+    return sessions
+
+
+def _small_band_structured_learners() -> list[tuple[list[dict], float]]:
+    base_patterns = [
+        (
+            0.96,
+            [
+                ("anchor", "2026-01-05T08:00:00", 1.12 * 0.88),
+                ("anchor", "2026-01-06T20:00:00", 1.12 * 1.14),
+                ("foundation", "2026-01-07T14:00:00", 1.0),
+                ("practice", "2026-01-10T20:00:00", 0.90 * 1.14 * 1.08),
+            ],
+        ),
+        (
+            1.02,
+            [
+                ("anchor", "2026-01-11T08:00:00", 1.12 * 0.88 * 1.08),
+                ("foundation", "2026-01-12T14:00:00", 1.0),
+                ("foundation", "2026-01-13T20:00:00", 1.14),
+                ("practice", "2026-01-14T08:00:00", 0.90 * 0.88),
+            ],
+        ),
+        (
+            1.08,
+            [
+                ("anchor", "2026-01-17T20:00:00", 1.12 * 1.14 * 1.08),
+                ("foundation", "2026-01-18T08:00:00", 0.88 * 1.08),
+                ("practice", "2026-01-19T14:00:00", 0.90),
+                ("practice", "2026-01-20T20:00:00", 0.90 * 1.14),
+            ],
+        ),
+    ]
+    learners: list[tuple[list[dict], float]] = []
+    session_index = 0
+    for m_global, pattern in base_patterns:
+        sessions: list[dict] = []
+        for role, started_at, multiplier in pattern:
+            sessions.append(
+                _session(
+                    session_index,
+                    ratio=m_global * multiplier,
+                    role=role,
+                    started_at=started_at,
+                )
+            )
+            session_index += 1
+        learners.append((sessions, m_global))
+    return learners
 
 
 def test_prequential_runner_returns_finite_estimates_for_all_candidates():
@@ -57,6 +153,37 @@ def test_baselines_return_float_and_pooled_converges_on_flat_pace():
     assert isinstance(EWMACalibrator(alpha=0.30).fit_global(sessions), float)
     pooled = PooledBayesianCalibrator().fit_global(sessions)
     assert abs(pooled - 1.08) < 0.04
+
+
+def test_infer_day_of_week_is_deterministic_for_known_timestamps():
+    assert infer_day_of_week("2026-01-05T08:00:00Z") == "weekday"
+    assert infer_day_of_week("2026-01-10T20:00:00Z") == "weekend"
+    assert infer_day_of_week(None) == "weekday"
+
+
+def test_covariate_bayes_recovers_planted_bucket_multipliers():
+    fit = CovariateBayesCalibrator().fit_effects(_structured_covariate_sessions())
+
+    assert abs(fit.role_multipliers["anchor"] - 1.12) < 0.05
+    assert abs(fit.role_multipliers["practice"] - 0.90) < 0.05
+    assert abs(fit.time_multipliers["morning"] - 0.88) < 0.05
+    assert abs(fit.time_multipliers["evening"] - 1.14) < 0.05
+    assert abs(fit.day_multipliers["weekend"] - 1.08) < 0.05
+
+
+def test_eb_partial_pool_beats_pooled_on_structured_small_band_fixture():
+    learners = _small_band_structured_learners()
+    pooled = PooledBayesianCalibrator()
+    eb = EBPartialPoolCalibrator()
+
+    pooled_mae = sum(
+        abs(pooled.fit_global(sessions) - m_global) for sessions, m_global in learners
+    ) / len(learners)
+    eb_mae = sum(
+        abs(eb.fit_global(sessions) - m_global) for sessions, m_global in learners
+    ) / len(learners)
+
+    assert eb_mae < pooled_mae
 
 
 def test_paired_difference_recovers_delta_p_value_and_effect_sign():

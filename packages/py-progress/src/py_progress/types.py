@@ -5,6 +5,7 @@ from typing import Literal, TypedDict
 
 MaterialRole = Literal["anchor", "foundation", "practice"]
 TimeOfDay = Literal["morning", "afternoon", "evening"]
+DayOfWeek = Literal["weekday", "weekend"]
 Verdict = Literal["ahead", "on-track", "slipping"]
 
 

@@ -1,5 +1,6 @@
 from py_progress.bayesian import (
     compute_hierarchical_model,
+    infer_day_of_week,
     infer_time_of_day,
     update_posterior,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "GP_NOISE_RATIO",
     "GP_EXTRAPOLATION_CI_INFLATION",
     "update_posterior",
+    "infer_day_of_week",
     "infer_time_of_day",
     "compute_hierarchical_model",
     "run_cusum",

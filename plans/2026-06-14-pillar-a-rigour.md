@@ -333,7 +333,7 @@ Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ar
 
 ### Phase A2: Calibration covariates + empirical-Bayes pooling (PA+.2)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase A0 (A1 not required)
 **Estimated scope:** `baselines/calibration.py` (+2 candidates) + `py-progress/bayesian.py` helper + re-run calibration track
 
@@ -380,7 +380,7 @@ uv run --package research-comparison pytest research/comparison/tests/test_calib
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+Added `infer_day_of_week`, `covariate_bayes`, and `eb_partial_pool` while keeping the original `hierarchical_bayes` incumbent unchanged. `covariate_bayes` uses a prior-centered ridge fit over the declared multiplicative role/time/day design, then reports a de-contextualized global pace estimate; this is the candidate that meets D-A2 on the frozen run. `eb_partial_pool` implements the planned James-Stein-style shrinkage formula and is registered for comparison, but it does not beat pooled on the frozen seed-0 run. Re-ran the calibration track and regenerated the gitignored `research/results/calibration/calibration_results.json`; small-band `covariate_bayes` Δ-vs-incumbent is `-0.010577` with bootstrap CI `[-0.017542, -0.003564]`, excluding 0 in its favour.
 
 ---
 

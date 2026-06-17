@@ -15,6 +15,7 @@ from research_comparison.metrics.coverage import credible_interval_coverage
 from research_comparison.metrics.paired import paired_difference
 from research_comparison.metrics.prequential import prequential_absolute_errors
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
+from research_comparison.metrics.rigour import bootstrap_delta_ci
 from research_comparison.oracles.calibration import calibration_oracle_estimate
 from research_comparison.progress_log import ProgressLogger
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
@@ -108,7 +109,21 @@ def _paired_by_candidate(rows: list[dict[str, Any]]) -> dict[str, dict[str, dict
                 if (band, seed, candidate) in by_band_seed_candidate
             ]
             if len(challenger) == len(incumbent):
-                paired[band][candidate] = paired_difference(challenger, incumbent)
+                result = paired_difference(challenger, incumbent)
+                deltas = [
+                    candidate_value - incumbent_value
+                    for candidate_value, incumbent_value in zip(
+                        challenger, incumbent, strict=True
+                    )
+                ]
+                ci_low, ci_high, _point = bootstrap_delta_ci(
+                    deltas,
+                    n_boot=10000,
+                    seed=0,
+                )
+                result["delta_ci_low"] = ci_low
+                result["delta_ci_high"] = ci_high
+                paired[band][candidate] = result
     return paired
 
 

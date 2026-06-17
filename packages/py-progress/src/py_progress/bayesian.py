@@ -10,6 +10,7 @@ from py_progress.config import (
 from py_progress.types import (
     BayesianPosterior,
     ContextInsight,
+    DayOfWeek,
     HierarchicalResult,
     MaterialRole,
     RoleMultiplier,
@@ -49,6 +50,16 @@ def infer_time_of_day(started_at: str | None) -> TimeOfDay:
     if hour < 17:
         return "afternoon"
     return "evening"
+
+
+def infer_day_of_week(started_at: str | None) -> DayOfWeek:
+    if not started_at:
+        return "weekday"
+    if started_at.endswith("Z"):
+        date = datetime.fromisoformat(started_at.replace("Z", "+00:00")).astimezone()
+    else:
+        date = datetime.fromisoformat(started_at)
+    return "weekend" if date.weekday() >= 5 else "weekday"
 
 
 def _compute_empirical_variance(ratios: list[float]) -> float:
