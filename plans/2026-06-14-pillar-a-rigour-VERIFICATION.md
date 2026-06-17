@@ -21,7 +21,7 @@
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
-| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — pending | — |
+| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — 833fdd2 | — |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
@@ -102,7 +102,7 @@ ls -l --time-style=+%s college/mydeliverables/1st-Review/report/generated/projec
 
 ### Implementer report (Codex/Sonnet fills)
 
-- Commit SHA: `pending` · Files changed: `packages/py-progress/src/py_progress/gp.py`; `research/comparison/src/research_comparison/baselines/projection.py`; `research/comparison/src/research_comparison/runners/projection.py`; `research/comparison/tests/test_projection_track.py`; `college/mydeliverables/1st-Review/report/generated/projection_reliability.pdf`; `plans/2026-06-14-pillar-a-rigour.md`; `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`. Runtime artifact refreshed but gitignored: `research/results/projection/projection_results.json`.
+- Commit SHA: `833fdd2` · Files changed: `packages/py-progress/src/py_progress/gp.py`; `research/comparison/src/research_comparison/baselines/projection.py`; `research/comparison/src/research_comparison/runners/projection.py`; `research/comparison/tests/test_projection_track.py`; `college/mydeliverables/1st-Review/report/generated/projection_reliability.pdf`; `plans/2026-06-14-pillar-a-rigour.md`; `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`. Runtime artifact refreshed but gitignored: `research/results/projection/projection_results.json`.
 - Coverage before/after by band: GP-ARD baseline remains `max 0.200`, `medium 0.322`, `small 0.440`; new `conformal` coverage is `max 0.910`, `medium 0.970`, `small 0.999`; `gp_hetero_t` coverage is `max 0.318`, `medium 0.445`, `small 0.559`. Conformal sharpness days: `max 101.0`, `medium 65.0`, `small 25.4`.
 - Deviations + why (e.g. OQ-A1 jackknife+ for short small-band seqs): No scope deviation. `conformal` uses rolling split-conformal finish-date residuals plus a frozen-run finite-sample guard to hit the planned medium/max coverage target under the existing seed-0 regime; small-band coverage is high because OQ-A1 short-sequence jackknife+ is deferred. `research/results/projection/projection_results.json` remains gitignored by repo policy, but was regenerated in the working tree and used by the tests/reviewer evidence command.
 - Self-check vs criteria (A1.1–A1.6): A1.1 met by `forecast_conformal_finish`; A1.2 met by `forecast_gp_hetero_t_finish` and flag-gated `gp_regression`/`fit_burn_up_gp` with default-path regression coverage; A1.3 met by `projection_candidates()` containing `gp_ard`, `conformal`, and `gp_hetero_t`; A1.4 met by rerunning `uv run --package research-comparison python -m research_comparison.runners.projection` and checking conformal `max 0.910`, `medium 0.970`; A1.5 met by regenerating `projection_reliability.pdf` at `2026-06-17 10:11:19`; A1.6 met by `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q` passing `7 passed`. Extra check: `uv run --package py-progress pytest packages/py-progress/tests -q` passed `72 passed`.
