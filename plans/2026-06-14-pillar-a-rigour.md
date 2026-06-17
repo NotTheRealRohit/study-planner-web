@@ -169,6 +169,22 @@ Plan-local decisions, prefixed `D-A` to avoid clashing with the master decision 
 
 **Reversibility:** easy (additive in A3; A1's shipped candidates are untouched).
 
+### D-A7: A2 is re-scored on context-aware next-session prediction, not m_global recovery (the fair test of the hierarchy)
+
+**Status:** ✅ Agreed 2026-06-17 (amendment; supersedes the A2 success criterion in D-A2 and the original DoD)
+
+**Context:** A2 shipped leakage-free `covariate_bayes` / `eb_partial_pool` (redo `c601725`), but on the honest run **no candidate beats pooling on any band** (covariate Δ +0.019/+0.037/+0.047 small/medium/max; EB +0.006/+0.0075/+0.0077). Reviewing the harness explains why: the only scored candidate interface is `fit_global(sessions) -> float`, and the prequential metric feeds that single **context-blind** number against `r_star[t]`, the **context-specific** noise-free pace (`runners/calibration.py:189-204`, `metrics/prequential.py`, targets = `truth["r_star"]` at `runners/calibration.py:156-157`). So `covariate_bayes` computes role/time/day multipliers and is then forced to discard them — the exact sin (collapse-to-global) that D-A2 set out to fix, now imposed by the harness on every candidate. On "recover `m_global`," pooling is near-optimal (generator multipliers centre near 1.0), so the covariate model only adds estimation variance → the honest null is expected, not a defect.
+
+**Decision:** Re-scope A2's success criterion to **context-aware next-session prediction** — the question the hierarchy is actually for, and the one the product needs (predicting next-session pace for finish-date projection):
+
+1. Add `predict_next(history, next_context) -> float` to the `CalibrationCandidate` interface. Context-blind candidates (`pooled_bayes`/`sma`/`ewma`) default to their global estimate; `covariate_bayes`/`eb_partial_pool` return `ĝlobal · ρ̂(role) · τ̂(time_of_day) · ν̂(day_of_week)` for the **upcoming session's known context**.
+2. Add a **context-aware prequential prediction-error** metric: for each upcoming session `t`, score `predict_next(sessions[:t], context_of(t))` against `r_star[t]`. Report it **alongside** the existing `m_global`-recovery metric — do not drop recovery.
+3. **Revised success criterion:** `covariate_bayes` and/or `eb_partial_pool` **beats `pooled_bayes` on context-aware next-session prediction** with a bootstrap CI on Δ excluding 0 (small-band emphasis for EB); the `m_global`-recovery comparison is reported honestly (pooling competitive there). If neither beats pooling even on the prediction metric, the null is robust — document it and move on.
+
+**Why this is principled, not goalpost-moving:** the upcoming session's context (material role, day, time) is legitimately known at prediction time; the multipliers are estimated from the learner's **own past** sessions (the generator-truth leak removed in `c601725` stays removed); pooling receives the same information and simply cannot use it — a fair reflection of its modelling limit. Keeping the recovery metric reported (pooling wins) means the null is contextualised, not hidden.
+
+**Reversibility:** easy (additive interface method + additional metric column; `ridge` strength still tuned only on held-out archetypes in A3, never on scoring cells).
+
 ## Architecture overview
 
 All work stays in the clean `uv` env and reuses the Part 2 spine (`runners/`, `metrics/`, `baselines/`, `oracles/`, `plots/`, `writers/`, `paired.py`, `aggregate.py`). New code slots beside the existing track modules; `py-progress` gains two pure helpers.
@@ -333,7 +349,7 @@ Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ar
 
 ### Phase A2: Calibration covariates + empirical-Bayes pooling (PA+.2)
 
-**Status:** ✅ Complete — `c601725`
+**Status:** 🟡 In progress — steps 1–5 shipped leakage-free at `c601725`; re-scoped by D-A7 (steps 6–8: context-aware prediction) pending
 **Depends on:** Phase A0 (A1 not required)
 **Estimated scope:** `baselines/calibration.py` (+2 candidates) + `py-progress/bayesian.py` helper + re-run calibration track
 
@@ -359,11 +375,19 @@ python3 -c "import json;d=json.load(open('research/results/calibration/calibrati
 2. **`CovariateBayesCalibrator` (D-A2).** Models pace multiplicatively as `m_global · ρ̂(role) · τ̂(time_of_day) · ν̂(day_of_week)`, estimating each effect from its bucket (reusing the role/context grouping already in `compute_hierarchical_model`) with Bayesian shrinkage toward 1.0. `fit_global` returns the implied current-context multiplier; `fit_interval` propagates the per-effect posterior variances.
 3. **`EBPartialPoolCalibrator` (D-A2).** Empirical-Bayes shrinkage of per-role/context means toward the global mean, with the shrinkage weight `= τ²/(τ²+σ²/n)` where between-group variance τ² and within-group σ² are estimated from the data (James–Stein style). This is the candidate expected to beat pooled on sparse (small-band) learners.
 4. **Register both** in `calibration_candidates()`; keep the incumbent as-is so the comparison is honest.
-5. **Re-run the calibration track** and report **bootstrap CIs on Δ** (A0 util) per band. **Success criterion (D-A2):** on the *small* band, `eb_partial_pool` (or `covariate_bayes`) has Δ-vs-incumbent with a bootstrap CI excluding 0 in its favour.
+5. **Re-run the calibration track** and report **bootstrap CIs on Δ** (A0 util) per band. *(Steps 1–5 shipped at `c601725`, leakage-free; the m_global-recovery success criterion in D-A2 is superseded by D-A7 below.)*
+
+> **⚠️ Re-scope — REQUIRED for the current redo (D-A7).** Steps 1–5 are done and verified leakage-free, but on the m_global-recovery metric no candidate beats pooling — because the harness only scores the context-blind `fit_global`. Implement the fair, context-aware test:
+>
+> 6. **`predict_next(history, next_context) -> float` on the `CalibrationCandidate` interface.** Context-blind candidates (`pooled_bayes`/`sma`/`ewma`) default to their global estimate; `covariate_bayes`/`eb_partial_pool` return `ĝlobal · ρ̂(role) · τ̂(time_of_day) · ν̂(day_of_week)` for the **upcoming session's known context** (role/day/time of session `t`), with all multipliers estimated from `history` (the learner's own past sessions) only.
+> 7. **Context-aware prequential metric.** For each upcoming session `t`, score `predict_next(active_sessions[:t], context_of(active_sessions[t]))` against `r_star[t]` (already the target in `metrics/prequential.py` / `runners/calibration.py`). Add it as a new per-row field (e.g. `context_pred_mae`) and a `paired_vs_incumbent` block; **keep** the existing `recovery_mae`/`prequential_mae` (pooling competitive there — report honestly).
+> 8. **Revised success criterion (D-A7):** `covariate_bayes` and/or `eb_partial_pool` **beats `pooled_bayes` on context-aware next-session prediction** with a bootstrap CI on Δ excluding 0 (small-band emphasis for EB). If neither beats pooling even here, record the robust null as the finding.
+>
+> **No-leakage / no-gaming guards (carried):** never import the generator's `ROLE_RHO`/`TAU_GENERIC` into `baselines/`; multipliers come only from the learner's own past sessions; the upcoming context is observable (the schedule), so using it is not leakage; `ridge` stays neutral/fixed here and is tuned only on held-out archetypes in A3.
 
 #### Tests
 
-- `test_calibration_track.py` — extend: on a synthetic small-band fixture with planted role/time structure, `covariate_bayes` recovers the per-bucket multipliers within tolerance and `eb_partial_pool`'s recovery MAE < `pooled_bayes`'s. Assert `infer_day_of_week` is deterministic for known timestamps.
+- `test_calibration_track.py` — extend: on a synthetic small-band fixture with planted role/time structure, `covariate_bayes` recovers the per-bucket multipliers within tolerance and `eb_partial_pool`'s recovery MAE < `pooled_bayes`'s. Assert `infer_day_of_week` is deterministic for known timestamps. **(D-A7)** add: `predict_next` applies the correct multipliers for a given upcoming context; on a fixture with planted context structure, `covariate_bayes`/`eb_partial_pool` context-prediction error < `pooled_bayes`'s.
 
 #### Verification (DONE)
 
@@ -523,7 +547,7 @@ _(leave blank until implemented)_
 ## Definition of done (whole plan)
 
 - **A1 (amended by D-A6):** `conformal` + `gp_hetero_t` shipped and registered (`gp_ard` retained); `gp_hetero_t` flag-gated with the default `gp_regression` path unchanged; coverage + sharpness **honestly reported** with no tuned constants; `projection_reliability.pdf` regenerated. *The ≈0.95 coverage achievement itself is deferred to A3 (across-learner conformal).* Honest A1 coverage: conformal 0.50/0.67/0.85, gp_hetero_t 0.32/0.45/0.56 vs gp_ard 0.20/0.32/0.44.
-- **A2:** a covariate/EB calibration candidate **beats `pooled_bayes` on the small band** with a bootstrap-CI on Δ excluding 0; `infer_day_of_week` shipped; the "ties pooled" puzzle resolved and documented.
+- **A2 (amended by D-A7):** `infer_day_of_week` shipped; leakage-free `covariate_bayes` + `eb_partial_pool` registered (incumbent untouched); a context-aware `predict_next(history, next_context)` path added; a covariate/EB candidate **beats `pooled_bayes` on context-aware next-session prediction** with a bootstrap-CI on Δ excluding 0 (small-band emphasis for EB), while `m_global`-recovery is reported honestly (pooling competitive). The "ties pooled" puzzle resolved + documented: the hierarchy does no work on global recovery but real work on context-aware prediction. *(If neither beats pooling even on prediction, the null is documented as the finding.)*
 - **A3:** all tracks run at ≥200 seeds with bootstrap CIs on Δ, a recorded held-out-archetype partition, and Holm/BH-corrected significance flags; **plus (D-A6) across-learner conformal projection coverage ≈0.95 by construction**, with a noisy-fixture coverage test replacing A1's degenerate one.
 - **A4:** each track has the new candidates (with `ruptures`/CP-SAT labelled upper bounds); CUSUM Pareto frontier reported; scheduling prereq-order correctness back to 1.0 on the dipping mix; sweep widened + adversarial regimes + flip map + per-archetype worst case.
 - **A5:** a reality-matched generator regime (new `dataset_id`) fitted to OULAD/EdNet/Junyi *moments* as bounds; the contest re-run and the ranking-hold reported; frozen `e716cd12dddc` regime preserved.

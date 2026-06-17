@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `c601725` (redo) | 🔁 Changes requested — 2026-06-17 (data leakage) |
+| A2 | Calibration covariates + EB pooling | PA+.2 | 🟡 Steps 1–5 done `c601725`; D-A7 steps 6–8 pending | 🟡 Integrity verified; re-scoped to context-aware prediction (D-A7) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -159,13 +159,17 @@ Reviewed read-only; coverage ground-checked against the working-tree `projection
 
 ### Acceptance criteria
 
-- [ ] **A2.1** `infer_day_of_week` added to `packages/py-progress/src/py_progress/bayesian.py` — pure helper mirroring `infer_time_of_day`, returning at least `weekend`/`weekday`; deterministic; **no change to existing call sites**.
-- [ ] **A2.2** `CovariateBayesCalibrator` added — models pace as `m_global · ρ̂(role) · τ̂(time_of_day) · ν̂(day_of_week)` with shrinkage toward 1.0, reusing the role/context grouping in `compute_hierarchical_model`.
-- [ ] **A2.3** `EBPartialPoolCalibrator` added — James–Stein-style EB shrinkage with weight `τ²/(τ²+σ²/n)` estimated from between/within-group variance.
-- [ ] **A2.4** Both registered in `calibration_candidates()`; the incumbent (`IncumbentCalibration`) left **as-is** so the "ties pooled" contrast stays honest.
-- [ ] **A2.5** Calibration track re-run; bootstrap CIs on Δ (A0 util) reported per band.
-- [ ] **A2.6 (success criterion, D-A2)** On the **small** band, `eb_partial_pool` (and/or `covariate_bayes`) has Δ-vs-incumbent with a **bootstrap CI excluding 0 in its favour**.
-- [ ] **A2.7** `test_calibration_track.py` extended and passing: `covariate_bayes` recovers planted per-bucket multipliers within tolerance; `eb_partial_pool` recovery MAE < `pooled_bayes`; `infer_day_of_week` deterministic for known timestamps.
+> **Re-scoped 2026-06-17 by D-A7.** Steps 1–5 (A2.1–A2.5, A2.7) shipped leakage-free at `c601725` and are verified. The original success criterion **A2.6** (beat pooled on *m_global recovery*) is **superseded** — the harness only scores the context-blind `fit_global`, so it can't reward context modelling; pooling is near-optimal there. The genuine test is **A2.8/A2.9** below (context-aware prediction). A2 is **not closed** until A2.8/A2.9 land.
+
+- [x] **A2.1** `infer_day_of_week` added to `packages/py-progress/src/py_progress/bayesian.py` — deterministic, mirrors `infer_time_of_day`, no existing call sites changed. ✅ verified `c601725`.
+- [x] **A2.2** `CovariateBayesCalibrator` added — ridge regression in log-space; **leakage-free** (no generator constants; neutral no-effect prior). ✅ verified `c601725`.
+- [x] **A2.3** `EBPartialPoolCalibrator` added — James–Stein shrinkage from data only. ✅ verified `c601725`.
+- [x] **A2.4** Both registered in `calibration_candidates()`; `IncumbentCalibration` untouched; `pooled_bayes` retained. ✅ verified `c601725`.
+- [x] **A2.5** Calibration track re-run; `delta_ci_low/high` present in `paired_vs_incumbent`. ✅ verified `c601725`.
+- [ ] **A2.6 — SUPERSEDED by D-A7.** (Original: beat pooled on small-band m_global recovery. Honest result: no candidate beats pooled on any band; recovery favours pooling by design. Recovery is still *reported* honestly, but it is no longer the success gate.)
+- [x] **A2.7** `test_calibration_track.py` extended: data-rich recovery test, leakage-guard test (unsupported effects stay at 1.0), `infer_day_of_week` determinism; 9 pass. ✅ verified `c601725`.
+- [ ] **A2.8 (D-A7) — context-aware prediction path.** `predict_next(history, next_context) -> float` added to the `CalibrationCandidate` interface: context-blind candidates default to their global estimate; `covariate_bayes`/`eb_partial_pool` return `ĝlobal · ρ̂(role) · τ̂(time) · ν̂(day)` for the upcoming session's known context, multipliers estimated from `history` only (no generator constants). A **context-aware prequential metric** scores `predict_next(sessions[:t], context_of(t))` against `r_star[t]`, reported alongside (not replacing) `recovery_mae`/`prequential_mae`.
+- [ ] **A2.9 (D-A7) — success criterion.** `covariate_bayes` and/or `eb_partial_pool` **beats `pooled_bayes` on the context-aware prediction metric** with a bootstrap CI on Δ excluding 0 (small-band emphasis for EB); `m_global`-recovery reported honestly (pooling competitive). Tests: `predict_next` applies correct multipliers for a given context; on a planted-context fixture, covariate/EB context-prediction error < pooled's. **If neither beats pooling even here, the robust null is documented as the finding** (acceptable close).
 
 ### Reviewer evidence commands (read-only)
 
@@ -219,6 +223,23 @@ Redo commit: `c601725`
 - Re-ran `uv run --package research-comparison python -m research_comparison.runners.calibration --quiet` and regenerated `research/results/calibration/calibration_results.json`.
 - Honest redo result: small-band `covariate_bayes` is now worse than incumbent/pooled (`delta = +0.019186`, CI `[+0.013594, +0.024713]`, `p = 6.23e-08`); `eb_partial_pool` is also worse (`delta = +0.005990`, CI `[+0.003874, +0.008064]`). Therefore A2's original success criterion is **not** genuinely met after leakage removal; the correct finding is that the added covariate/EB candidates are implemented and registered, but the frozen run remains an honest null/negative result for sparse calibration.
 - Verification passed: `uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q` -> `9 passed`; `uv run --package research-comparison pytest research/comparison/tests -q` -> `62 passed`; `uv run --package py-progress pytest packages/py-progress/tests -q` -> `72 passed`; `git diff --check` clean.
+
+### Reviewer re-review of redo (Cowork) — 2026-06-17 @ `c601725`
+
+Reviewed read-only; numbers ground-checked against the working-tree `calibration_results.json`. Chain clean (my A2 review committed first at `908f7db`).
+
+- **Leakage fix — all four required changes done correctly:**
+  - **#1 ✅** `ROLE_RHO`/`TAU_GENERIC` import removed from `baselines/` (grep-empty); the `prior` vector is deleted — ridge now shrinks every role/τ/ν coefficient toward `0.0` (neutral no-effect): `beta = solve(XᵀX + penalty, Xᵀy)`.
+  - **#2 ✅ (honest null, grounded)** No candidate beats pooled on **any** band. Δ-vs-incumbent (incumbent ties pooled at 0): `covariate_bayes` small **+0.019** / medium **+0.037** / max **+0.047** (all *worse*, CIs exclude 0 on the wrong side); `eb_partial_pool` +0.006 / +0.0075 / +0.0077. D-A2's success criterion is genuinely **not met**.
+  - **#3 ✅** Tests fixed: new `test_covariate_bayes_uses_neutral_prior_for_unsupported_context_effects` (single obs → unsupported effects stay at 1.0) is a real leakage-regression guard; the recovery test now uses data-rich planted values *distinct from* the generator constants; the EB-beats-pooled test is honestly labeled fixture-only. 9 passed.
+  - **#4 ✅** `ridge` 20.0→1.0 (neutral), with a note that strength-tuning belongs in A3's held-out protocol.
+- **Integrity: fully resolved.** This is the honest, leakage-free result — credit to the implementer for reporting the negative plainly rather than re-gaming.
+- **But the phase success criterion is unmet (a real finding, not a defect):** explicitly modelling context structure does **not** beat pooling for recovering `m_global` on this generator — and gets *worse* on richer bands. This reframes the original "hierarchy ties pooled" puzzle: the hierarchy does no work here not only because the incumbent collapses to the global mean, but because context covariates genuinely don't help this target on this data.
+- **Likely root cause worth surfacing (metric–target mismatch):** the recovery metric scores `fit_global` against `truth["m_global"]` — the *de-contextualised* global — which pooling already targets near-optimally. A covariate model's strength is predicting the *current-context* pace (`m_global·ρ·τ·ν`) / the next session, not the de-contextualised global; the runner was even made to return a de-contextualised global to be measurable here. So the null may partly be that the candidates are graded on a target that doesn't reward covariates.
+- **Planning fork (surfaced to Rohit, not decided here):** (A) accept A2 as *integrity-resolved + honest null*, log a decision, move to A3; (B) before closing, also score the covariate/EB candidates on the **prediction-oriented** metric (prequential next-session pace error, P2.4) where covariates should pay off — a fairer test; (C) keep pushing for a small-band win on the recovery metric (not recommended — incentivises exactly the gaming we just removed).
+- **Status:** `🟡 Integrity resolved; D-A2 success criterion unmet — awaiting scope decision`
+
+**Scope decision (Rohit, 2026-06-17): re-score A2 on context-aware prediction (the fair test).** Plan amended: logged **D-A7**; A2 phase re-scoped (steps 6–8 added; status 🟡); whole-plan DoD A2 line updated; VERIFICATION A2.6 superseded and **A2.8/A2.9** added above. A2 stays open until Codex lands the `predict_next` interface + context-aware metric + re-evaluation. Codex spec: `handovers/2026-06-17-a2-redo-context-prediction.md`.
 
 ---
 
@@ -329,3 +350,5 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 | 2026-06-17 | A1 redo | `0912297` | 🔁 Integrity resolved; coverage unmet | `4.20` removed → principled `sqrt(1/(1−φ²))`; honest coverage 0.50/0.67/0.85 (still < 0.95). Within-learner conformal ≠ exchangeable for finish-date; real fix = across-learner conformal (couples to A3). Coverage test now degenerate (asserts 1.0 on noise-free fixture). Scope fork surfaced to Rohit. |
 | 2026-06-17 | A1 close | `0912297` | ✅ Verified (D-A6) | Rohit chose Option A: defer coverage to A3. Plan amended (D-A6 logged; A1 DoD re-scoped; A3.7 added; whole-plan DoD A1/A3 updated). A1 closed = candidates shipped + honest coverage; coverage achievement + noisy-fixture test now A3.7. Codex cleared for A2. |
 | 2026-06-17 | A2 | `716f6f9` | 🔁 Changes requested | infer_day_of_week ✅, EB candidate ✅ (honest, but loses to pooled). Blocker: `covariate_bayes` ridge prior centered on generator truth `ROLE_RHO`/`TAU_GENERIC` (imported from params.py) → leakage; its small-band win (Δ−0.011, CI excl 0) is not genuine. Re-center prior at no-effect, re-evaluate honestly, fix tests. Same shape as A1's 4.20. |
+| 2026-06-17 | A2 redo | `c601725` | 🟡 Integrity resolved; success unmet | Leakage removed (no generator constants; neutral prior; ridge 20→1; leakage-guard test added). Honest result: covariate/EB worse than pooled on ALL bands (covariate +0.019/+0.037/+0.047). D-A2 success criterion genuinely unmet (honest null). Likely metric–target mismatch (scores m_global, not next-session). Scope fork surfaced to Rohit. |
+| 2026-06-17 | A2 re-scope | — | 🟡 Awaiting redo | Rohit's decision: re-score on context-aware prediction. Logged D-A7; A2.6 superseded; A2.8/A2.9 added; plan phase + DoD amended; Codex spec written (`handovers/2026-06-17-a2-redo-context-prediction.md`). A2 reopens for the `predict_next` + context-metric work. |
