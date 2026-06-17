@@ -215,7 +215,7 @@ Candidate rosters after this plan (★ = shipped incumbent, ✚ = added here):
 
 ### Phase A0: Lock findings + rigour scaffolding
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — e1c6455
 **Depends on:** Part 2 (Phases 3 & 7) `✅ Complete`
 **Estimated scope:** 1 new module (~150 lines) + tests; no track re-run yet
 
