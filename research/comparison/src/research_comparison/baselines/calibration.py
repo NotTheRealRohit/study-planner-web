@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 import numpy as np
+
 from py_progress import (
     BAYESIAN_PRIOR_MEAN,
     BAYESIAN_PRIOR_VARIANCE,
@@ -18,6 +19,12 @@ class CalibrationCandidate(Protocol):
     name: str
 
     def fit_global(self, sessions: list[dict]) -> float: ...
+
+    def predict_next(
+        self,
+        sessions: list[dict],
+        next_context: dict[str, Any],
+    ) -> float: ...
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None: ...
 
@@ -61,6 +68,53 @@ class CovariateEffectFit:
     day_multipliers: dict[str, float]
     residual_variance: float
     session_count: int
+
+
+def _context_timestamp(next_context: dict[str, Any]) -> str | None:
+    raw = (
+        next_context.get("startedAt")
+        or next_context.get("started_at")
+        or next_context.get("date")
+    )
+    return str(raw) if raw is not None else None
+
+
+def _context_role(next_context: dict[str, Any]) -> str:
+    return str(
+        next_context.get("materialRole")
+        or next_context.get("material_role")
+        or next_context.get("role")
+        or "foundation"
+    )
+
+
+def _context_time_of_day(next_context: dict[str, Any]) -> str:
+    explicit = next_context.get("timeOfDay") or next_context.get("time_of_day")
+    if explicit is not None:
+        return str(explicit)
+    return infer_time_of_day(_context_timestamp(next_context))
+
+
+def _context_day_of_week(next_context: dict[str, Any]) -> str:
+    explicit = next_context.get("dayOfWeek") or next_context.get("day_of_week")
+    if explicit is not None:
+        return str(explicit)
+    return infer_day_of_week(_context_timestamp(next_context))
+
+
+def _predict_from_effects(
+    fit: CovariateEffectFit,
+    next_context: dict[str, Any],
+) -> float:
+    role = _context_role(next_context)
+    time_of_day = _context_time_of_day(next_context)
+    day_of_week = _context_day_of_week(next_context)
+    return float(
+        fit.global_multiplier
+        * fit.role_multipliers.get(role, 1.0)
+        * fit.time_multipliers.get(time_of_day, 1.0)
+        * fit.day_multipliers.get(day_of_week, 1.0)
+    )
 
 
 def _active_observations(sessions: list[dict]) -> list[CalibrationObservation]:
@@ -142,6 +196,10 @@ class IncumbentCalibration:
     def fit_global(self, sessions: list[dict]) -> float:
         return float(compute_hierarchical_model(sessions, set()).globalPosterior.mean)
 
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        del next_context
+        return self.fit_global(sessions)
+
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         posterior = compute_hierarchical_model(sessions, set()).globalPosterior
         radius = 1.96 * math.sqrt(posterior.variance)
@@ -158,6 +216,10 @@ class SMACalibrator:
         if not ratios:
             return BAYESIAN_PRIOR_MEAN
         return float(sum(ratios[-self.window :]) / len(ratios[-self.window :]))
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        del next_context
+        return self.fit_global(sessions)
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         ratios = active_ratios(sessions)
@@ -178,6 +240,10 @@ class EWMACalibrator:
         for ratio in active_ratios(sessions):
             estimate = self.alpha * ratio + (1.0 - self.alpha) * estimate
         return float(estimate)
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        del next_context
+        return self.fit_global(sessions)
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         ratios = active_ratios(sessions)
@@ -200,6 +266,10 @@ class PooledBayesianCalibrator:
         precision = 1.0 / BAYESIAN_PRIOR_VARIANCE + len(ratios) / variance
         weighted = BAYESIAN_PRIOR_MEAN / BAYESIAN_PRIOR_VARIANCE + sum(ratios) / variance
         return float(weighted / precision)
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        del next_context
+        return self.fit_global(sessions)
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         ratios = active_ratios(sessions)
@@ -278,6 +348,9 @@ class CovariateBayesCalibrator:
 
     def fit_global(self, sessions: list[dict]) -> float:
         return self.fit_effects(sessions).global_multiplier
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        return _predict_from_effects(self.fit_effects(sessions), next_context)
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         fit = self.fit_effects(sessions)
@@ -367,6 +440,9 @@ class EBPartialPoolCalibrator:
 
     def fit_global(self, sessions: list[dict]) -> float:
         return self.fit_effects(sessions).global_multiplier
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        return _predict_from_effects(self.fit_effects(sessions), next_context)
 
     def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
         fit = self.fit_effects(sessions)

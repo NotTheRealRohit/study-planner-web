@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 
+from py_progress import infer_day_of_week
 from research_comparison.baselines.calibration import (
     CovariateBayesCalibrator,
     EBPartialPoolCalibrator,
@@ -11,14 +12,12 @@ from research_comparison.baselines.calibration import (
     PooledBayesianCalibrator,
     SMACalibrator,
 )
-from research_comparison.generator.generate import generate_dataset
-from research_comparison.generator.generate import generate_learner
+from research_comparison.generator.generate import generate_dataset, generate_learner
 from research_comparison.metrics.aggregate import winner_per_band
 from research_comparison.metrics.paired import paired_difference
+from research_comparison.metrics.prequential import context_prediction_absolute_errors
 from research_comparison.plots.convergence import write_convergence_artifacts
-from research_comparison.runners.calibration import prequential_calibration
-from research_comparison.runners.calibration import run_calibration_track
-from py_progress import infer_day_of_week
+from research_comparison.runners.calibration import prequential_calibration, run_calibration_track
 
 
 def _flat_sessions(ratio: float = 1.08, n: int = 18):
@@ -186,6 +185,58 @@ def test_covariate_bayes_uses_neutral_prior_for_unsupported_context_effects():
     assert abs(fit.role_multipliers["anchor"] - 1.0) < 0.001
     assert abs(fit.time_multipliers["morning"] - 1.0) < 0.001
     assert abs(fit.day_multipliers["weekend"] - 1.0) < 0.001
+
+
+def test_covariate_predict_next_applies_upcoming_context_multipliers():
+    sessions = _structured_covariate_sessions()
+    prediction = CovariateBayesCalibrator().predict_next(
+        sessions,
+        {
+            "materialRole": "anchor",
+            "startedAt": "2026-01-11T20:00:00",
+        },
+    )
+
+    expected = 1.12 * 1.14 * 1.08
+
+    assert abs(prediction - expected) < 0.07
+
+
+def test_context_prediction_rewards_planted_context_structure():
+    sessions = _structured_covariate_sessions()
+    targets = [
+        float(session["activeMinutes"]) / float(session["plannedMinutes"])
+        for session in sessions
+    ]
+    t_grid = list(range(18, len(sessions) - 1))
+
+    pooled_mae = sum(
+        context_prediction_absolute_errors(
+            sessions,
+            PooledBayesianCalibrator(),
+            targets,
+            t_grid,
+        )
+    ) / len(t_grid)
+    covariate_mae = sum(
+        context_prediction_absolute_errors(
+            sessions,
+            CovariateBayesCalibrator(),
+            targets,
+            t_grid,
+        )
+    ) / len(t_grid)
+    eb_mae = sum(
+        context_prediction_absolute_errors(
+            sessions,
+            EBPartialPoolCalibrator(),
+            targets,
+            t_grid,
+        )
+    ) / len(t_grid)
+
+    assert covariate_mae < pooled_mae
+    assert eb_mae < pooled_mae
 
 
 def test_eb_partial_pool_beats_pooled_on_structured_small_band_fixture():

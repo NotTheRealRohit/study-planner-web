@@ -15,20 +15,26 @@ def _summary(values: list[float]) -> dict[str, float | int]:
     }
 
 
-def cell_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+def cell_summary(
+    rows: list[dict[str, Any]],
+    metric: str = "recovery_mae",
+) -> dict[str, Any]:
     grouped: dict[tuple[str, str, str], list[float]] = defaultdict(list)
     for row in rows:
-        grouped[(row["band"], row["archetype"], row["candidate"])].append(row["recovery_mae"])
+        grouped[(row["band"], row["archetype"], row["candidate"])].append(row[metric])
     return {
         f"{band}:{archetype}:{candidate}": _summary(values)
         for (band, archetype, candidate), values in sorted(grouped.items())
     }
 
 
-def winner_per_band(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def winner_per_band(
+    rows: list[dict[str, Any]],
+    metric: str = "recovery_mae",
+) -> dict[str, dict[str, Any]]:
     grouped: dict[tuple[str, str], list[float]] = defaultdict(list)
     for row in rows:
-        grouped[(row["band"], row["candidate"])].append(row["recovery_mae"])
+        grouped[(row["band"], row["candidate"])].append(row[metric])
 
     by_band: dict[str, dict[str, Any]] = defaultdict(dict)
     for (band, candidate), values in grouped.items():

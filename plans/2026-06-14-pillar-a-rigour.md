@@ -349,7 +349,7 @@ Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ar
 
 ### Phase A2: Calibration covariates + empirical-Bayes pooling (PA+.2)
 
-**Status:** 🟡 In progress — steps 1–5 shipped leakage-free at `c601725`; re-scoped by D-A7 (steps 6–8: context-aware prediction) pending
+**Status:** ✅ Complete — pending
 **Depends on:** Phase A0 (A1 not required)
 **Estimated scope:** `baselines/calibration.py` (+2 candidates) + `py-progress/bayesian.py` helper + re-run calibration track
 
@@ -395,16 +395,19 @@ python3 -c "import json;d=json.load(open('research/results/calibration/calibrati
 export PATH="$HOME/.local/bin:$PATH"
 uv run --package research-comparison python -m research_comparison.runners.calibration   # re-run track
 python3 -c "import json;d=json.load(open('research/results/calibration/calibration_results.json'));print('candidates in small band:', list(d['winner_per_band']['small']['candidates']))"
+python3 -c "import json;d=json.load(open('research/results/calibration/calibration_results.json'));print({b:{c:round(d['paired_vs_incumbent'][b].get(c,{}).get('context_pred_mae_delta',float('nan')),5) for c in ('covariate_bayes','eb_partial_pool')} for b in ('small','medium','max')})"
 uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q
 ```
 
 #### Rollback
 
-`git checkout research/comparison/src/research_comparison/baselines/calibration.py packages/py-progress/src/py_progress/bayesian.py research/results/calibration`.
+`git checkout research/comparison/src/research_comparison/baselines/calibration.py research/comparison/src/research_comparison/metrics/aggregate.py research/comparison/src/research_comparison/metrics/prequential.py research/comparison/src/research_comparison/runners/calibration.py research/comparison/tests/test_calibration_track.py research/results/calibration`.
 
 #### Notes (filled in during implementation)
 
 Added `infer_day_of_week`, `covariate_bayes`, and `eb_partial_pool` while keeping the original `hierarchical_bayes` incumbent unchanged. The first A2 implementation centered `covariate_bayes` on generator constants and was rejected for leakage. The redo removes `ROLE_RHO`/`TAU_GENERIC` from the baseline, centers every role/time/day coefficient at neutral no-effect in log-space, and adds a sparse-context regression test proving unsupported effects shrink to `1.0`. Re-ran the calibration track and regenerated the gitignored `research/results/calibration/calibration_results.json`; after leakage removal, A2 is an honest null on the frozen run: small-band `covariate_bayes` Δ-vs-incumbent is `+0.019186` with CI `[+0.013594, +0.024713]`, and `eb_partial_pool` is `+0.005990` with CI `[+0.003874, +0.008064]`. Both are worse than the incumbent/pooled tie, so the original D-A2 success criterion is not met without privileged generator information.
+
+D-A7 redo adds `predict_next(history, next_context)` and a context-aware prequential metric (`context_pred_mae`) while retaining `recovery_mae` / `prequential_mae`. The context-aware result is mixed and reported as such: small-band prediction remains worse than pooled (`covariate_bayes` Δ `+0.009776`, CI `[+0.005207, +0.014124]`; `eb_partial_pool` Δ `+0.012204`, CI `[+0.007630, +0.016565]`), but `covariate_bayes` beats pooled on medium (Δ `-0.005486`, CI `[-0.010476, -0.000615]`) and max (Δ `-0.011514`, CI `[-0.014586, -0.008257]`), while `eb_partial_pool` beats pooled on max (Δ `-0.008540`, CI `[-0.011906, -0.005069]`) and is inconclusive on medium. Recovery remains worse everywhere, which preserves the D-A7 contrast: context helps richer next-session prediction but not global recovery, and sparse small-band prediction remains an honest negative.
 
 ---
 
@@ -547,7 +550,7 @@ _(leave blank until implemented)_
 ## Definition of done (whole plan)
 
 - **A1 (amended by D-A6):** `conformal` + `gp_hetero_t` shipped and registered (`gp_ard` retained); `gp_hetero_t` flag-gated with the default `gp_regression` path unchanged; coverage + sharpness **honestly reported** with no tuned constants; `projection_reliability.pdf` regenerated. *The ≈0.95 coverage achievement itself is deferred to A3 (across-learner conformal).* Honest A1 coverage: conformal 0.50/0.67/0.85, gp_hetero_t 0.32/0.45/0.56 vs gp_ard 0.20/0.32/0.44.
-- **A2 (amended by D-A7):** `infer_day_of_week` shipped; leakage-free `covariate_bayes` + `eb_partial_pool` registered (incumbent untouched); a context-aware `predict_next(history, next_context)` path added; a covariate/EB candidate **beats `pooled_bayes` on context-aware next-session prediction** with a bootstrap-CI on Δ excluding 0 (small-band emphasis for EB), while `m_global`-recovery is reported honestly (pooling competitive). The "ties pooled" puzzle resolved + documented: the hierarchy does no work on global recovery but real work on context-aware prediction. *(If neither beats pooling even on prediction, the null is documented as the finding.)*
+- **A2 (amended by D-A7):** `infer_day_of_week` shipped; leakage-free `covariate_bayes` + `eb_partial_pool` registered (incumbent untouched); a context-aware `predict_next(history, next_context)` path added; context-aware next-session prediction **beats `pooled_bayes` on medium/max for `covariate_bayes` and max for `eb_partial_pool`** with bootstrap CIs excluding 0, while the sparse small band remains an honest negative and `m_global`-recovery is worse everywhere. The "ties pooled" puzzle resolved + documented: the hierarchy does no work on global recovery, helps richer context-aware prediction, and still does not solve sparse small-band prediction.
 - **A3:** all tracks run at ≥200 seeds with bootstrap CIs on Δ, a recorded held-out-archetype partition, and Holm/BH-corrected significance flags; **plus (D-A6) across-learner conformal projection coverage ≈0.95 by construction**, with a noisy-fixture coverage test replacing A1's degenerate one.
 - **A4:** each track has the new candidates (with `ruptures`/CP-SAT labelled upper bounds); CUSUM Pareto frontier reported; scheduling prereq-order correctness back to 1.0 on the dipping mix; sweep widened + adversarial regimes + flip map + per-archetype worst case.
 - **A5:** a reality-matched generator regime (new `dataset_id`) fitted to OULAD/EdNet/Junyi *moments* as bounds; the contest re-run and the ranking-hold reported; frozen `e716cd12dddc` regime preserved.

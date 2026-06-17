@@ -13,7 +13,10 @@ from research_comparison.baselines.calibration import (
 from research_comparison.metrics.aggregate import cell_summary, winner_per_band
 from research_comparison.metrics.coverage import credible_interval_coverage
 from research_comparison.metrics.paired import paired_difference
-from research_comparison.metrics.prequential import prequential_absolute_errors
+from research_comparison.metrics.prequential import (
+    context_prediction_absolute_errors,
+    prequential_absolute_errors,
+)
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
 from research_comparison.metrics.rigour import bootstrap_delta_ci
 from research_comparison.oracles.calibration import calibration_oracle_estimate
@@ -83,46 +86,85 @@ def _mean(values: list[float]) -> float:
     return float(sum(values) / len(values)) if values else math.nan
 
 
-def _paired_by_candidate(rows: list[dict[str, Any]]) -> dict[str, dict[str, dict[str, float]]]:
-    by_band_seed_candidate: dict[tuple[str, int, str], list[float]] = {}
+def _context_of(session: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "materialRole": session.get("materialRole") or "foundation",
+        "startedAt": session.get("startedAt") or session.get("date"),
+    }
+
+
+def _paired_metric_result(
+    challenger: list[float],
+    baseline: list[float],
+) -> dict[str, float]:
+    result = paired_difference(challenger, baseline)
+    deltas = [
+        challenger_value - baseline_value
+        for challenger_value, baseline_value in zip(challenger, baseline, strict=True)
+    ]
+    ci_low, ci_high, _point = bootstrap_delta_ci(
+        deltas,
+        n_boot=10000,
+        seed=0,
+    )
+    result["delta_ci_low"] = ci_low
+    result["delta_ci_high"] = ci_high
+    return result
+
+
+def _prefixed_metric_result(
+    metric: str,
+    result: dict[str, float],
+) -> dict[str, float]:
+    return {f"{metric}_{key}": value for key, value in result.items()}
+
+
+def _paired_by_candidate(
+    rows: list[dict[str, Any]],
+    baseline_candidate: str = "hierarchical_bayes",
+) -> dict[str, dict[str, dict[str, float]]]:
+    metrics = ["recovery_mae", "context_pred_mae"]
+    by_band_seed_candidate_metric: dict[tuple[str, int, str, str], list[float]] = {}
     for row in rows:
-        key = (row["band"], int(row["seed"]), row["candidate"])
-        by_band_seed_candidate.setdefault(key, []).append(float(row["recovery_mae"]))
+        for metric in metrics:
+            if metric not in row:
+                continue
+            key = (row["band"], int(row["seed"]), row["candidate"], metric)
+            by_band_seed_candidate_metric.setdefault(key, []).append(float(row[metric]))
 
     bands = sorted({row["band"] for row in rows})
     candidates = sorted(
-        {row["candidate"] for row in rows if row["candidate"] != "hierarchical_bayes"}
+        {row["candidate"] for row in rows if row["candidate"] != baseline_candidate}
     )
     paired: dict[str, dict[str, dict[str, float]]] = {}
     for band in bands:
         paired[band] = {}
         seeds = sorted({int(row["seed"]) for row in rows if row["band"] == band})
-        incumbent = [
-            _mean(by_band_seed_candidate[(band, seed, "hierarchical_bayes")])
-            for seed in seeds
-            if (band, seed, "hierarchical_bayes") in by_band_seed_candidate
-        ]
         for candidate in candidates:
-            challenger = [
-                _mean(by_band_seed_candidate[(band, seed, candidate)])
-                for seed in seeds
-                if (band, seed, candidate) in by_band_seed_candidate
-            ]
-            if len(challenger) == len(incumbent):
-                result = paired_difference(challenger, incumbent)
-                deltas = [
-                    candidate_value - incumbent_value
-                    for candidate_value, incumbent_value in zip(
-                        challenger, incumbent, strict=True
+            result: dict[str, float] = {}
+            for metric in metrics:
+                baseline = [
+                    _mean(
+                        by_band_seed_candidate_metric[
+                            (band, seed, baseline_candidate, metric)
+                        ]
                     )
+                    for seed in seeds
+                    if (band, seed, baseline_candidate, metric)
+                    in by_band_seed_candidate_metric
                 ]
-                ci_low, ci_high, _point = bootstrap_delta_ci(
-                    deltas,
-                    n_boot=10000,
-                    seed=0,
-                )
-                result["delta_ci_low"] = ci_low
-                result["delta_ci_high"] = ci_high
+                challenger = [
+                    _mean(by_band_seed_candidate_metric[(band, seed, candidate, metric)])
+                    for seed in seeds
+                    if (band, seed, candidate, metric) in by_band_seed_candidate_metric
+                ]
+                if len(challenger) != len(baseline):
+                    continue
+                metric_result = _paired_metric_result(challenger, baseline)
+                if metric == "recovery_mae":
+                    result.update(metric_result)
+                result.update(_prefixed_metric_result(metric, metric_result))
+            if result:
                 paired[band][candidate] = result
     return paired
 
@@ -150,7 +192,11 @@ def run_calibration_track(
     candidates = calibration_candidates()
     total_learners = len(learners)
     if progress:
-        progress.log(10, "calibration.loaded", f"learners={total_learners} candidates={len(candidates) + 1}")
+        progress.log(
+            10,
+            "calibration.loaded",
+            f"learners={total_learners} candidates={len(candidates) + 1}",
+        )
     for learner_index, learner in enumerate(learners, start=1):
         truth = sidecars[learner["learner_id"]]
         active_sessions, active_targets = _active_sessions_with_targets(
@@ -170,6 +216,7 @@ def run_calibration_track(
                 "recovery_mae": recovery_mae([oracle_estimate], truth["m_global"]),
                 "recovery_rmse": recovery_rmse([oracle_estimate], truth["m_global"]),
                 "prequential_mae": 0.0,
+                "context_pred_mae": 0.0,
                 "coverage": 1.0,
                 "n_active": len(active_sessions),
             }
@@ -189,8 +236,16 @@ def run_calibration_track(
             estimates = prequential_calibration(active_sessions, candidate, t_grid)
             estimate_values = [estimate for _t, estimate in estimates]
             intervals = [candidate.fit_interval(active_sessions[:t]) for t in t_grid]
+            next_contexts = [_context_of(session) for session in active_sessions]
             prequential_errors = prequential_absolute_errors(
                 active_sessions, candidate, active_targets, t_grid
+            )
+            context_prediction_errors = context_prediction_absolute_errors(
+                active_sessions,
+                candidate,
+                active_targets,
+                t_grid,
+                next_contexts=next_contexts,
             )
             row = {
                 "learner_id": learner["learner_id"],
@@ -201,6 +256,7 @@ def run_calibration_track(
                 "recovery_mae": recovery_mae([estimate_values[-1]], truth["m_global"]),
                 "recovery_rmse": recovery_rmse([estimate_values[-1]], truth["m_global"]),
                 "prequential_mae": _mean(prequential_errors),
+                "context_pred_mae": _mean(context_prediction_errors),
                 "coverage": credible_interval_coverage(intervals, truth["m_global"]),
                 "n_active": len(active_sessions),
             }
@@ -233,7 +289,13 @@ def run_calibration_track(
         "convergence": convergence,
         "cell_summary": cell_summary(rows),
         "winner_per_band": winner_per_band(rows),
+        "context_pred_cell_summary": cell_summary(rows, metric="context_pred_mae"),
+        "context_pred_winner_per_band": winner_per_band(rows, metric="context_pred_mae"),
         "paired_vs_incumbent": _paired_by_candidate(rows),
+        "paired_vs_pooled_bayes": _paired_by_candidate(
+            rows,
+            baseline_candidate="pooled_bayes",
+        ),
     }
     if progress:
         progress.log(95, "calibration.write", f"rows={len(rows)} convergence={len(convergence)}")
@@ -257,7 +319,13 @@ def main() -> None:
         logger.log(100, "calibration.stub_complete", str(path))
         print(path)
         return
-    print(run_calibration_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir, progress=logger))
+    print(
+        run_calibration_track(
+            dataset_dir=args.dataset_dir,
+            out_dir=args.out_dir,
+            progress=logger,
+        )
+    )
 
 
 if __name__ == "__main__":
