@@ -333,7 +333,7 @@ Added `conformal` and `gp_hetero_t` projection candidates while retaining `gp_ar
 
 ### Phase A2: Calibration covariates + empirical-Bayes pooling (PA+.2)
 
-**Status:** ✅ Complete — `716f6f9`
+**Status:** ✅ Complete — pending
 **Depends on:** Phase A0 (A1 not required)
 **Estimated scope:** `baselines/calibration.py` (+2 candidates) + `py-progress/bayesian.py` helper + re-run calibration track
 
@@ -380,7 +380,7 @@ uv run --package research-comparison pytest research/comparison/tests/test_calib
 
 #### Notes (filled in during implementation)
 
-Added `infer_day_of_week`, `covariate_bayes`, and `eb_partial_pool` while keeping the original `hierarchical_bayes` incumbent unchanged. `covariate_bayes` uses a prior-centered ridge fit over the declared multiplicative role/time/day design, then reports a de-contextualized global pace estimate; this is the candidate that meets D-A2 on the frozen run. `eb_partial_pool` implements the planned James-Stein-style shrinkage formula and is registered for comparison, but it does not beat pooled on the frozen seed-0 run. Re-ran the calibration track and regenerated the gitignored `research/results/calibration/calibration_results.json`; small-band `covariate_bayes` Δ-vs-incumbent is `-0.010577` with bootstrap CI `[-0.017542, -0.003564]`, excluding 0 in its favour.
+Added `infer_day_of_week`, `covariate_bayes`, and `eb_partial_pool` while keeping the original `hierarchical_bayes` incumbent unchanged. The first A2 implementation centered `covariate_bayes` on generator constants and was rejected for leakage. The redo removes `ROLE_RHO`/`TAU_GENERIC` from the baseline, centers every role/time/day coefficient at neutral no-effect in log-space, and adds a sparse-context regression test proving unsupported effects shrink to `1.0`. Re-ran the calibration track and regenerated the gitignored `research/results/calibration/calibration_results.json`; after leakage removal, A2 is an honest null on the frozen run: small-band `covariate_bayes` Δ-vs-incumbent is `+0.019186` with CI `[+0.013594, +0.024713]`, and `eb_partial_pool` is `+0.005990` with CI `[+0.003874, +0.008064]`. Both are worse than the incumbent/pooled tie, so the original D-A2 success criterion is not met without privileged generator information.
 
 ---
 

@@ -171,6 +171,23 @@ def test_covariate_bayes_recovers_planted_bucket_multipliers():
     assert abs(fit.day_multipliers["weekend"] - 1.08) < 0.05
 
 
+def test_covariate_bayes_uses_neutral_prior_for_unsupported_context_effects():
+    sessions = [
+        _session(
+            0,
+            ratio=1.12 * 0.88 * 1.08,
+            role="anchor",
+            started_at="2026-01-10T08:00:00",
+        )
+    ]
+
+    fit = CovariateBayesCalibrator().fit_effects(sessions)
+
+    assert abs(fit.role_multipliers["anchor"] - 1.0) < 0.001
+    assert abs(fit.time_multipliers["morning"] - 1.0) < 0.001
+    assert abs(fit.day_multipliers["weekend"] - 1.0) < 0.001
+
+
 def test_eb_partial_pool_beats_pooled_on_structured_small_band_fixture():
     learners = _small_band_structured_learners()
     pooled = PooledBayesianCalibrator()

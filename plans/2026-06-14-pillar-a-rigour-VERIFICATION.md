@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `716f6f9` | 🔁 Changes requested — 2026-06-17 (data leakage) |
+| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — pending (redo) | 🔁 Changes requested — 2026-06-17 (data leakage) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -211,7 +211,14 @@ Reviewed 2026-06-17 against `716f6f9` (read-only `git show`); small-band numbers
 
 ### Resolution (implementer fills on redo)
 
-`…`
+Redo commit: `pending`
+
+- Removed the leakage from `CovariateBayesCalibrator`: `research_comparison.baselines.calibration` no longer imports `ROLE_RHO` or `TAU_GENERIC`, and the ridge penalty now shrinks every role/time/day coefficient toward neutral `0.0` in log-space (`1.0` multiplier).
+- Changed `covariate_bayes` ridge strength from the scoring-cell-winning `20.0` to a neutral fixed `1.0`; any future tuning belongs in A3's held-out-archetype protocol.
+- Added `test_covariate_bayes_uses_neutral_prior_for_unsupported_context_effects`, proving a single sparse anchor/morning/weekend observation leaves unsupported context effects at `1.0` instead of pinning them to generator truth. Kept the planted recovery test as a data-rich mechanism test and the EB mechanism test as fixture-only evidence.
+- Re-ran `uv run --package research-comparison python -m research_comparison.runners.calibration --quiet` and regenerated `research/results/calibration/calibration_results.json`.
+- Honest redo result: small-band `covariate_bayes` is now worse than incumbent/pooled (`delta = +0.019186`, CI `[+0.013594, +0.024713]`, `p = 6.23e-08`); `eb_partial_pool` is also worse (`delta = +0.005990`, CI `[+0.003874, +0.008064]`). Therefore A2's original success criterion is **not** genuinely met after leakage removal; the correct finding is that the added covariate/EB candidates are implemented and registered, but the frozen run remains an honest null/negative result for sparse calibration.
+- Verification passed: `uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q` -> `9 passed`; `uv run --package research-comparison pytest research/comparison/tests -q` -> `62 passed`; `uv run --package py-progress pytest packages/py-progress/tests -q` -> `72 passed`; `git diff --check` clean.
 
 ---
 

@@ -12,7 +12,6 @@ from py_progress import (
     infer_day_of_week,
     infer_time_of_day,
 )
-from research_comparison.params import ROLE_RHO, TAU_GENERIC
 
 
 class CalibrationCandidate(Protocol):
@@ -215,7 +214,7 @@ class PooledBayesianCalibrator:
 
 @dataclass(frozen=True)
 class CovariateBayesCalibrator:
-    ridge: float = 20.0
+    ridge: float = 1.0
     name: str = "covariate_bayes"
 
     def fit_effects(self, sessions: list[dict]) -> CovariateEffectFit:
@@ -250,18 +249,7 @@ class CovariateBayesCalibrator:
         penalty = np.diag(
             [0.0, self.ridge, self.ridge, self.ridge, self.ridge, self.ridge]
         )
-        prior = np.asarray(
-            [
-                0.0,
-                _safe_log(float(ROLE_RHO["anchor"])),
-                _safe_log(float(ROLE_RHO["practice"])),
-                _safe_log(float(TAU_GENERIC["morning"])),
-                _safe_log(float(TAU_GENERIC["evening"])),
-                0.0,
-            ],
-            dtype=float,
-        )
-        beta = np.linalg.solve(x.T @ x + penalty, x.T @ y + penalty @ prior)
+        beta = np.linalg.solve(x.T @ x + penalty, x.T @ y)
         residuals = y - x @ beta
         residual_variance = (
             float(np.var(residuals, ddof=1))
