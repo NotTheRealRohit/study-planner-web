@@ -21,7 +21,7 @@
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
-| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — 833fdd2 | — |
+| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — 833fdd2 | 🔁 Changes requested — 2026-06-17 |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
@@ -109,7 +109,21 @@ ls -l --time-style=+%s college/mydeliverables/1st-Review/report/generated/projec
 
 ### Reviewer findings (Cowork fills)
 
-- Per-criterion verdict: `…` · Issues / required changes: `…` · **Status:** `…`
+Reviewed 2026-06-17 against `833fdd2` (read-only `git show`). Commit discipline clean: my A0 review was committed first (`6ca375e`), then A1 (`833fdd2`), then the SHA recorded (`576e7d4`).
+
+- **Per-criterion verdict:**
+  - **A1.1 🟡 Present but compromised** — `forecast_conformal_finish` exists and returns the correct dict shape, and the residual harness (`_rolling_finish_residuals`) + the finite-sample quantile helper (`conformal_abs_residual_quantile`, rank `ceil((n+1)(1-α))`) are sound. **But** the function ends with a hardcoded `half_width_days *= 4.20` (projection.py), commented as a "frozen-run … finite-sample guard … to hit the planned … coverage target." That is not split-conformal: the interval is no longer the residual quantile (coverage *by construction*, which is the entire promise of D-A1a) — it's the quantile times a round constant hand-tuned on the seed-0 scoring cells.
+  - **A1.2 ✅** — `forecast_gp_hetero_t_finish` added; `gp_regression(..., likelihood="student_t", ar1=True)` is flag-gated with **principled** inflation factors (Student-t `df/(df−2)`, AR(1) `1/(1−φ²)` with φ estimated from residual autocorrelation). Default path provably unchanged — there's even a test (`test_default_gp_path_matches_explicit_gaussian_no_ar1`) asserting byte-identical output. Exemplary.
+  - **A1.3 ✅** — `conformal` + `gp_hetero_t` registered in `projection_candidates()`; `gp_ard` retained (asserted by test).
+  - **A1.4 ❌ (blocker)** — conformal coverage lands in-band (max 0.910 / medium 0.970) **only because of the `4.20` constant**. The number is tuned on exactly the cells used to report it — the plan's cardinal sin (operating-manual "do not tune … on the same cells used to declare winners") and the D-A4 circularity guard. It will not survive A3 (200 seeds) or A5 (new `dataset_id`), and sharpness is inflated accordingly (max ≈101 d). `4.20` is not derived from φ (AR(1) factor `1/(1−0.3²)≈1.10`), confirming it's an empirical fudge, not a model term.
+  - **A1.5 ✅ (will need re-gen)** — `projection_reliability.pdf` regenerated (13450→14084 B). It currently visualizes the gamed conformal curve, so it must be regenerated after the fix.
+  - **A1.6 🟡** — `test_projection_track.py` passes (7) and the `conformal_abs_residual_quantile` hand-check is correct. **But** `test_a1_projection_results_show_conformal_coverage_on_medium_and_max_bands` (a) hard-asserts the tuned `[0.90, 0.97]` band — enshrining the `4.20` outcome — and (b) reads the **gitignored** `research/results/projection/projection_results.json`, so it will fail on a clean clone / CI where results aren't present. A unit test must not depend on a gitignored runtime artifact.
+- **Issues / required changes (for redo):**
+  1. **Remove `half_width_days *= 4.20`.** Build the interval purely from the conformal residual quantile (the `(n+1)/n` rank is already correct), with at most a *principled* adjustment — e.g. an AR(1)-aware variance inflation `1/(1−φ̂²)` using the estimated φ (as `gp.py` already does), never a hand-picked constant.
+  2. **An honest under-covering conformal is acceptable.** If, without the fudge, medium/max still fall short, report it (keep `gp_ard` as the under-covered incumbent, report coverage **and** sharpness). For short small-band sequences use jackknife+/LOO conformal (OQ-A1), not a global multiplier. The number must be *earned*.
+  3. **Rework the coverage test** to compute coverage from an in-test synthetic fixture (per A1.6's wording: "≥ 0.90 on the synthetic projection rows within MC error") rather than reading back the gitignored JSON and asserting the tuned band. Keep the `conformal_abs_residual_quantile` hand-check — that one is good.
+- **What's genuinely good (keep):** the GP-t/AR(1) work and its default-unchanged proof; the conformal quantile helper + its hand-test; the rolling-residual harness design; candidate registration; commit discipline.
+- **Status:** `🔁 Changes requested`
 
 ### Resolution (implementer fills on redo)
 
@@ -250,3 +264,4 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 | Date | Phase | SHA reviewed | Verdict | Note |
 |---|---|---|---|---|
 | 2026-06-17 | A0 | `e1c6455` | ✅ Verified | All 4 criteria pass; file:line evidence checked accurate; tests re-run independently (system Python, uv blocked in sandbox). 2 minor non-blocking notes. |
+| 2026-06-17 | A1 | `833fdd2` | 🔁 Changes requested | gp_hetero_t/gp.py principled + default-unchanged (good); conformal hits coverage via a hardcoded `*= 4.20` tuned on seed-0 scoring cells — defeats conformal-by-construction + circularity guard. Remove the constant; fix the gitignored-artifact coverage test. |
