@@ -20,7 +20,7 @@
 
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
-| A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | — |
+| A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ☐ Not started | — |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
@@ -61,13 +61,19 @@ git diff <baseline-sha> <sha> -- research/results | head   # expect empty (no re
 
 ### Reviewer findings (Cowork fills)
 
-- Per-criterion verdict: `…`
-- Issues / required changes: `…`
-- **Status:** `…`
+Reviewed 2026-06-17 against `e1c6455` (read-only `git show`/`diff`), corroborated by re-running the A0 logic independently (system Python + numpy, since `uv` is blocked in the review sandbox).
+
+- **Per-criterion verdict:**
+  - **A0.1 ✅** — `metrics/rigour.py` exposes all four functions with signatures matching the plan; `bootstrap_delta_ci` is a correct percentile bootstrap on the paired-Δ mean, `holm_bonferroni` is a correct step-down, `benjamini_hochberg` a correct step-up FDR, `heldout_archetype_split` deterministic and disjoint by construction. (Impl adds keyword-only `alpha`/`q`/`train=None` as backward-compatible supersets — all plan call-forms still work.)
+  - **A0.2 ✅** — the module docstring records the resolved open-code-question findings, and I verified **every file:line citation against the actual code** (gp.py:129-138/191-197, noise.py:10-33 + params.py:8 `AR1_PHI=0.30`, calibration.py:41-51/54-83, bayesian.py:39-51/102-178, pace.py:8-18). All accurate — no fabrication. Closes PA+.8.
+  - **A0.3 ✅** — `test_rigour.py` has the three required tests, all non-vacuous. I hand-checked the Holm `[T,F,F,F]` / BH `[T,T,T,F]` expected values and re-ran all three test bodies (plus extra empty/all-null/determinism probes) against the committed module — all pass.
+  - **A0.4 ✅** — `git diff 26c31b2..e1c6455 -- research/results` is empty; the commit touches only the two code files + the two plan docs. No track re-run, no result drift.
+- **Issues / required changes:** None blocking. Minor, optional (defer or fold into A3, not a redo): (1) `test_rigour.py` doesn't cover the edge cases (`empty deltas → nan`, `alpha/q` out-of-range raises, bootstrap seed-determinism) — these behave correctly when probed, just untested; (2) `e1c6455` committed the plan's A0 `Status:` as `✅ Complete — pending`, reconciled to the real SHA in follow-up `d248d9f` — fine, just note the two-step pattern.
+- **Status:** `✅ Verified`
 
 ### Resolution (implementer fills on redo)
 
-`…`
+_Not required — A0 verified. Proceed to A1._
 
 ---
 
@@ -243,4 +249,4 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 
 | Date | Phase | SHA reviewed | Verdict | Note |
 |---|---|---|---|---|
-| _add per review_ | | | | |
+| 2026-06-17 | A0 | `e1c6455` | ✅ Verified | All 4 criteria pass; file:line evidence checked accurate; tests re-run independently (system Python, uv blocked in sandbox). 2 minor non-blocking notes. |
