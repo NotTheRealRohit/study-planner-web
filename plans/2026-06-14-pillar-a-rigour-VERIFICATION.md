@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — pending | — |
+| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `716f6f9` | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -180,7 +180,7 @@ git diff <baseline-sha> <sha> -- packages/py-progress/src/py_progress/bayesian.p
 
 ### Implementer report (Codex fills)
 
-- Commit SHA: `pending`
+- Commit SHA: `716f6f9`
 - Files changed: `packages/py-progress/src/py_progress/__init__.py`; `packages/py-progress/src/py_progress/bayesian.py`; `packages/py-progress/src/py_progress/types.py`; `research/comparison/src/research_comparison/baselines/calibration.py`; `research/comparison/src/research_comparison/runners/calibration.py`; `research/comparison/tests/test_calibration_track.py`; `plans/2026-06-14-pillar-a-rigour.md`; `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`. Runtime artifact refreshed but gitignored: `research/results/calibration/calibration_results.json`.
 - Small-band Δ + CI: `covariate_bayes` vs incumbent has `delta = -0.010577`, `delta_ci_low = -0.017542`, `delta_ci_high = -0.003564`, `p_value = 0.005652`; the CI excludes 0 in `covariate_bayes`'s favour. `eb_partial_pool` is registered but does not beat pooled on the frozen run (`delta = +0.005990`, CI `[+0.003874, +0.008064]`), so D-A2 success is via `covariate_bayes`.
 - What I did: Added deterministic `infer_day_of_week` to `py-progress` and exported it. Added `CovariateBayesCalibrator` and `EBPartialPoolCalibrator`, registered both alongside the unchanged incumbent and existing baselines, and added bootstrap `delta_ci_low/high` fields to calibration `paired_vs_incumbent`. Extended calibration tests for day-of-week determinism, planted covariate-effect recovery, and an EB small-band fixture where partial pooling beats pooled.
