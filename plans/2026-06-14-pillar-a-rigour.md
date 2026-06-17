@@ -269,7 +269,7 @@ Added the pure A0 rigour utility module and focused tests only; no track runners
 
 ### Phase A1: Projection coverage fix — the one red result → green (PA+.1)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — `0912297`
 **Depends on:** Phase A0
 **Estimated scope:** `baselines/projection.py` (+2 candidates) + optional `py-progress/gp.py` flag + re-run projection track + reliability figure
 
