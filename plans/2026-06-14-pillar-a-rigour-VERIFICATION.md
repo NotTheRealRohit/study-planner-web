@@ -21,7 +21,7 @@
 | Phase | Title | Tracker | Implementer status | Reviewer status |
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
-| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` | 🔁 Changes requested — 2026-06-17 |
+| A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ☐ Not started | — |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
@@ -136,6 +136,23 @@ Redo commit: `0912297`
 - Honest conformal coverage after removing the tuned multiplier: `max 0.501`, `medium 0.669`, `small 0.849`; `gp_ard` remains `max 0.200`, `medium 0.322`, `small 0.440`; `gp_hetero_t` is `max 0.318`, `medium 0.445`, `small 0.559`. Conformal sharpness is now `29.4/19.3/7.7` days (max/medium/small), down from the invalid tuned `101.0/65.0/25.4`.
 - Verification passed: `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q` -> `7 passed`; `uv run --package py-progress pytest packages/py-progress/tests -q` -> `72 passed`; `test -s college/mydeliverables/1st-Review/report/generated/projection_reliability.pdf`.
 
+### Reviewer re-review of redo (Cowork) — 2026-06-17 @ `0912297`
+
+Reviewed read-only; coverage ground-checked against the working-tree `projection_results.json`, not the report. Chain clean (my A1 review committed first at `0ca119e`).
+
+- **Integrity fixes — all three required changes done correctly:**
+  - **#1 ✅** `half_width_days *= 4.20` is gone (grep-confirmed). Replaced by `sqrt(1/(1−φ̂²))` with φ̂ from `_estimate_lag1_autocorrelation` (capped ±0.9) — a real, data-driven AR(1) variance-inflation factor, no magic constant.
+  - **#2 ✅** Coverage now honestly reported: conformal **0.501 / 0.669 / 0.849** (max/medium/small), sharpness tightened to ~29/19/8 d (was the inflated 101/65/25). gp_ard 0.20/0.32/0.44; gp_hetero_t 0.318/0.445/0.559. Grounded in the result JSON.
+  - **#3 🟡** The coverage test no longer reads the gitignored JSON (good) — but its replacement asserts `coverage == {"medium": 1.0, "max": 1.0}` on a **noise-free, already-finished fixture** (`[50.0]×n`, `r_star=1.0`, finish = last session). That's degenerate: any method covers a zero-residual series, so it doesn't actually exercise the conformal guarantee or the under-coverage regime. The `conformal_abs_residual_quantile` hand-check remains correct.
+- **But the phase objective is NOT met (honest result, not a code defect):** A1.4 ("conformal ≈ 0.90–0.97 on medium+max") and the whole-plan DoD ("A1: coverage ≈ nominal 0.95") are false. Neither candidate reaches calibrated 0.95 — the slide-4 "red" is improved (0.20→0.50 on `max`) but still red.
+- **Root cause (design discovery):** split-conformal calibrated on **within-learner rolling residuals** does not guarantee marginal coverage of the **finish-date** interval — near-term interpolation residuals are not exchangeable with the far-horizon extrapolation residual. The exchangeability unit is wrong. The construction that *does* give ≈0.95 by construction is **across-learner** conformal: hold out a set of learners at a band, take one finish-date residual each, use that quantile for a new learner. That naturally uses A3's held-out-archetype / multi-seed population — i.e. the genuine coverage fix couples A1 to A3.
+- **This is a planning fork (surfaced to Rohit, not decided here):** (A) accept A1 as *integrity-resolved, coverage honestly deferred to A3* + amend A1's DoD (log `D-A6`); (B) have Codex implement across-learner conformal now (pull an A3 slice forward); (C) other. Whichever way, fix the degenerate coverage test (#3) to assert ≈0.95 within MC error on a *noisy* fixture.
+
+**Scope decision (Rohit, 2026-06-17): Option A — defer coverage to A3.** Plan amended: logged **D-A6**; A1's DoD re-scoped to "candidates shipped + honest coverage reported"; the across-learner conformal coverage fix + the noisy-fixture coverage test are added to **A3 step 5**; whole-plan DoD A1/A3 lines updated.
+
+- **Status:** `✅ Verified — A1 scope met under D-A6 (coverage achievement carried to A3)`
+  - A1.1 ✅ · A1.2 ✅ · A1.3 ✅ · A1.5 ✅ (honest figure) · A1.4 → **deferred to A3 (D-A6)** · A1.6 🟡 quantile hand-check ✅, coverage test carried to A3 (noisy fixture).
+
 ---
 
 ## Phase A2 — Calibration covariates + empirical-Bayes pooling (PA+.2)
@@ -179,6 +196,7 @@ git diff <baseline-sha> <sha> -- packages/py-progress/src/py_progress/bayesian.p
 - [ ] **A3.4** Holm (primary) + BH (reported) correction applied across all band×archetype×shift cells; which "wins" survive correction is marked.
 - [ ] **A3.5** All four tracks re-run at ≥200 seeds; winner tables/figures regenerated with CIs and corrected significance flags.
 - [ ] **A3.6** Each track test asserts the result JSON now carries `delta_ci_low/high` + a `mc_correction` block + a disjoint held-out partition in provenance.
+- [ ] **A3.7 (carried from A1 per D-A6)** Across-learner split-conformal projection coverage: calibrate `conformal` finish-date intervals on the **across-learner** held-out residual population (per length-band), giving marginal coverage ≈0.95 *by construction*; lift the honest A1 numbers (conformal 0.50/0.67 on max/medium) toward nominal 0.95 with no tuned constants; `gp_ard` retained as the under-covered incumbent. **Replace** A1's degenerate coverage test (asserts `1.0` on a noise-free fixture) with a **noisy-fixture** test asserting coverage ≈0.95 within MC error on `medium`+`max`, reporting coverage **and** sharpness; regenerate `projection_reliability.pdf`.
 
 ### Reviewer evidence commands (read-only)
 
@@ -272,3 +290,5 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 |---|---|---|---|---|
 | 2026-06-17 | A0 | `e1c6455` | ✅ Verified | All 4 criteria pass; file:line evidence checked accurate; tests re-run independently (system Python, uv blocked in sandbox). 2 minor non-blocking notes. |
 | 2026-06-17 | A1 | `833fdd2` | 🔁 Changes requested | gp_hetero_t/gp.py principled + default-unchanged (good); conformal hits coverage via a hardcoded `*= 4.20` tuned on seed-0 scoring cells — defeats conformal-by-construction + circularity guard. Remove the constant; fix the gitignored-artifact coverage test. |
+| 2026-06-17 | A1 redo | `0912297` | 🔁 Integrity resolved; coverage unmet | `4.20` removed → principled `sqrt(1/(1−φ²))`; honest coverage 0.50/0.67/0.85 (still < 0.95). Within-learner conformal ≠ exchangeable for finish-date; real fix = across-learner conformal (couples to A3). Coverage test now degenerate (asserts 1.0 on noise-free fixture). Scope fork surfaced to Rohit. |
+| 2026-06-17 | A1 close | `0912297` | ✅ Verified (D-A6) | Rohit chose Option A: defer coverage to A3. Plan amended (D-A6 logged; A1 DoD re-scoped; A3.7 added; whole-plan DoD A1/A3 updated). A1 closed = candidates shipped + honest coverage; coverage achievement + noisy-fixture test now A3.7. Codex cleared for A2. |

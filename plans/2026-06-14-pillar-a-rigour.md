@@ -157,6 +157,18 @@ Plan-local decisions, prefixed `D-A` to avoid clashing with the master decision 
 
 **Reversibility:** moderate (a new generator regime changes `dataset_id`; keep the frozen `e716cd12dddc` regime alongside for comparability).
 
+### D-A6: A1 ships the candidates + honest coverage; the ≈0.95 coverage *achievement* moves to A3 (across-learner conformal)
+
+**Status:** ✅ Agreed 2026-06-17 (amendment; supersedes the A1 coverage target in the original DoD)
+
+**Context:** A1 shipped `conformal` + `gp_hetero_t` and removed an earlier tuned multiplier. With the fudge gone, the **honest** coverage of split-conformal calibrated on *within-learner rolling residuals* is `0.50 / 0.67 / 0.85` (max/medium/small) — still below nominal 0.95 (`gp_hetero_t` `0.32/0.45/0.56`). Reviewed at `0912297` (VERIFICATION re-review). Root cause: within-learner rolling residuals are **not exchangeable** with the far-horizon finish-date extrapolation residual, so the split-conformal coverage guarantee does not apply to the finish-date interval.
+
+**Decision:** A1's definition of done is the two candidates (registered, `gp_ard` retained), the flag-gated `gp_hetero_t` (default `gp_regression` unchanged), and **honestly-reported** coverage + sharpness + the reliability figure. The **≈0.95 coverage achievement is deferred to A3**, implemented as **across-learner split-conformal**: hold out a set of learners per length-band (reuse A3's held-out-archetype / multi-seed population), take one finish-date residual per held-out learner, and use that quantile for a new learner — which gives marginal coverage ≈0.95 *by construction* on exchangeable units. The degenerate A1 coverage test (asserts `1.0` on a noise-free fixture) is replaced by A3's noisy-fixture coverage test (≈0.95 within MC error).
+
+**Rationale:** The genuine coverage fix needs the across-learner calibration population that A3 builds; forcing it into standalone A1 would either re-introduce tuning or duplicate A3's infrastructure. Deferring keeps both phases honest and unblocks A2.
+
+**Reversibility:** easy (additive in A3; A1's shipped candidates are untouched).
+
 ## Architecture overview
 
 All work stays in the clean `uv` env and reuses the Part 2 spine (`runners/`, `metrics/`, `baselines/`, `oracles/`, `plots/`, `writers/`, `paired.py`, `aggregate.py`). New code slots beside the existing track modules; `py-progress` gains two pure helpers.
@@ -399,7 +411,8 @@ uv run --package research-comparison python -c "from research_comparison.metrics
 2. **Bootstrap CIs on Δ.** In each track's `paired_vs_incumbent` (or equivalent), add `delta_ci_low/high` from `bootstrap_delta_ci` alongside the existing `delta`/`p_value`/`effect_size`.
 3. **Held-out archetypes.** Use `heldout_archetype_split` (A0): any tunable candidate (A1 conformal `m`, GP-t hyperparams; A2 shrinkage; A4 detection k/h) is fitted on the train archetypes only and scored on the held-out set. Record the partition in `_provenance`.
 4. **Multiple-comparison correction.** Apply Holm (primary) + BH (reported) across all band×archetype×shift comparison cells; mark which "wins" survive correction.
-5. **Regenerate** the winner tables/figures with CIs and corrected significance flags.
+5. **Across-learner conformal projection coverage (D-A6, carried from A1).** Add a `conformal` calibration that uses the **across-learner** finish-date residuals from the held-out set (per length-band) — not within-learner rolling residuals — so coverage is marginal-≈0.95 *by construction*. Replace the degenerate A1 coverage test (which asserts `1.0` on a noise-free fixture) with a **noisy-fixture** test asserting coverage ≈0.95 within MC error on `medium`+`max`, and report coverage **and** sharpness. Target: lift the honest `0.50/0.67` (max/medium) toward nominal 0.95; `gp_ard` retained as the under-covered incumbent for contrast.
+6. **Regenerate** the winner tables/figures with CIs and corrected significance flags, including the updated `projection_reliability.pdf`.
 
 #### Tests
 
@@ -509,9 +522,9 @@ _(leave blank until implemented)_
 
 ## Definition of done (whole plan)
 
-- **A1:** projection coverage ≈ nominal 0.95 (conformal and/or gp_hetero_t) where gp_ard was 0.20/0.32/0.44; `projection_reliability.pdf` shows the fix; `gp_ard` retained for contrast.
+- **A1 (amended by D-A6):** `conformal` + `gp_hetero_t` shipped and registered (`gp_ard` retained); `gp_hetero_t` flag-gated with the default `gp_regression` path unchanged; coverage + sharpness **honestly reported** with no tuned constants; `projection_reliability.pdf` regenerated. *The ≈0.95 coverage achievement itself is deferred to A3 (across-learner conformal).* Honest A1 coverage: conformal 0.50/0.67/0.85, gp_hetero_t 0.32/0.45/0.56 vs gp_ard 0.20/0.32/0.44.
 - **A2:** a covariate/EB calibration candidate **beats `pooled_bayes` on the small band** with a bootstrap-CI on Δ excluding 0; `infer_day_of_week` shipped; the "ties pooled" puzzle resolved and documented.
-- **A3:** all tracks run at ≥200 seeds with bootstrap CIs on Δ, a recorded held-out-archetype partition, and Holm/BH-corrected significance flags.
+- **A3:** all tracks run at ≥200 seeds with bootstrap CIs on Δ, a recorded held-out-archetype partition, and Holm/BH-corrected significance flags; **plus (D-A6) across-learner conformal projection coverage ≈0.95 by construction**, with a noisy-fixture coverage test replacing A1's degenerate one.
 - **A4:** each track has the new candidates (with `ruptures`/CP-SAT labelled upper bounds); CUSUM Pareto frontier reported; scheduling prereq-order correctness back to 1.0 on the dipping mix; sweep widened + adversarial regimes + flip map + per-archetype worst case.
 - **A5:** a reality-matched generator regime (new `dataset_id`) fitted to OULAD/EdNet/Junyi *moments* as bounds; the contest re-run and the ranking-hold reported; frozen `e716cd12dddc` regime preserved.
 - `PA+.1–PA+.8` ticked in `college/scope/research-tasklist.md`; the open-code-question findings recorded with file:line evidence.
