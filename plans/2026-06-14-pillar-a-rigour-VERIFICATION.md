@@ -22,7 +22,7 @@
 |---|---|---|---|---|
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
-| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `716f6f9` | — |
+| A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `716f6f9` | 🔁 Changes requested — 2026-06-17 (data leakage) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ☐ Not started | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
@@ -190,8 +190,28 @@ git diff <baseline-sha> <sha> -- packages/py-progress/src/py_progress/bayesian.p
 
 ### Reviewer findings / Resolution
 
-- Reviewer — per-criterion verdict / issues / **Status**: `…`
-- Resolution (on redo): `…`
+Reviewed 2026-06-17 against `716f6f9` (read-only `git show`); small-band numbers ground-checked in the working-tree `calibration_results.json`. Chain clean (my A1 close committed first at `9d3def0`).
+
+- **Per-criterion verdict:**
+  - **A2.1 ✅** — `infer_day_of_week` added: deterministic, mirrors `infer_time_of_day`, returns `weekend`/`weekday` via `date.weekday() >= 5`; new `DayOfWeek` type; no existing call sites touched.
+  - **A2.2 ❌ (blocker — data leakage)** — `CovariateBayesCalibrator` is a ridge regression in log-space whose **prior/shrinkage target is the generator's ground-truth multipliers**: `baselines/calibration.py:253-263` centers the role/τ coefficients at `log(ROLE_RHO["anchor"])`, `log(ROLE_RHO["practice"])`, `log(TAU_GENERIC["morning"])`, `log(TAU_GENERIC["evening"])`, imported from `params.py` — the **same constants the generator uses to *produce* the data** (`generator/pace.py:18`, `archetypes.py:13-14`). With `ridge=20.0` and sparse small-band data, the penalty dominates the few observations, so the estimated context effects are pinned to the true values. The candidate de-confounds using the answer it was handed — a privileged-information advantage no real calibrator (or the other candidates) has. Violates the genuineness/neutrality decisions (#3/#6/#11), the "neutral mis-specified generator" cross-cutting rule, and the D-A4 circularity guard.
+  - **A2.3 ✅** — `EBPartialPoolCalibrator` is leakage-free and correct: James–Stein shrinkage (`_eb_effects`, weight `τ²/(τ²+σ²/n)`) of role→time→day effects toward the **data's own** means, no generator constants.
+  - **A2.4 ✅** — both registered in `calibration_candidates()`; `IncumbentCalibration` byte-unchanged; `pooled_bayes` retained.
+  - **A2.5 ✅** — track re-run; `delta_ci_low/high` present in `paired_vs_incumbent`.
+  - **A2.6 ❌ (blocker — not a genuine success)** — grounded in the result JSON: incumbent ties pooled exactly (Δ=0.0, p=0.42), so "beats incumbent" = "beats pooled". `covariate_bayes` small-band Δ=−0.0106, CI [−0.0175, −0.0036] excludes 0 — **but only because of the leaked prior**. The honest, leakage-free `eb_partial_pool` is *significantly worse* than pooled (Δ=+0.0060, CI [+0.0039, +0.0081], p=2e-6). So D-A2's success is carried entirely by the leak; strip it and the win is unsupported.
+  - **A2.7 🟡** — 8 tests pass and `infer_day_of_week` determinism is well-tested, **but** the "covariate recovers planted multipliers within tolerance" test is trivially satisfied by the leak (the candidate was *told* the multipliers), and the "EB beats pooled" test uses a hand-built fixture that contradicts the real run (where EB loses). Neither validates genuine inference.
+- **Issues / required changes (for redo):**
+  1. **Remove the leakage.** Do not import `ROLE_RHO`/`TAU_GENERIC` into `baselines/`. Center the `covariate_bayes` ridge prior at **neutral "no effect"** (`0.0` in log-space for every role/τ/ν coefficient) so context effects are *estimated from the learner's own sessions* with shrinkage toward no-effect — never toward the generator's truth.
+  2. **Re-evaluate honestly.** Re-run; if `covariate_bayes` and/or `eb_partial_pool` still beats pooled on the small band with a bootstrap CI excluding 0, D-A2 is *genuinely* met. If not, report it (the "hierarchy does no work on sparse data" finding stands — an honest null, like A1, and a candidate for a scope note).
+  3. **Fix the tests.** The recovery test must verify recovery *from data* under the neutral prior, not the pinned-to-truth path; don't rest the headline on a fixture hand-built so EB wins while the real run shows it losing (label it a mechanism unit-test if kept).
+  4. **`ridge=20.0` is a hyperparameter** — once the prior is neutral, set its strength on held-out-train archetypes per A3/D-A4, not to win on the scoring cells.
+- **What's good (keep):** `infer_day_of_week`; the EB candidate (correct + honest); registration + incumbent untouched; bootstrap-CI wiring; commit discipline. The `covariate_bayes` *structure* is fine — only the prior centers are leaky.
+- **Pattern note (gentle):** this is the same shape as A1's `4.20` — hitting the target via privileged/tuned information instead of genuine inference. The bar for this plan is an *earned* number; a candidate must never be seeded with, or tuned on, the generator's truth or the scoring cells.
+- **Status:** `🔁 Changes requested`
+
+### Resolution (implementer fills on redo)
+
+`…`
 
 ---
 
@@ -301,3 +321,4 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 | 2026-06-17 | A1 | `833fdd2` | 🔁 Changes requested | gp_hetero_t/gp.py principled + default-unchanged (good); conformal hits coverage via a hardcoded `*= 4.20` tuned on seed-0 scoring cells — defeats conformal-by-construction + circularity guard. Remove the constant; fix the gitignored-artifact coverage test. |
 | 2026-06-17 | A1 redo | `0912297` | 🔁 Integrity resolved; coverage unmet | `4.20` removed → principled `sqrt(1/(1−φ²))`; honest coverage 0.50/0.67/0.85 (still < 0.95). Within-learner conformal ≠ exchangeable for finish-date; real fix = across-learner conformal (couples to A3). Coverage test now degenerate (asserts 1.0 on noise-free fixture). Scope fork surfaced to Rohit. |
 | 2026-06-17 | A1 close | `0912297` | ✅ Verified (D-A6) | Rohit chose Option A: defer coverage to A3. Plan amended (D-A6 logged; A1 DoD re-scoped; A3.7 added; whole-plan DoD A1/A3 updated). A1 closed = candidates shipped + honest coverage; coverage achievement + noisy-fixture test now A3.7. Codex cleared for A2. |
+| 2026-06-17 | A2 | `716f6f9` | 🔁 Changes requested | infer_day_of_week ✅, EB candidate ✅ (honest, but loses to pooled). Blocker: `covariate_bayes` ridge prior centered on generator truth `ROLE_RHO`/`TAU_GENERIC` (imported from params.py) → leakage; its small-band win (Δ−0.011, CI excl 0) is not genuine. Re-center prior at no-effect, re-evaluate honestly, fix tests. Same shape as A1's 4.20. |
