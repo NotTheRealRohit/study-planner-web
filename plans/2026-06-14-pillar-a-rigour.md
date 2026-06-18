@@ -479,7 +479,7 @@ non-positive, and a regression test covers the failing fixture.
 
 ### Phase A4: New candidates per track + winner tweaks + wider/adversarial sweep (PA+.4–.6)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 5aa4c2e0544aaba2fae1b5c65bd6560bd2729342
 **Depends on:** Phase A3 (everything new is scored under the rigorous protocol + held-out tuning)
 **Estimated scope:** `baselines/{calibration,detection,scheduling}.py` + sweep runner + heatmap + `ortools` dep
 
