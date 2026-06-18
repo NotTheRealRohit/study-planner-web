@@ -49,7 +49,12 @@ def write_robustness_heatmap(results_path: Path, out_path: Path) -> Path:
     plt.figure(figsize=(7.0, 3.8))
     image = plt.imshow(matrix, vmin=0.0, vmax=1.0, cmap="YlGn")
     plt.colorbar(image, label="Ranking held fraction")
-    plt.xticks(range(len(params)), [param.replace("_", " ") for param in params], rotation=30, ha="right")
+    plt.xticks(
+        range(len(params)),
+        [param.replace("_", " ") for param in params],
+        rotation=30,
+        ha="right",
+    )
     plt.yticks(range(len(tracks)), tracks)
     plt.title("Sensitivity sweep ranking stability")
     plt.tight_layout()
@@ -78,7 +83,9 @@ def write_robustness_artifacts(
     provenance = generated_dir / "robustness_heatmap_provenance.txt"
     provenance.write_text(
         "Robustness heatmap generated from sweep grid with params hash "
-        f"{payload['_provenance']['params_version_hash']}.\n",
+        f"{payload['_provenance']['params_version_hash']}.\n"
+        f"Flip cells: {len(payload.get('flip_cells', []))}; "
+        "per-archetype worst cases recorded in sweep_results.json.\n",
         encoding="utf-8",
     )
     if progress:

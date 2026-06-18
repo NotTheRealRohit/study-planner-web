@@ -13,6 +13,7 @@ from py_progress import (
     infer_day_of_week,
     infer_time_of_day,
 )
+from py_progress.kalman import run_kalman_on_phase
 
 
 class CalibrationCandidate(Protocol):
@@ -283,6 +284,42 @@ class PooledBayesianCalibrator:
 
 
 @dataclass(frozen=True)
+class KalmanPaceCalibrator:
+    name: str = "kalman"
+
+    def _fit(self, sessions: list[dict]):
+        ratios = active_ratios(sessions)
+        if not ratios:
+            return run_kalman_on_phase(
+                [],
+                initial_level=BAYESIAN_PRIOR_MEAN,
+                initial_variance=BAYESIAN_PRIOR_VARIANCE,
+                measurement_variance=BAYESIAN_PRIOR_VARIANCE,
+            )
+        return run_kalman_on_phase(
+            ratios,
+            initial_level=BAYESIAN_PRIOR_MEAN,
+            initial_variance=BAYESIAN_PRIOR_VARIANCE,
+            measurement_variance=empirical_variance(ratios),
+        )
+
+    def fit_global(self, sessions: list[dict]) -> float:
+        return float(self._fit(sessions).finalLevel)
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        del next_context
+        return self.fit_global(sessions)
+
+    def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
+        ratios = active_ratios(sessions)
+        if not ratios:
+            return None
+        result = self._fit(sessions)
+        radius = 1.96 * max(float(result.levelUncertainty), 0.001)
+        return (float(result.finalLevel - radius), float(result.finalLevel + radius))
+
+
+@dataclass(frozen=True)
 class CovariateBayesCalibrator:
     ridge: float = 1.0
     name: str = "covariate_bayes"
@@ -456,6 +493,7 @@ class EBPartialPoolCalibrator:
 def calibration_candidates() -> list[CalibrationCandidate]:
     return [
         IncumbentCalibration(),
+        KalmanPaceCalibrator(),
         CovariateBayesCalibrator(),
         EBPartialPoolCalibrator(),
         SMACalibrator(),

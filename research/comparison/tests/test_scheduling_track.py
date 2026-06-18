@@ -7,11 +7,14 @@ from research_comparison.generator.generate import DEFAULT_ARCHETYPE_MIX, genera
 from research_comparison.metrics.scheduling import (
     capacity_violation_rate,
     prereq_order_correctness,
+    winner_by_material_mix,
 )
 from research_comparison.runners.scheduling import (
     run_scheduling_for_scenario,
     run_scheduling_track,
     schedule_greedy,
+    scheduling_candidates,
+    skipped_scheduling_candidates,
 )
 
 
@@ -33,12 +36,46 @@ def _input(weeks: int = 2, weekday_hours: float = 3.0) -> RoadmapInput:
     )
 
 
+def _reversed_prereq_input() -> RoadmapInput:
+    return RoadmapInput(
+        materials=[
+            Material("practice", "Practice set", 90, "practice", 0),
+            Material("anchor", "Main playlist", 120, "anchor", 1),
+            Material("foundation", "Foundation notes", 80, "foundation", 2),
+        ],
+        weeks=2,
+        startDate="2026-04-06",
+        selectedStudyDays=["Mon", "Wed", "Sat"],
+        weekdayHours=3.0,
+        weekendHours=2.0,
+    )
+
+
 def test_generate_roadmap_runs_on_two_material_scenario():
     output = schedule_greedy(_input())
 
     assert output.weeks
     assert output.capacityCheck.totalMaterialMinutes == 210
     assert isinstance(output.warnings, list)
+
+
+def test_a4_greedy_prereq_tweak_restores_role_order_on_reversed_mix():
+    output = schedule_greedy(_reversed_prereq_input())
+
+    assert prereq_order_correctness(output) == 1.0
+
+
+def test_a4_scheduling_candidates_include_new_deployables_and_optional_cpsat():
+    candidates = scheduling_candidates()
+    names = {candidate.name for candidate in candidates}
+
+    assert {"topological_prereq", "local_search_repair"} <= names
+    if "cpsat_optimum" in names:
+        cpsat = next(candidate for candidate in candidates if candidate.name == "cpsat_optimum")
+        assert cpsat.candidate_kind == "upper_bound"
+    else:
+        skipped = skipped_scheduling_candidates()
+        assert skipped and skipped[0]["candidate"] == "cpsat_optimum"
 
 
 def test_capacity_violation_metric_detects_over_capacity_plan():
@@ -91,6 +128,42 @@ def test_runner_records_gen_time_and_material_mix():
     assert rows
     assert all(row["gen_time_ms"] >= 0.0 for row in rows)
     assert {row["material_mix"] for row in rows} == {"anchor+practice"}
+
+
+def test_a4_scheduling_rows_shape_and_upper_bounds_excluded_from_winner():
+    rows = run_scheduling_for_scenario(
+        scenario_id="fixture-a4",
+        material_mix="anchor+foundation+practice",
+        input_data=_reversed_prereq_input(),
+        deadline="2026-04-19",
+    )
+    seen = {row["candidate"] for row in rows}
+
+    assert {"topological_prereq", "local_search_repair"} <= seen
+    assert all("candidate_kind" in row for row in rows)
+    winners = winner_by_material_mix(
+        [
+            {
+                "candidate": "cpsat_optimum",
+                "candidate_kind": "upper_bound",
+                "material_mix": "anchor+practice",
+                "deadline_drift_days": 0.0,
+                "capacity_violation_rate": 0.0,
+                "prereq_order_correctness": 1.0,
+                "gen_time_ms": 1.0,
+            },
+            {
+                "candidate": "greedy_incumbent",
+                "candidate_kind": "deployable",
+                "material_mix": "anchor+practice",
+                "deadline_drift_days": 2.0,
+                "capacity_violation_rate": 0.0,
+                "prereq_order_correctness": 1.0,
+                "gen_time_ms": 1.0,
+            },
+        ]
+    )
+    assert winners["anchor+practice"]["winner"] == "greedy_incumbent"
 
 
 def test_a3_scheduling_result_carries_ci_correction_and_heldout_split(tmp_path):

@@ -16,6 +16,9 @@ dependencies = [
     "pyBKT>=1.4,<1.4.2",
 ]
 
+[project.optional-dependencies]
+cpsat = ["ortools>=9.10"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

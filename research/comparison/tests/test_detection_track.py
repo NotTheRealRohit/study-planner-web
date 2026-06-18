@@ -5,11 +5,17 @@ import math
 
 from research_comparison.baselines.detection import detect_csd, detect_ewma
 from research_comparison.generator.generate import DEFAULT_ARCHETYPE_MIX, generate_dataset
-from research_comparison.metrics.detection import roc_points, score_detections
+from research_comparison.metrics.detection import (
+    roc_points,
+    score_detections,
+    winner_by_shift_type,
+)
 from research_comparison.runners.detection import (
     detect_cusum,
+    latency_false_alarm_frontier,
     run_detection_for_learner,
     run_detection_track,
+    tune_cusum_params,
 )
 
 
@@ -82,6 +88,111 @@ def test_runner_reports_latency_separately_for_step_and_drift():
     assert ("cusum", "step") in seen_types
     assert ("ewma_control_chart", "drift") in seen_types
     assert all(row["shift_type"] in {"step", "drift"} for row in rows)
+
+
+def test_a4_detection_candidates_and_upper_bound_shape_on_fixture():
+    ratios = [1.0] * 12 + [1.30] * 12 + [1.30 + index * 0.014 for index in range(20)]
+    learner = {
+        "learner_id": "learner-detection-a4",
+        "band": "medium",
+        "archetype": "fixture",
+        "seed": 9,
+        "sessions": _sessions(ratios),
+    }
+    truth = {
+        "regime_schedule": [
+            {"onset_index": 12, "type": "step", "pre_mean": 1.0, "post_mean": 1.30},
+            {"onset_index": 24, "type": "drift", "pre_mean": 1.30, "post_mean": 1.58},
+        ]
+    }
+
+    rows, frontier_rows = run_detection_for_learner(learner, truth)
+    seen = {row["candidate"] for row in rows}
+
+    assert {"bocpd", "page_hinkley", "adwin", "ruptures_pelt_binseg"} <= seen
+    upper = [row for row in rows if row["candidate"] == "ruptures_pelt_binseg"]
+    assert upper and all(row["candidate_kind"] == "upper_bound" for row in upper)
+    assert all("comparison_score" in row for row in rows)
+    assert frontier_rows
+
+
+def test_a4_pareto_frontier_is_monotone_and_upper_bounds_do_not_win():
+    rows = [
+        {
+            "frontier_kind": "latency_false_alarm",
+            "shift_type": "step",
+            "family": "cusum_h",
+            "threshold": 3.0,
+            "mean_latency": 8.0,
+            "missed": 0,
+            "false_alarm_rate": 0.01,
+            "true_detection_rate": 0.8,
+        },
+        {
+            "frontier_kind": "latency_false_alarm",
+            "shift_type": "step",
+            "family": "cusum_h",
+            "threshold": 2.0,
+            "mean_latency": 4.0,
+            "missed": 0,
+            "false_alarm_rate": 0.05,
+            "true_detection_rate": 1.0,
+        },
+    ]
+
+    frontier = latency_false_alarm_frontier(rows)["step"]
+
+    assert frontier == sorted(frontier, key=lambda point: point["false_alarm_rate"])
+    assert all(
+        left["mean_latency"] >= right["mean_latency"]
+        for left, right in zip(frontier, frontier[1:], strict=False)
+    )
+
+    winners = winner_by_shift_type(
+        [
+            {
+                "candidate": "ruptures_pelt_binseg",
+                "candidate_kind": "upper_bound",
+                "shift_type": "step",
+                "mean_latency": 0.0,
+                "missed": 0.0,
+                "false_alarm_rate": 0.0,
+            },
+            {
+                "candidate": "cusum",
+                "candidate_kind": "deployable",
+                "shift_type": "step",
+                "mean_latency": 6.0,
+                "missed": 0.0,
+                "false_alarm_rate": 0.02,
+            },
+        ]
+    )
+    assert winners["step"]["winner"] == "cusum"
+
+
+def test_a4_cusum_tuning_uses_train_archetype_only():
+    ratios = [1.0] * 12 + [1.28] * 12
+    learner = {
+        "learner_id": "train-learner",
+        "band": "medium",
+        "archetype": "steady",
+        "seed": 1,
+        "sessions": _sessions(ratios),
+    }
+    sidecars = {
+        "train-learner": {
+            "regime_schedule": [
+                {"onset_index": 12, "type": "step", "pre_mean": 1.0, "post_mean": 1.28}
+            ]
+        }
+    }
+
+    tuning = tune_cusum_params([learner], sidecars, ["steady"])
+
+    assert tuning["method"] == "grid_search_train_archetypes_only"
+    assert tuning["train_archetypes"] == ["steady"]
+    assert set(tuning["selected"]) == {"step_k", "step_h", "drift_k", "drift_h"}
 
 
 def test_roc_points_are_bounded_and_monotone_by_threshold_order():

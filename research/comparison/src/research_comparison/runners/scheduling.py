@@ -5,13 +5,20 @@ import json
 import time
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 from typing import Any
 
 from py_roadmap_engine import Material, RoadmapInput, RoadmapOutput, generate_roadmap
-from research_comparison.baselines.scheduling import schedule_dp, schedule_rule_based
+from research_comparison.baselines.scheduling import (
+    ortools_available,
+    schedule_cpsat_optimum,
+    schedule_dp,
+    schedule_local_search_repair,
+    schedule_rule_based,
+    schedule_topological_prereq,
+)
 from research_comparison.metrics.scheduling import (
     scheduling_metric_row,
     winner_by_material_mix,
@@ -37,6 +44,7 @@ ROLE_ORDER = {"anchor": 0, "foundation": 1, "practice": 2}
 class SchedulingCandidate:
     name: str
     schedule: Callable[[RoadmapInput], RoadmapOutput]
+    candidate_kind: str = "deployable"
 
 
 @dataclass(frozen=True)
@@ -48,15 +56,49 @@ class SchedulingScenario:
 
 
 def schedule_greedy(input_data: RoadmapInput) -> RoadmapOutput:
-    return generate_roadmap(input_data)
+    ordered = sorted(
+        input_data.materials,
+        key=lambda material: (
+            ROLE_ORDER.get(material.role, 99),
+            -float(material.totalMinutes),
+            material.additionOrder,
+        ),
+    )
+    selected_days = sorted(input_data.selectedStudyDays, key=DAY_NAMES.index)
+    return generate_roadmap(
+        replace(input_data, materials=ordered, selectedStudyDays=selected_days)
+    )
+
+
+def skipped_scheduling_candidates() -> list[dict[str, str]]:
+    if ortools_available():
+        return []
+    return [
+        {
+            "candidate": "cpsat_optimum",
+            "candidate_kind": "upper_bound",
+            "reason": "ortools optional extra is not installed",
+        }
+    ]
 
 
 def scheduling_candidates() -> list[SchedulingCandidate]:
-    return [
+    candidates = [
         SchedulingCandidate("greedy_incumbent", schedule_greedy),
         SchedulingCandidate("dp_capacity", schedule_dp),
         SchedulingCandidate("rule_based", schedule_rule_based),
+        SchedulingCandidate("topological_prereq", schedule_topological_prereq),
+        SchedulingCandidate("local_search_repair", schedule_local_search_repair),
     ]
+    if ortools_available():
+        candidates.append(
+            SchedulingCandidate(
+                "cpsat_optimum",
+                schedule_cpsat_optimum,
+                candidate_kind="upper_bound",
+            )
+        )
+    return candidates
 
 
 def run_scheduling_for_scenario(
@@ -80,6 +122,7 @@ def run_scheduling_for_scenario(
             {
                 "scenario_id": scenario_id,
                 "candidate": candidate.name,
+                "candidate_kind": candidate.candidate_kind,
                 "material_mix": material_mix,
                 **metrics,
                 "comparison_score": float(comparison_score),
@@ -157,6 +200,25 @@ def scenario_from_learner(
     )
 
 
+def prereq_order_summary(rows: list[dict[str, Any]]) -> dict[str, dict[str, float | str]]:
+    summary: dict[str, dict[str, float | str]] = {}
+    for material_mix in sorted({str(row["material_mix"]) for row in rows}):
+        selected = [
+            row
+            for row in rows
+            if str(row["material_mix"]) == material_mix
+            and row.get("candidate_kind") != "upper_bound"
+        ]
+        if not selected:
+            continue
+        worst = min(selected, key=lambda row: float(row["prereq_order_correctness"]))
+        summary[material_mix] = {
+            "min_prereq_order_correctness": float(worst["prereq_order_correctness"]),
+            "candidate_at_min": str(worst["candidate"]),
+        }
+    return summary
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[5]
 
@@ -219,13 +281,13 @@ def run_scheduling_track(
     annotate_archetype_split(rows, archetypes=dataset_archetypes)
     scored_rows, scored_split = reporting_rows(rows)
     paired = paired_by_group(
-        scored_rows,
+        [row for row in scored_rows if row.get("candidate_kind") != "upper_bound"],
         metric="comparison_score",
         baseline_candidate="greedy_incumbent",
         group_fields=["material_mix"],
     )
     paired_cells = paired_by_group(
-        scored_rows,
+        [row for row in scored_rows if row.get("candidate_kind") != "upper_bound"],
         metric="comparison_score",
         baseline_candidate="greedy_incumbent",
         group_fields=["band", "archetype", "material_mix"],
@@ -240,6 +302,8 @@ def run_scheduling_track(
         "dataset_id": raw_manifest["dataset_id"],
         "scored_split": scored_split,
         "rows": rows,
+        "skipped_candidates": skipped_scheduling_candidates(),
+        "prereq_order_summary": prereq_order_summary(scored_rows),
         "winner_by_material_mix": winner_by_material_mix(scored_rows),
         "paired_vs_incumbent": paired,
         "paired_by_cell": paired_cells,

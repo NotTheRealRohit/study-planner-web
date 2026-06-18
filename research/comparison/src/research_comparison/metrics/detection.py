@@ -97,13 +97,21 @@ def roc_points(
 
 def winner_by_shift_type(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     winners: dict[str, dict[str, Any]] = {}
+    deployable_rows = [
+        row
+        for row in rows
+        if row.get("candidate_kind") != "upper_bound"
+        and not str(row.get("candidate", "")).startswith("oracle")
+    ]
     for shift_type in SHIFT_TYPES:
-        candidates = sorted({row["candidate"] for row in rows if row["shift_type"] == shift_type})
+        candidates = sorted(
+            {row["candidate"] for row in deployable_rows if row["shift_type"] == shift_type}
+        )
         candidate_scores: dict[str, dict[str, float]] = {}
         for candidate in candidates:
             selected = [
                 row
-                for row in rows
+                for row in deployable_rows
                 if row["candidate"] == candidate and row["shift_type"] == shift_type
             ]
             if not selected:

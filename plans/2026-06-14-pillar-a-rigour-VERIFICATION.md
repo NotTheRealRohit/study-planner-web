@@ -24,7 +24,7 @@
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `4445701` | ✅ Verified — 2026-06-17 (D-A7; wins on medium/max, honest small-band negative) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ✅ Complete — `2b8e23c` | ✅ Verified — 2026-06-17 (A3.1–A3.7; A1 coverage now earned; see A2-generalisation finding) |
-| A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
+| A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ✅ Complete — pending | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
 
 Status vocab: `☐ Not started` · `🟡 In progress` · `🛑 Blocked: <reason>` · `✅ Complete — <sha>` (implementer) · `✅ Verified` / `🔁 Changes requested` (reviewer).
@@ -321,12 +321,12 @@ uv run --package research-comparison pytest research/comparison/tests -q
 
 ### Acceptance criteria
 
-- [ ] **A4.1 Calibration:** `kalman` (state-space random-walk pace) added (optionally `particle`).
-- [ ] **A4.2 Detection:** `bocpd`, `page_hinkley`, `adwin` added; `ruptures` PELT/BinSeg added **labelled `upper_bound`** (retrospective, excluded from deployable-winner selection). CUSUM tweaks: robust running-scale standardisation + per-shift-type k/h + Page-Hinkley drift arm. **Latency↔false-alarm Pareto frontier** reported (monotone) instead of a single operating point.
-- [ ] **A4.3 Scheduling:** CP-SAT/ILP exact optimum (OR-Tools) added **labelled `upper_bound`**; topological prereq scheduler + local-search (SA/tabu) repair added; greedy tweak (one-step lookahead + prereq-aware topo pre-order). Prereq-order correctness back to **1.0** on the previously-dipping mix.
-- [ ] **A4.4 Sweep:** widened to **5+ points/axis** + adversarial regimes (multi-shift, step+drift, bursty missingness); **flip cells** and **per-archetype worst case** reported (not just the mean); `robustness_heatmap.pdf` regenerated.
-- [ ] **A4.5** `ortools` recorded in `research/comparison/pyproject.toml` as an **optional** extra; `import ortools` works **OR** the CP-SAT candidate is gracefully skipped so CI without it still passes (OQ-A3).
-- [ ] **A4.6** Per-track tests pass: each new candidate returns the track's result-dict shape and runs on a fixture; upper-bound candidates excluded from deployable-winner selection; Pareto output monotone.
+- [x] **A4.1 Calibration:** `kalman` (state-space random-walk pace) added (optionally `particle`).
+- [x] **A4.2 Detection:** `bocpd`, `page_hinkley`, `adwin` added; `ruptures` PELT/BinSeg added **labelled `upper_bound`** (retrospective, excluded from deployable-winner selection). CUSUM tweaks: robust running-scale standardisation + per-shift-type k/h + Page-Hinkley drift arm. **Latency↔false-alarm Pareto frontier** reported (monotone) instead of a single operating point.
+- [x] **A4.3 Scheduling:** CP-SAT/ILP exact optimum (OR-Tools) added **labelled `upper_bound`**; topological prereq scheduler + local-search (SA/tabu) repair added; greedy tweak (one-step lookahead + prereq-aware topo pre-order). Prereq-order correctness back to **1.0** on the previously-dipping mix.
+- [x] **A4.4 Sweep:** widened to **5+ points/axis** + adversarial regimes (multi-shift, step+drift, bursty missingness); **flip cells** and **per-archetype worst case** reported (not just the mean); `robustness_heatmap.pdf` regenerated.
+- [x] **A4.5** `ortools` recorded in `research/comparison/pyproject.toml` as an **optional** extra; `import ortools` works **OR** the CP-SAT candidate is gracefully skipped so CI without it still passes (OQ-A3).
+- [x] **A4.6** Per-track tests pass: each new candidate returns the track's result-dict shape and runs on a fixture; upper-bound candidates excluded from deployable-winner selection; Pareto output monotone.
 
 ### Reviewer evidence commands (read-only)
 
@@ -342,7 +342,7 @@ ls -l --time-style=+%s college/mydeliverables/1st-Review/report/generated/robust
 
 ### Implementer report / Reviewer findings / Resolution
 
-- Implementer — SHA / files / new candidates per track / ortools handling / prereq-order fix / deviations / self-check (A4.1–A4.6): `…`
+- Implementer — SHA / files / new candidates per track / ortools handling / prereq-order fix / deviations / self-check (A4.1–A4.6): `pending` — Files changed: `research/comparison/src/research_comparison/baselines/{calibration,detection,scheduling}.py`; `research/comparison/src/research_comparison/runners/{detection,scheduling,sweep}.py`; `research/comparison/src/research_comparison/metrics/{detection,scheduling}.py`; `research/comparison/src/research_comparison/params.py`; `research/comparison/src/research_comparison/plots/robustness_heatmap.py`; `research/comparison/pyproject.toml`; `uv.lock`; `research/comparison/tests/{test_calibration_track,test_detection_track,test_scheduling_track,test_oracles_and_sweep}.py`; `college/mydeliverables/1st-Review/report/generated/robustness_heatmap.pdf`; `college/mydeliverables/1st-Review/report/generated/robustness_heatmap_provenance.txt`; `college/scope/research-tasklist.md`; this plan/checklist. New candidates: calibration `kalman`; detection `bocpd`, `page_hinkley`, `adwin`, `ruptures_pelt_binseg` (`upper_bound`); scheduling `topological_prereq`, `local_search_repair`, optional `cpsat_optimum` (`upper_bound`). OR-Tools handling: `ortools` is an optional `cpsat` extra; current env has no `ortools`, so `research/results/scheduling/scheduling_results.json` records graceful skip for `cpsat_optimum`. Prereq-order fix: the dipping `anchor+practice` mix was caused by non-chronological selected-day allocation; chronological day ordering + role-order material pre-order brings all deployable material mixes to `min_prereq_order_correctness = 1.0`. Self-check: A4.1 ✅ `kalman` in calibration rows; A4.2 ✅ detection candidates present, CUSUM train-only tuning recorded (`marathon_runner`, `morning_lark`, `steady`), Pareto frontier monotone; A4.3 ✅ new schedulers present, upper bound skipped or labelled, prereq summaries all 1.0; A4.4 ✅ sweep grid is 5 points/axis, 3 adversarial regimes, 3,128 points / 9,384 rows, 2,454 flip cells, per-archetype worst cases recorded, heatmap size 16,002 bytes; A4.5 ✅ optional extra + graceful skip; A4.6 ✅ Ruff clean and `uv run --package research-comparison pytest research/comparison/tests -q` → 78 passed. Deviations: no optional `particle` calibrator; CP-SAT not exercised locally because OR-Tools is absent.
 - Reviewer — per-criterion verdict / issues / **Status**: `…`
 - Resolution (on redo): `…`
 
@@ -381,7 +381,7 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 - [ ] A1 coverage ≈ 0.95 where gp_ard was 0.20/0.32/0.44; `projection_reliability.pdf` shows the fix; `gp_ard` retained.
 - [ ] A2 `infer_day_of_week` shipped; leakage-free covariate/EB candidates shipped; D-A7 context-aware prediction metric added; richer-band prediction wins and sparse small-band negative documented honestly; "ties pooled" puzzle resolved + documented.
 - [ ] A3 all tracks at ≥200 seeds with bootstrap CIs on Δ, recorded held-out partition, Holm/BH-corrected flags.
-- [ ] A4 new candidates per track (ruptures/CP-SAT as upper bounds); CUSUM Pareto frontier; scheduling prereq-order back to 1.0 on the dipping mix; sweep widened + adversarial + flip map + per-archetype worst case.
+- [x] A4 new candidates per track (ruptures/CP-SAT as upper bounds); CUSUM Pareto frontier; scheduling prereq-order back to 1.0 on the dipping mix; sweep widened + adversarial + flip map + per-archetype worst case.
 - [ ] A5 reality-matched regime (new `dataset_id`) fitted to real engagement *moments* as bounds; contest re-run + ranking-hold reported; frozen `e716cd12dddc` preserved.
 - [ ] `PA+.1–PA+.8` ticked in `college/scope/research-tasklist.md`; open-code-question findings recorded with file:line evidence.
 - [ ] Zero changes outside the plan's Files-touched index; no KT-bench / Pillar-B effort spent here (§0).

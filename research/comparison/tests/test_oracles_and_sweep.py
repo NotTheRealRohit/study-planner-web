@@ -10,7 +10,13 @@ from research_comparison.oracles.detection import detection_oracle_breakpoints
 from research_comparison.oracles.projection import forecast_projection_oracle
 from research_comparison.runners.detection import detect_cusum
 from research_comparison.runners.projection import run_projection_for_learner
-from research_comparison.runners.sweep import ranking_stability, sweep_grid_points
+from research_comparison.runners.sweep import (
+    ADVERSARIAL_SWEEP_POINTS,
+    flip_cells,
+    per_archetype_worst_case,
+    ranking_stability,
+    sweep_grid_points,
+)
 
 
 def test_oracles_separate_from_candidate_field_on_fixture_tracks():
@@ -71,6 +77,18 @@ def test_sweep_runner_visits_every_grid_point_and_records_ranking():
     assert all(set(point) == set(grid) for point in points)
 
 
+def test_a4_default_sweep_has_five_points_per_axis_and_adversarial_cases():
+    points = sweep_grid_points()
+    params = ["ar1_phi", "drift_total", "manual_fraction", "sigma_log", "step_mag"]
+
+    assert all(len({point[param] for point in points}) >= 5 for param in params)
+    assert {point["adversarial_case"] for point in ADVERSARIAL_SWEEP_POINTS} == {
+        "multi_shift",
+        "step_drift_combined",
+        "bursty_missingness",
+    }
+
+
 def test_stable_ranking_is_reported_as_held():
     rows = [
         {"track": "detection", "default_winner": "cusum", "winner": "cusum"},
@@ -78,3 +96,26 @@ def test_stable_ranking_is_reported_as_held():
     ]
 
     assert ranking_stability(rows)["detection"]["status"] == "held"
+
+
+def test_a4_flip_cells_and_per_archetype_worst_case_are_reported():
+    rows = [
+        {
+            "track": "detection",
+            "default_winner": "cusum",
+            "winner": "cusum",
+            "ranking_status": "held",
+            "archetypes": ["steady"],
+        },
+        {
+            "track": "detection",
+            "default_winner": "cusum",
+            "winner": "csd",
+            "ranking_status": "flipped",
+            "archetypes": ["fading_flame"],
+        },
+    ]
+
+    assert len(flip_cells(rows)) == 1
+    worst = per_archetype_worst_case(rows)["detection"]
+    assert worst["worst_archetype"] == "fading_flame"

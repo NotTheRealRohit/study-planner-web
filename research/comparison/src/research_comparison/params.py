@@ -44,11 +44,11 @@ STEP_MAG_DEFAULT, STEP_MAG_RANGE = 0.15, (0.10, 0.22)  # §5
 DRIFT_TOTAL_DEFAULT, DRIFT_WINDOW_FRAC = 0.20, (0.30, 0.45)  # §5
 MANUAL_FRACTION = 0.15  # §6
 SWEEP_GRID = {  # §8
-    "sigma_log": [0.12, 0.18, 0.25],
-    "step_mag": [0.10, 0.15, 0.22],
-    "drift_total": [0.12, 0.20, 0.30],
-    "manual_fraction": [0.05, 0.15, 0.25],
-    "ar1_phi": [0.0, 0.30, 0.50],
+    "sigma_log": [0.10, 0.14, 0.18, 0.23, 0.28],
+    "step_mag": [0.08, 0.12, 0.16, 0.20, 0.24],
+    "drift_total": [0.08, 0.14, 0.20, 0.26, 0.32],
+    "manual_fraction": [0.00, 0.08, 0.15, 0.24, 0.32],
+    "ar1_phi": [0.0, 0.20, 0.35, 0.50, 0.65],
 }
 
 _PREREG = Path(__file__).resolve().parents[4] / "college/scope/archetype-preregistration.md"

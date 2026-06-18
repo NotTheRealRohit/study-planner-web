@@ -9,8 +9,10 @@ from research_comparison.baselines.calibration import (
     EBPartialPoolCalibrator,
     EWMACalibrator,
     IncumbentCalibration,
+    KalmanPaceCalibrator,
     PooledBayesianCalibrator,
     SMACalibrator,
+    calibration_candidates,
 )
 from research_comparison.generator.generate import (
     DEFAULT_ARCHETYPE_MIX,
@@ -156,6 +158,21 @@ def test_baselines_return_float_and_pooled_converges_on_flat_pace():
     assert isinstance(EWMACalibrator(alpha=0.30).fit_global(sessions), float)
     pooled = PooledBayesianCalibrator().fit_global(sessions)
     assert abs(pooled - 1.08) < 0.04
+
+
+def test_a4_kalman_calibration_candidate_runs_on_fixture():
+    sessions = _flat_sessions(ratio=1.06, n=18)
+    candidate = KalmanPaceCalibrator()
+
+    assert "kalman" in {candidate.name for candidate in calibration_candidates()}
+    assert isinstance(candidate.fit_global(sessions), float)
+    assert isinstance(
+        candidate.predict_next(sessions, {"startedAt": "2026-01-20T08:00:00Z"}),
+        float,
+    )
+    interval = candidate.fit_interval(sessions)
+    assert interval is not None
+    assert interval[0] < candidate.fit_global(sessions) < interval[1]
 
 
 def test_infer_day_of_week_is_deterministic_for_known_timestamps():

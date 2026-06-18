@@ -7,9 +7,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from research_comparison.generator.generate import generate_learner
 from research_comparison.manifest import build_manifest
 from research_comparison.params import SWEEP_GRID
-from research_comparison.generator.generate import generate_learner
 from research_comparison.progress_log import ProgressLogger
 from research_comparison.runners.detection import run_detection_for_learner
 from research_comparison.runners.projection import run_projection_for_learner
@@ -24,7 +24,35 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parents[5]
 
 
-def sweep_grid_points(grid: dict[str, list[float]] | None = None) -> list[dict[str, float]]:
+ADVERSARIAL_SWEEP_POINTS: list[dict[str, Any]] = [
+    {
+        "adversarial_case": "multi_shift",
+        "ar1_phi": 0.50,
+        "drift_total": 0.20,
+        "manual_fraction": 0.15,
+        "sigma_log": 0.18,
+        "step_mag": 0.24,
+    },
+    {
+        "adversarial_case": "step_drift_combined",
+        "ar1_phi": 0.35,
+        "drift_total": 0.32,
+        "manual_fraction": 0.15,
+        "sigma_log": 0.20,
+        "step_mag": 0.20,
+    },
+    {
+        "adversarial_case": "bursty_missingness",
+        "ar1_phi": 0.35,
+        "drift_total": 0.20,
+        "manual_fraction": 0.32,
+        "sigma_log": 0.23,
+        "step_mag": 0.16,
+    },
+]
+
+
+def sweep_grid_points(grid: dict[str, list[float]] | None = None) -> list[dict[str, Any]]:
     selected = grid or SWEEP_GRID
     keys = sorted(selected)
     return [
@@ -47,6 +75,34 @@ def ranking_stability(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return stability
 
 
+def flip_cells(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in rows
+        if row["ranking_status"] == "flipped"
+    ]
+
+
+def per_archetype_worst_case(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    out: dict[str, dict[str, Any]] = {}
+    for track in sorted({row["track"] for row in rows}):
+        track_rows = [row for row in rows if row["track"] == track]
+        archetypes = sorted({archetype for row in track_rows for archetype in row["archetypes"]})
+        scored: dict[str, dict[str, float | int]] = {}
+        for archetype in archetypes:
+            selected = [row for row in track_rows if archetype in row["archetypes"]]
+            flips = [row for row in selected if row["ranking_status"] == "flipped"]
+            scored[archetype] = {
+                "n_points": len(selected),
+                "n_flips": len(flips),
+                "flip_rate": len(flips) / max(1, len(selected)),
+            }
+        if scored:
+            worst = max(scored, key=lambda key: float(scored[key]["flip_rate"]))
+            out[track] = {"worst_archetype": worst, "archetypes": scored}
+    return out
+
+
 def _truth_dict(truth: Any) -> dict[str, Any]:
     return {**asdict(truth), "regime_schedule": [asdict(shift) for shift in truth.regime_schedule]}
 
@@ -66,13 +122,38 @@ def _learner_dict(
     }
 
 
-def _fixture_learners(point: dict[str, float], point_index: int) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+def _fixture_learners(
+    point: dict[str, Any],
+    point_index: int,
+) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     fixtures = []
-    for offset, archetype in enumerate(["marathon_runner", "fading_flame"]):
+    case = str(point.get("adversarial_case", "default"))
+    if case == "multi_shift":
+        archetypes = ["marathon_runner", "marathon_runner"]
+        band = "max"
+    elif case == "step_drift_combined":
+        archetypes = ["fading_flame", "fading_flame"]
+        band = "max"
+    else:
+        archetypes = ["marathon_runner", "fading_flame"]
+        band = "medium"
+
+    overrides = {
+        key: float(value)
+        for key, value in point.items()
+        if key in {"ar1_phi", "drift_total", "manual_fraction", "sigma_log", "step_mag"}
+    }
+    for offset, archetype in enumerate(archetypes):
         seed = point_index * 1000 + offset + 17
-        sessions, truth = generate_learner(archetype, "medium", seed, overrides=point)
+        sessions, truth = generate_learner(archetype, band, seed, overrides=overrides)
+        if case == "bursty_missingness":
+            for session_index, session in enumerate(sessions):
+                if 10 <= session_index % 24 <= 15 and session.get("source") == "active":
+                    session["source"] = "manual"
+                    session.pop("plannedMinutes", None)
+                    session.pop("activeMinutes", None)
         truth_row = _truth_dict(truth)
-        learner = _learner_dict(archetype, "medium", seed, sessions)
+        learner = _learner_dict(archetype, band, seed, sessions)
         fixtures.append((learner, truth_row))
     return fixtures
 
@@ -92,7 +173,7 @@ def _detection_winner(fixtures: list[tuple[dict[str, Any], dict[str, Any]]]) -> 
         rows, _roc = run_detection_for_learner(learner, truth)
         for row in rows:
             candidate = str(row["candidate"])
-            if candidate.startswith("oracle"):
+            if candidate.startswith("oracle") or row.get("candidate_kind") == "upper_bound":
                 continue
             score = (
                 float(row["mean_latency"])
@@ -131,6 +212,8 @@ def _scheduling_winner(fixtures: list[tuple[dict[str, Any], dict[str, Any]]]) ->
             scenario.deadline,
         )
         for row in rows:
+            if row.get("candidate_kind") == "upper_bound":
+                continue
             score = (
                 abs(float(row["deadline_drift_days"]))
                 + float(row["capacity_violation_rate"]) * 25.0
@@ -166,6 +249,8 @@ def run_sweep(
     root = _repo_root()
     result_root = Path(out_dir) if out_dir else root / "research/results/sweep"
     points = sweep_grid_points(grid)
+    if grid is None:
+        points = [*points, *ADVERSARIAL_SWEEP_POINTS]
     if progress:
         progress.log(0, "sweep.start", f"points={len(points)}")
     default_winners = _default_winners()
@@ -187,6 +272,8 @@ def run_sweep(
                     "point_index": point_index,
                     "track": track,
                     "params": point,
+                    "adversarial_case": point.get("adversarial_case", "none"),
+                    "archetypes": sorted({learner["archetype"] for learner, _truth in fixtures}),
                     "default_winner": default_winner,
                     "winner": winner,
                     "ranking_status": "held" if winner == default_winner else "flipped",
@@ -207,8 +294,11 @@ def run_sweep(
     manifest = build_manifest(seed=0, archetype_mix={"sweep": 2}, n_learners=len(points) * 2)
     payload = {
         "grid": grid or SWEEP_GRID,
+        "adversarial_regimes": ADVERSARIAL_SWEEP_POINTS,
         "rows": rows,
         "stability": ranking_stability(rows),
+        "flip_cells": flip_cells(rows),
+        "per_archetype_worst_case": per_archetype_worst_case(rows),
     }
     if progress:
         progress.log(95, "sweep.write", f"rows={len(rows)}")

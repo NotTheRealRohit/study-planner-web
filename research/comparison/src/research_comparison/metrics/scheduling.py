@@ -64,13 +64,25 @@ def scheduling_metric_row(
 
 def winner_by_material_mix(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     winners: dict[str, dict[str, Any]] = {}
-    for material_mix in sorted({row["material_mix"] for row in rows}):
-        candidates = sorted({row["candidate"] for row in rows if row["material_mix"] == material_mix})
+    deployable_rows = [
+        row
+        for row in rows
+        if row.get("candidate_kind") != "upper_bound"
+        and not str(row.get("candidate", "")).startswith("oracle")
+    ]
+    for material_mix in sorted({row["material_mix"] for row in deployable_rows}):
+        candidates = sorted(
+            {
+                row["candidate"]
+                for row in deployable_rows
+                if row["material_mix"] == material_mix
+            }
+        )
         scores: dict[str, dict[str, float]] = {}
         for candidate in candidates:
             selected = [
                 row
-                for row in rows
+                for row in deployable_rows
                 if row["material_mix"] == material_mix and row["candidate"] == candidate
             ]
             if not selected:

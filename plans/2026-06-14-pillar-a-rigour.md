@@ -479,7 +479,7 @@ non-positive, and a regression test covers the failing fixture.
 
 ### Phase A4: New candidates per track + winner tweaks + wider/adversarial sweep (PA+.4–.6)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase A3 (everything new is scored under the rigorous protocol + held-out tuning)
 **Estimated scope:** `baselines/{calibration,detection,scheduling}.py` + sweep runner + heatmap + `ortools` dep
 
@@ -514,7 +514,25 @@ test -s college/mydeliverables/1st-Review/report/generated/robustness_heatmap.pd
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+A4 implementation completed against frozen regime `e716cd12dddc` and the A3
+held-out split. Calibration added `kalman`; detection added `bocpd`,
+`page_hinkley`, `adwin`, and `ruptures_pelt_binseg` (`candidate_kind:
+upper_bound`) while CUSUM now uses robust running-scale z scores, train-only
+grid-selected per-shift k/h, and a Page-Hinkley drift arm. Scheduling added
+`topological_prereq` and `local_search_repair`; `cpsat_optimum` is implemented
+as an OR-Tools optional upper bound and is gracefully skipped in this
+environment because `ortools` is not installed. The previously dipping
+`anchor+practice` mix was traced to non-chronological selected-day allocation;
+normalising allocation chronology and role order brings all deployable
+material-mix prereq summaries back to 1.0. Sweep now uses five points per axis,
+adds multi-shift, step+drift, and bursty-missingness adversarial regimes,
+records `flip_cells` and `per_archetype_worst_case`, and regenerated
+`robustness_heatmap.pdf`.
+
+Verification run: `calibration --seeds 200`, `detection --seeds 200`,
+`scheduling --seeds 200`, full default `sweep` (3,128 points / 9,384 rows),
+`python -m research_comparison.plots.robustness_heatmap`, Ruff on touched
+Python files, and `pytest research/comparison/tests -q` (`78 passed`).
 
 ---
 
