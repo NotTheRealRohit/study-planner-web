@@ -25,7 +25,7 @@
 | A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `4445701` | ✅ Verified — 2026-06-17 (D-A7; wins on medium/max, honest small-band negative) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ✅ Complete — `2b8e23c` | ✅ Verified — 2026-06-17 (A3.1–A3.7; A1 coverage now earned; see A2-generalisation finding) |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ✅ Complete — `5aa4c2e` | ✅ Verified — 2026-06-18 (A4.1–A4.6; CUSUM tuned train-only; UBs excluded; honest detector/scheduler findings) |
-| A5 | Reality-matched generator + external validity | PA+.7 | ✅ Complete — `ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee` | — |
+| A5 | Reality-matched generator + external validity | PA+.7 | ✅ Complete — `68f4a121ed1ab6533db2f2949625f367258146d2` | — |
 
 Status vocab: `☐ Not started` · `🟡 In progress` · `🛑 Blocked: <reason>` · `✅ Complete — <sha>` (implementer) · `✅ Verified` / `🔁 Changes requested` (reviewer).
 
@@ -381,7 +381,7 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 
 ### Implementer report / Reviewer findings / Resolution
 
-- Implementer — SHA / files / dataset_id + moment sources / ranking-hold summary / deviations / self-check (A5.1–A5.5): `ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee`
+- Implementer — SHA / files / dataset_id + moment sources / ranking-hold summary / deviations / self-check (A5.1–A5.5): `68f4a121ed1ab6533db2f2949625f367258146d2`
   - Files changed: `research/comparison/src/research_comparison/generator/{generate,oulad_moments,pace,reality}.py`; `research/comparison/tests/test_generator.py`; `research/datasets/synthetic-reality-3b404c903563-seed0-n3600/manifest.json`; `research/doc/verification-runs/2026-06-18-a5-pillar-a/{SUMMARY.md,evidence.json,oulad_moment_bounds.json}`; `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`; `college/scope/research-tasklist.md`; this plan/checklist.
   - Dataset + source: generated `synthetic-reality-3b404c903563-seed0-n3600` (`params_version_hash=3b404c903563`, base frozen hash `e716cd12dddc`, 3,600 learners). OULAD moment bounds came from `studentVle.csv` + `studentRegistration.csv`: streamed 10,655,280 VLE rows, aggregated a deterministic 1,701 learner/course sample (`sample_mod=17`, 1,440 usable series), excluded pre-start days, and recorded the proxy mapping `daily sum_click -> engagement intensity -> minutes toward a roadmap`.
   - What I did: added a streaming OULAD moment-bounds extractor; added a separate `reality_matched` generator regime with continuous trait sampling around named archetype components, relapse/recovery and exam-crunch annotations, illness/holiday hiatus + weekend clustering, heavy-tailed session-length-dependent AR(1) noise, and a logged-time misreporting layer stored only in sidecars. The frozen default generator path remains the default and is guarded by a byte-hash test.
