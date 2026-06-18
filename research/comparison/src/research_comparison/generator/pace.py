@@ -12,7 +12,8 @@ def latent_base(
     day_of_week: str,
     params: dict[str, Any],
 ) -> float:
+    role_rho = params.get("role_rho", ROLE_RHO)
     tau = params.get("tau", TAU_GENERIC)
     weekday = day_of_week.lower()
     weekend_multiplier = params.get("nu_weekend", 1.0) if weekday in {"saturday", "sunday"} else 1.0
-    return float(m_global * ROLE_RHO[role] * tau.get(time_of_day, 1.0) * weekend_multiplier)
+    return float(m_global * role_rho[role] * tau.get(time_of_day, 1.0) * weekend_multiplier)

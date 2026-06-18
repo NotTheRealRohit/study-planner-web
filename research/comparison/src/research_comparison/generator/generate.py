@@ -5,6 +5,7 @@ import json
 from dataclasses import asdict
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -15,6 +16,15 @@ from research_comparison.generator.effects import delta_deadline, phi_fatigue
 from research_comparison.generator.materials import Material, sample_material_mix
 from research_comparison.generator.noise import apply_lognormal_ar1
 from research_comparison.generator.pace import latent_base
+from research_comparison.generator.reality import (
+    REALITY_REGIME,
+    build_reality_regime_series,
+    collect_reality_slots,
+    draw_reality_logged_ratios,
+    normalise_moment_bounds,
+    reality_params_hash,
+    sample_continuous_config,
+)
 from research_comparison.generator.regimes import build_regime_series
 from research_comparison.generator.types import GroundTruth, SessionEvent
 from research_comparison.manifest import build_manifest, stamp
@@ -39,6 +49,7 @@ DEFAULT_ARCHETYPE_MIX = {
 }
 DEFAULT_BANDS = ["small", "medium", "max"]
 DEFAULT_SEEDS = list(range(40))
+FROZEN_REGIME = "frozen"
 
 
 def _repo_root() -> Path:
@@ -230,19 +241,136 @@ def generate_learner(
     return events, truth
 
 
+def generate_reality_matched_learner(
+    archetype: str,
+    band: str,
+    seed: int,
+    moment_bounds: dict[str, Any] | None = None,
+    overrides: dict[str, float] | None = None,
+) -> tuple[list[SessionEvent], GroundTruth, dict[str, Any]]:
+    selected_overrides = overrides or {}
+    bounds = normalise_moment_bounds(moment_bounds)
+    rng = np.random.default_rng(seed)
+    base_config = archetype_config(archetype)
+    config, continuous_traits = sample_continuous_config(base_config, bounds, rng)
+    if "sigma_log" in selected_overrides:
+        config["sigma_log"] = float(selected_overrides["sigma_log"])
+    target_sessions = _target_sessions(band, rng)
+    materials = sample_material_mix(band, rng)
+    emitted_slots, missingness = collect_reality_slots(
+        archetype,
+        config,
+        materials,
+        target_sessions,
+        rng,
+        bounds,
+        manual_fraction=float(selected_overrides.get("manual_fraction", MANUAL_FRACTION)),
+    )
+    regime, shifts, annotations = build_reality_regime_series(len(emitted_slots), rng, bounds)
+
+    r_star: list[float] = []
+    for index, ((slot, _source), regime_multiplier) in enumerate(
+        zip(emitted_slots, regime, strict=True)
+    ):
+        latent = (
+            latent_base(
+                float(config["m_global"]),
+                slot.material_role,
+                slot.time_of_day,
+                slot.day_of_week,
+                config,
+            )
+            * regime_multiplier
+            * phi_fatigue(slot.same_day_count)
+            * delta_deadline(index, len(emitted_slots), config)
+        )
+        r_star.append(round(float(latent), 6))
+
+    logged_ratios, true_ratios, clip_rate, misreport_factors = draw_reality_logged_ratios(
+        r_star,
+        emitted_slots,
+        float(config["sigma_log"]),
+        rng,
+        ar1_phi=float(selected_overrides.get("ar1_phi", config["ar1_phi"])),
+    )
+    events = [
+        _event_for_slot(archetype, band, seed, index, slot, source, logged_ratios[index])
+        for index, (slot, source) in enumerate(emitted_slots)
+    ]
+    truth = GroundTruth(
+        m_global=float(config["m_global"]),
+        role_multipliers=dict(config.get("role_rho", ROLE_RHO)),
+        context_multipliers=_context_multipliers(config),
+        regime_schedule=shifts,
+        r_star=r_star,
+        true_finish_date=_true_finish_date(emitted_slots, materials, r_star),
+        is_faker=False,
+        clip_rate=round(float(clip_rate), 6),
+    )
+    misreporting = []
+    for index, (event, (slot, source)) in enumerate(zip(events, emitted_slots, strict=True)):
+        if source != "active":
+            continue
+        misreporting.append(
+            {
+                "sessionId": event["sessionId"],
+                "true_active_minutes": round(slot.planned_minutes * true_ratios[index], 6),
+                "reported_active_minutes": event["activeMinutes"],
+                "misreport_factor": misreport_factors[index],
+            }
+        )
+    metadata = {
+        "generator_regime": REALITY_REGIME,
+        "continuous_traits": continuous_traits,
+        "reality_params_hash": reality_params_hash(bounds),
+        "moment_bounds_hash": bounds.get("moment_bounds_hash", reality_params_hash(bounds)),
+        "moment_bounds_source": {
+            "bounds_version": bounds.get("bounds_version"),
+            "proxy_mapping": bounds.get("proxy_mapping"),
+        },
+        "reality_annotations": [
+            *annotations,
+            {
+                "label": "illness_holiday_gap",
+                "hiatus_start": missingness.get("hiatus_start"),
+                "hiatus_end": missingness.get("hiatus_end"),
+                "hiatus_days": missingness.get("hiatus_days"),
+            },
+        ],
+        "missingness": missingness,
+        "logged_time_misreporting": {
+            "hidden_from_candidate_inputs": True,
+            "entries": misreporting,
+        },
+        "noise_model": "heavy_tailed_session_length_dependent_ar1",
+    }
+    return events, truth, metadata
+
+
 def generate_dataset(
     archetype_mix: dict[str, int] | None = None,
     bands: list[str] | None = None,
     seeds: list[int] | None = None,
     out_dir: str | None = None,
     progress: ProgressLogger | None = None,
+    generator_regime: str = FROZEN_REGIME,
+    moment_bounds: dict[str, Any] | None = None,
 ) -> str:
     mix = archetype_mix or DEFAULT_ARCHETYPE_MIX
     selected_bands = bands or DEFAULT_BANDS
     selected_seeds = seeds or DEFAULT_SEEDS
     out_root = Path(out_dir) if out_dir else _repo_root() / "research/datasets"
     n_learners = sum(mix.values()) * len(selected_bands) * len(selected_seeds)
-    dataset_id = f"synthetic-{PARAMS_VERSION_HASH}-seed{selected_seeds[0]}-n{n_learners}"
+    if generator_regime == FROZEN_REGIME:
+        dataset_hash = PARAMS_VERSION_HASH
+        dataset_id = f"synthetic-{PARAMS_VERSION_HASH}-seed{selected_seeds[0]}-n{n_learners}"
+        selected_moment_bounds = None
+    elif generator_regime == REALITY_REGIME:
+        selected_moment_bounds = normalise_moment_bounds(moment_bounds)
+        dataset_hash = reality_params_hash(selected_moment_bounds)
+        dataset_id = f"synthetic-reality-{dataset_hash}-seed{selected_seeds[0]}-n{n_learners}"
+    else:
+        raise ValueError(f"Unknown generator_regime: {generator_regime}")
     dataset_dir = out_root / dataset_id
     dataset_dir.mkdir(parents=True, exist_ok=True)
     if progress:
@@ -259,7 +387,16 @@ def generate_dataset(
                 for archetype, count in mix.items():
                     for replicate in range(count):
                         learner_seed = int(seed * 10_000 + learner_index + replicate)
-                        sessions, truth = generate_learner(archetype, band, learner_seed)
+                        sidecar_extras: dict[str, Any] = {}
+                        if generator_regime == REALITY_REGIME:
+                            sessions, truth, sidecar_extras = generate_reality_matched_learner(
+                                archetype,
+                                band,
+                                learner_seed,
+                                moment_bounds=selected_moment_bounds,
+                            )
+                        else:
+                            sessions, truth = generate_learner(archetype, band, learner_seed)
                         metadata = {
                             "learner_id": f"{archetype}-{band}-{seed}-{learner_index:05d}",
                             "archetype": archetype,
@@ -276,7 +413,7 @@ def generate_dataset(
                         )
                         sidecar_file.write(
                             json.dumps(
-                                {**metadata, "ground_truth": asdict(truth)},
+                                {**metadata, "ground_truth": asdict(truth), **sidecar_extras},
                                 sort_keys=True,
                                 default=_json_default,
                             )
@@ -299,7 +436,10 @@ def generate_dataset(
     manifest = build_manifest(seed=selected_seeds[0], archetype_mix=mix, n_learners=n_learners)
     manifest_dict = {
         **asdict(manifest),
+        "params_version_hash": dataset_hash,
+        "base_params_version_hash": PARAMS_VERSION_HASH,
         "dataset_id": dataset_id,
+        "generator_regime": generator_regime,
         "bands": selected_bands,
         "seeds": selected_seeds,
         "seed_count": len(selected_seeds),
@@ -308,6 +448,15 @@ def generate_dataset(
             f"{len(selected_seeds)} seeds"
         ),
     }
+    if generator_regime == REALITY_REGIME:
+        manifest_dict["moment_bounds"] = {
+            "reality_params_hash": dataset_hash,
+            "moment_bounds_hash": selected_moment_bounds.get("moment_bounds_hash", dataset_hash),
+            "bounds_version": selected_moment_bounds.get("bounds_version"),
+            "source": selected_moment_bounds.get("source"),
+            "proxy_mapping": selected_moment_bounds.get("proxy_mapping"),
+            "bounds": selected_moment_bounds.get("bounds"),
+        }
     (dataset_dir / "manifest.json").write_text(
         json.dumps(manifest_dict, indent=2, sort_keys=True),
         encoding="utf-8",
@@ -361,6 +510,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--regime", choices=[FROZEN_REGIME, REALITY_REGIME], default=FROZEN_REGIME)
+    parser.add_argument("--moment-bounds-file", default=None)
+    parser.add_argument("--seeds", type=int, default=None)
     parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
     logger = ProgressLogger(label="research-dataset", enabled=not args.quiet)
@@ -370,7 +522,19 @@ def main() -> None:
         logger.log(100, "dataset.stub_complete", str(path))
         print(path)
         return
-    print(generate_dataset(out_dir=args.out_dir, progress=logger))
+    moment_bounds = None
+    if args.moment_bounds_file:
+        moment_bounds = json.loads(Path(args.moment_bounds_file).read_text(encoding="utf-8"))
+    seeds = list(range(args.seeds)) if args.seeds is not None else None
+    print(
+        generate_dataset(
+            out_dir=args.out_dir,
+            progress=logger,
+            generator_regime=args.regime,
+            moment_bounds=moment_bounds,
+            seeds=seeds,
+        )
+    )
 
 
 if __name__ == "__main__":

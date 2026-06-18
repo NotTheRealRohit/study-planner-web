@@ -57,9 +57,20 @@
 
 - `kalman` was added and scored under the full protocol — fold its result into the calibration story alongside the A2 caveat above (it does not change the A2 conclusion).
 
+## External validity (A5 `ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee`)
+
+- Reality-matched regime: `synthetic-reality-3b404c903563-seed0-n3600`, with base frozen hash `e716cd12dddc` preserved. OULAD was used for **moment bounds only**: daily `studentVle.sum_click` aggregated per learner/course/day as an engagement-intensity proxy for minutes toward a roadmap. Bounds are ranges, not point fits; pre-start days are excluded.
+- Ranking hold is **mixed**, not a blanket external-validity win. Projection holds (`conformal` remains best non-oracle on every band; `conformal` and `gp_hetero_t` retain Holm-surviving wins). Scheduling holds (non-greedy schedulers still beat `greedy_incumbent`; `dp_capacity` wins every material mix; prereq-order correctness remains 1.0).
+- Detection only partially holds: drift remains `cusum`, but step shifts switch from A4's `page_hinkley` winner to `cusum`; no detection challenger has a Holm-surviving win on A5.
+- Calibration does **not** hold for the structured covariate/EB story: `covariate_bayes` and `eb_partial_pool` are often Holm-significant in the wrong direction on A5. Simple SMA/EWMA have surviving context-prediction wins. Keep the A2/A3 calibration caveat; A5 strengthens it rather than softening it.
+- A5.4 direct external validation was not run; do not imply candidates were scored directly on real OULAD learner traces. The evidence is a moment-bounded reality-matched generator rerun.
+
+**Evidence:** `research/doc/verification-runs/2026-06-18-a5-pillar-a/{SUMMARY.md,evidence.json,oulad_moment_bounds.json}`; current `research/results/{calibration,detection,projection,scheduling}/*.json` generated on `params_version_hash=3b404c903563`.
+
 ## Changelog
 
 | Date | Entry | Source |
 |---|---|---|
 | 2026-06-18 | Created. A2 priority caveat + A1/A3.7 projection framing + cross-cutting rules recorded. | VERIFICATION A1–A3 reviewer findings; result JSONs. |
 | 2026-06-18 | A4 verified (`5aa4c2e`): replaced detection/scheduling placeholder with real findings — page_hinkley/csd vs cusum (bocpd/adwin worse); all schedulers beat greedy_incumbent; prereq-order 1.0; upper-bound framing. | VERIFICATION A4 reviewer findings; result JSONs. |
+| 2026-06-18 | A5 implemented (`ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee`): added OULAD-bounded reality-matched generator and recorded mixed ranking-hold — projection/scheduling hold, detection partially holds, calibration structured-candidate story does not hold. | A5 verification-run evidence; result JSONs. |

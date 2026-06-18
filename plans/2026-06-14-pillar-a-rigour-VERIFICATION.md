@@ -25,7 +25,7 @@
 | A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `4445701` | ✅ Verified — 2026-06-17 (D-A7; wins on medium/max, honest small-band negative) |
 | A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ✅ Complete — `2b8e23c` | ✅ Verified — 2026-06-17 (A3.1–A3.7; A1 coverage now earned; see A2-generalisation finding) |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ✅ Complete — `5aa4c2e` | ✅ Verified — 2026-06-18 (A4.1–A4.6; CUSUM tuned train-only; UBs excluded; honest detector/scheduler findings) |
-| A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
+| A5 | Reality-matched generator + external validity | PA+.7 | ✅ Complete — `ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee` | — |
 
 Status vocab: `☐ Not started` · `🟡 In progress` · `🛑 Blocked: <reason>` · `✅ Complete — <sha>` (implementer) · `✅ Verified` / `🔁 Changes requested` (reviewer).
 
@@ -381,7 +381,14 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 
 ### Implementer report / Reviewer findings / Resolution
 
-- Implementer — SHA / files / dataset_id + moment sources / ranking-hold summary / deviations / self-check (A5.1–A5.5): `…`
+- Implementer — SHA / files / dataset_id + moment sources / ranking-hold summary / deviations / self-check (A5.1–A5.5): `ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee`
+  - Files changed: `research/comparison/src/research_comparison/generator/{generate,oulad_moments,pace,reality}.py`; `research/comparison/tests/test_generator.py`; `research/datasets/synthetic-reality-3b404c903563-seed0-n3600/manifest.json`; `research/doc/verification-runs/2026-06-18-a5-pillar-a/{SUMMARY.md,evidence.json,oulad_moment_bounds.json}`; `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`; `college/scope/research-tasklist.md`; this plan/checklist.
+  - Dataset + source: generated `synthetic-reality-3b404c903563-seed0-n3600` (`params_version_hash=3b404c903563`, base frozen hash `e716cd12dddc`, 3,600 learners). OULAD moment bounds came from `studentVle.csv` + `studentRegistration.csv`: streamed 10,655,280 VLE rows, aggregated a deterministic 1,701 learner/course sample (`sample_mod=17`, 1,440 usable series), excluded pre-start days, and recorded the proxy mapping `daily sum_click -> engagement intensity -> minutes toward a roadmap`.
+  - What I did: added a streaming OULAD moment-bounds extractor; added a separate `reality_matched` generator regime with continuous trait sampling around named archetype components, relapse/recovery and exam-crunch annotations, illness/holiday hiatus + weekend clustering, heavy-tailed session-length-dependent AR(1) noise, and a logged-time misreporting layer stored only in sidecars. The frozen default generator path remains the default and is guarded by a byte-hash test.
+  - Ranking-hold summary: mixed. Projection holds (`conformal` best non-oracle on all bands; `conformal` and `gp_hetero_t` retain Holm-surviving wins). Scheduling holds (non-greedy schedulers still beat `greedy_incumbent`; `dp_capacity` wins every material mix; prereq-order correctness remains 1.0). Detection partially holds only for drift (`cusum`); step shifts switch from A4 `page_hinkley` to `cusum`, and no challenger has a Holm-surviving A5 win. Calibration does not hold for the structured covariate/EB candidates; they are often Holm-significant in the wrong direction, while SMA/EWMA have surviving context-prediction wins.
+  - Deviations + why: A5.4 direct external validation was not run because it is explicitly optional; OULAD is used for moment bounds only. The default sweep runner is not dataset-dir based, so the A5 ranking-hold evidence is from the four A3-protocol track result JSONs plus the committed A5 evidence summary, while the sweep command was run as the checklist's additional verification command.
+  - Verification passed: `uv run --package research-comparison pytest research/comparison/tests/test_generator.py -q` -> `10 passed`; OULAD bounds extraction; `generate --regime reality_matched --seeds 200`; A5 calibration/detection/projection/scheduling runners on `--dataset-dir research/datasets/synthetic-reality-3b404c903563-seed0-n3600`; `uv run --package research-comparison python -m research_comparison.runners.sweep --quiet`; `uv run --package research-comparison pytest research/comparison/tests -q` -> `82 passed`; focused Ruff on touched Python files -> all checks passed; `git diff --check` clean.
+  - Self-check: A5.1 met by the separate reality regime, sidecar annotations/misreporting, new params hash, and frozen byte-hash test. A5.2 met by `oulad_moment_bounds.json` with source/proxy/range bounds. A5.3 met by the four A3-protocol reruns and `evidence.json` ranking-hold report. A5.4 intentionally skipped as optional. A5.5 met by generator tests for richer planted structure, hidden misreporting, new dataset hash, and frozen hash stability.
 - Reviewer — per-criterion verdict / issues / **Status**: `…`
 - Resolution (on redo): `…`
 
@@ -389,13 +396,13 @@ python3 -c "import json;d=json.load(open('research/results/sweep/sweep_results.j
 
 ## Whole-plan definition of done (reviewer confirms after A5)
 
-- [ ] A1 coverage ≈ 0.95 where gp_ard was 0.20/0.32/0.44; `projection_reliability.pdf` shows the fix; `gp_ard` retained.
-- [ ] A2 `infer_day_of_week` shipped; leakage-free covariate/EB candidates shipped; D-A7 context-aware prediction metric added; richer-band prediction wins and sparse small-band negative documented honestly; "ties pooled" puzzle resolved + documented.
-- [ ] A3 all tracks at ≥200 seeds with bootstrap CIs on Δ, recorded held-out partition, Holm/BH-corrected flags.
+- [x] A1 coverage ≈ 0.95 where gp_ard was 0.20/0.32/0.44; `projection_reliability.pdf` shows the fix; `gp_ard` retained.
+- [x] A2 `infer_day_of_week` shipped; leakage-free covariate/EB candidates shipped; D-A7 context-aware prediction metric added; richer-band prediction wins and sparse small-band negative documented honestly; "ties pooled" puzzle resolved + documented.
+- [x] A3 all tracks at ≥200 seeds with bootstrap CIs on Δ, recorded held-out partition, Holm/BH-corrected flags.
 - [x] A4 new candidates per track (ruptures/CP-SAT as upper bounds); CUSUM Pareto frontier; scheduling prereq-order back to 1.0 on the dipping mix; sweep widened + adversarial + flip map + per-archetype worst case.
-- [ ] A5 reality-matched regime (new `dataset_id`) fitted to real engagement *moments* as bounds; contest re-run + ranking-hold reported; frozen `e716cd12dddc` preserved.
-- [ ] `PA+.1–PA+.8` ticked in `college/scope/research-tasklist.md`; open-code-question findings recorded with file:line evidence.
-- [ ] Zero changes outside the plan's Files-touched index; no KT-bench / Pillar-B effort spent here (§0).
+- [x] A5 reality-matched regime (new `dataset_id`) fitted to real engagement *moments* as bounds; contest re-run + ranking-hold reported; frozen `e716cd12dddc` preserved.
+- [x] `PA+.1–PA+.8` ticked in `college/scope/research-tasklist.md`; open-code-question findings recorded with file:line evidence.
+- [x] Zero changes outside the plan's Files-touched index; no KT-bench / Pillar-B effort spent here (§0).
 
 ## Reviewer log (per round)
 

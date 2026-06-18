@@ -538,7 +538,7 @@ Python files, and `pytest research/comparison/tests -q` (`78 passed`).
 
 ### Phase A5: Reality-matched generator + external validity (PA+.7)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — ba13e21634f99afe1253a38eac7dc8f9d5f7b7ee
 **Depends on:** Phase A4 (the full, rigorous contest exists to re-run on the new regime)
 **Estimated scope:** generator enrichment (new `dataset_id`) + moments-fit script + re-run + external-validity note
 
@@ -571,7 +571,33 @@ python3 -c "print('external-validity ranking-hold check: inspect sweep stability
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+A5 adds a separate `reality_matched` generator regime; the default frozen
+regime remains byte-stable (`generate_learner("steady", "medium", 42)` SHA-256
+`62addf4b4d019c505d0781a37736b020bea58931730272c2791e540c5c1bbce1`).
+OULAD moment bounds were derived by streaming `studentVle.csv` (10,655,280
+rows) and aggregating a deterministic 1,701-series sample; pre-start days are
+excluded and the proxy mapping is recorded as daily `sum_click` engagement
+intensity -> minutes toward a roadmap. Bounds are used as ranges only, producing
+reality params hash `3b404c903563` and dataset
+`synthetic-reality-3b404c903563-seed0-n3600`.
+
+The reality regime samples continuous traits around the named archetype
+components, adds relapse/recovery and exam-crunch annotations, plants an
+illness/holiday hiatus plus weekend clustering, uses heavy-tailed
+session-length-dependent AR(1) noise, and records the logged-time
+misreporting layer only in the sidecar. The A3 protocol was rerun on the new
+dataset for calibration, detection, projection, and scheduling; the default
+sweep verification command was also rerun. Ranking hold is mixed: projection
+holds (`conformal` best non-oracle on all bands; `conformal`/`gp_hetero_t` keep
+Holm-surviving wins), scheduling holds (non-greedy schedulers still beat
+`greedy_incumbent`; `dp_capacity` wins every material mix), detection only
+partially holds (drift remains `cusum`, step switches from A4 `page_hinkley` to
+`cusum`), and calibration does not hold for the structured covariate/EB
+candidates (they are often Holm-significant in the wrong direction; SMA/EWMA
+have surviving context-prediction wins). A5.4 direct external validation was
+not run because it is optional; this phase uses OULAD for moment bounds only.
+Committed evidence lives under
+`research/doc/verification-runs/2026-06-18-a5-pillar-a/`.
 
 ---
 
