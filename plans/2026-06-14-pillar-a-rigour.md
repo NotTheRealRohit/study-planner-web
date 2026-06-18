@@ -413,7 +413,7 @@ D-A7 redo adds `predict_next(history, next_context)` and a context-aware prequen
 
 ### Phase A3: Statistical rigour — seeds, bootstrap CIs, held-out archetypes, MC correction (PA+.3)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phases A1, A2 (so the new candidates are scored under the rigorous protocol)
 **Estimated scope:** runner flags + writer/paired wiring across all four tracks + full re-run
 
