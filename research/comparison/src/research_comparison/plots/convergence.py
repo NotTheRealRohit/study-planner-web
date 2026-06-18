@@ -86,8 +86,14 @@ def write_convergence_artifacts(
         progress.log(0, "figs.calibration.start", f"source={source}")
     payload = json.loads(source.read_text(encoding="utf-8"))
     if progress:
-        progress.log(30, "figs.calibration.loaded", f"convergence_rows={len(payload['convergence'])}")
-    target_generated_dir = generated_dir or root / "college/mydeliverables/1st-Review/report/generated"
+        progress.log(
+            30,
+            "figs.calibration.loaded",
+            f"convergence_rows={len(payload['convergence'])}",
+        )
+    target_generated_dir = (
+        generated_dir or root / "college/mydeliverables/1st-Review/report/generated"
+    )
     pdf = write_convergence_plot(
         source,
         target_generated_dir / "calibration_convergence.pdf",
@@ -97,6 +103,8 @@ def write_convergence_artifacts(
     table = write_calibration_winners_table(
         payload["winner_per_band"],
         target_generated_dir / "calibration_winners.tex",
+        paired=payload.get("paired_vs_incumbent"),
+        correction=payload.get("mc_correction", {}).get("recovery_mae"),
     )
     if progress:
         progress.log(80, "figs.calibration.table_written", str(table))
@@ -108,7 +116,7 @@ def write_convergence_artifacts(
         encoding="utf-8",
     )
     if progress:
-        progress.log(100, "figs.calibration.complete", f"wrote=3")
+        progress.log(100, "figs.calibration.complete", "wrote=3")
     return [pdf, table, provenance]
 
 

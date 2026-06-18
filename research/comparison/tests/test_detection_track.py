@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 import math
 
 from research_comparison.baselines.detection import detect_csd, detect_ewma
+from research_comparison.generator.generate import DEFAULT_ARCHETYPE_MIX, generate_dataset
 from research_comparison.metrics.detection import roc_points, score_detections
 from research_comparison.runners.detection import (
     detect_cusum,
     run_detection_for_learner,
+    run_detection_track,
 )
 
 
@@ -103,3 +106,26 @@ def test_roc_points_are_bounded_and_monotone_by_threshold_order():
     assert points == sorted(points, key=lambda point: point["threshold"], reverse=True)
     assert all(0.0 <= point["true_detection_rate"] <= 1.0 for point in points)
     assert all(0.0 <= point["false_alarm_rate"] <= 1.0 for point in points)
+
+
+def test_a3_detection_result_carries_ci_correction_and_heldout_split(tmp_path):
+    dataset_id = generate_dataset(
+        archetype_mix=DEFAULT_ARCHETYPE_MIX,
+        bands=["medium"],
+        seeds=[0],
+        out_dir=str(tmp_path / "datasets"),
+    )
+    result_path = run_detection_track(
+        dataset_dir=str(tmp_path / "datasets" / dataset_id),
+        out_dir=str(tmp_path / "results" / "detection"),
+    )
+
+    payload = json.loads(result_path.read_text())
+    split = payload["_provenance"]["archetype_split"]
+    first_cell = next(iter(payload["paired_vs_incumbent"].values()))
+    first_result = next(iter(first_cell.values()))
+
+    assert set(split["train"]).isdisjoint(split["held_out"])
+    assert payload["scored_split"] == "held_out"
+    assert {"delta_ci_low", "delta_ci_high"} <= set(first_result)
+    assert payload["mc_correction"]["comparisons"]

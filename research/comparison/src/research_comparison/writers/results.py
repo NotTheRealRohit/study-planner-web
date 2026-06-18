@@ -24,6 +24,8 @@ def manifest_from_dataset(raw: dict[str, Any]) -> Manifest:
         params_version_hash=str(raw["params_version_hash"]),
         archetype_mix=dict(raw["archetype_mix"]),
         n_learners=int(raw["n_learners"]),
+        seed_count=len(raw.get("seeds", [])) or None,
+        bands=list(raw.get("bands", [])) or None,
     )
 
 

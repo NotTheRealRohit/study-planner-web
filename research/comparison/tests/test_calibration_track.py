@@ -12,7 +12,11 @@ from research_comparison.baselines.calibration import (
     PooledBayesianCalibrator,
     SMACalibrator,
 )
-from research_comparison.generator.generate import generate_dataset, generate_learner
+from research_comparison.generator.generate import (
+    DEFAULT_ARCHETYPE_MIX,
+    generate_dataset,
+    generate_learner,
+)
 from research_comparison.metrics.aggregate import winner_per_band
 from research_comparison.metrics.paired import paired_difference
 from research_comparison.metrics.prequential import context_prediction_absolute_errors
@@ -303,3 +307,26 @@ def test_tracer_bullet_dataset_compare_figs_produces_artifacts_in_temp_workspace
     assert table.exists() and table.stat().st_size > 0
     assert result_files
     assert "_provenance" in json.loads(result_files[0].read_text())
+
+
+def test_a3_calibration_result_carries_ci_correction_and_heldout_split(tmp_path):
+    dataset_id = generate_dataset(
+        archetype_mix=DEFAULT_ARCHETYPE_MIX,
+        bands=["small"],
+        seeds=[0],
+        out_dir=str(tmp_path / "datasets"),
+    )
+    result_path = run_calibration_track(
+        dataset_dir=str(tmp_path / "datasets" / dataset_id),
+        out_dir=str(tmp_path / "results" / "calibration"),
+    )
+
+    payload = json.loads(result_path.read_text())
+    split = payload["_provenance"]["archetype_split"]
+    paired = payload["paired_vs_incumbent"]["small"]
+    first_result = next(iter(paired.values()))
+
+    assert set(split["train"]).isdisjoint(split["held_out"])
+    assert payload["scored_split"] == "held_out"
+    assert {"delta_ci_low", "delta_ci_high"} <= set(first_result)
+    assert payload["mc_correction"]["recovery_mae"]["comparisons"]

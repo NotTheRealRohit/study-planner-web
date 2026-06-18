@@ -12,15 +12,27 @@ from research_comparison.baselines.calibration import (
 )
 from research_comparison.metrics.aggregate import cell_summary, winner_per_band
 from research_comparison.metrics.coverage import credible_interval_coverage
-from research_comparison.metrics.paired import paired_difference
 from research_comparison.metrics.prequential import (
     context_prediction_absolute_errors,
     prequential_absolute_errors,
 )
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
-from research_comparison.metrics.rigour import bootstrap_delta_ci
 from research_comparison.oracles.calibration import calibration_oracle_estimate
 from research_comparison.progress_log import ProgressLogger
+from research_comparison.runners.rigour import (
+    DEFAULT_SEED_COUNT,
+    annotate_archetype_split,
+    attach_rigour_provenance,
+    mc_correction_block,
+    paired_by_group,
+    paired_metric_result,
+    read_jsonl,
+    reporting_rows,
+    resolve_dataset_dir,
+)
+from research_comparison.runners.rigour import (
+    latest_dataset_dir as _latest_dataset_dir,
+)
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
 
@@ -58,15 +70,17 @@ def default_t_grid(n_sessions: int) -> list[int]:
 
 
 def latest_dataset_dir(root: Path | None = None) -> Path:
-    datasets_root = root or _repo_root() / "research/datasets"
-    candidates = [path for path in datasets_root.iterdir() if (path / "learners.jsonl").exists()]
+    repo_root = _repo_root()
+    if root is None:
+        return _latest_dataset_dir(repo_root)
+    candidates = [path for path in root.iterdir() if (path / "learners.jsonl").exists()]
     if not candidates:
         raise FileNotFoundError("No generated dataset found under research/datasets")
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return read_jsonl(path)
 
 
 def _active_sessions_with_targets(
@@ -97,19 +111,7 @@ def _paired_metric_result(
     challenger: list[float],
     baseline: list[float],
 ) -> dict[str, float]:
-    result = paired_difference(challenger, baseline)
-    deltas = [
-        challenger_value - baseline_value
-        for challenger_value, baseline_value in zip(challenger, baseline, strict=True)
-    ]
-    ci_low, ci_high, _point = bootstrap_delta_ci(
-        deltas,
-        n_boot=10000,
-        seed=0,
-    )
-    result["delta_ci_low"] = ci_low
-    result["delta_ci_high"] = ci_high
-    return result
+    return paired_metric_result(challenger, baseline)
 
 
 def _prefixed_metric_result(
@@ -172,10 +174,11 @@ def _paired_by_candidate(
 def run_calibration_track(
     dataset_dir: str | None = None,
     out_dir: str | None = None,
+    seed_count: int | None = DEFAULT_SEED_COUNT,
     progress: ProgressLogger | None = None,
 ) -> Path:
     root = _repo_root()
-    dataset_path = Path(dataset_dir) if dataset_dir else latest_dataset_dir()
+    dataset_path = resolve_dataset_dir(root, dataset_dir, seed_count, progress=progress)
     result_root = Path(out_dir) if out_dir else root / "research/results/calibration"
     if progress:
         progress.log(0, "calibration.start", f"dataset={dataset_path}")
@@ -283,19 +286,57 @@ def run_calibration_track(
                 f"processed={learner_index}/{total_learners} rows={len(rows)}",
             )
 
+    dataset_archetypes = {str(learner["archetype"]) for learner in learners}
+    annotate_archetype_split(rows, archetypes=dataset_archetypes)
+    scored_rows, scored_split = reporting_rows(rows)
+    recovery_cells = paired_by_group(
+        scored_rows,
+        metric="recovery_mae",
+        baseline_candidate="hierarchical_bayes",
+        group_fields=["band", "archetype"],
+    )
+    context_cells = paired_by_group(
+        scored_rows,
+        metric="context_pred_mae",
+        baseline_candidate="hierarchical_bayes",
+        group_fields=["band", "archetype"],
+    )
+    manifest = attach_rigour_provenance(
+        manifest,
+        raw_manifest,
+        rows,
+        archetypes=dataset_archetypes,
+    )
     payload = {
         "dataset_id": raw_manifest["dataset_id"],
+        "scored_split": scored_split,
         "rows": rows,
         "convergence": convergence,
-        "cell_summary": cell_summary(rows),
-        "winner_per_band": winner_per_band(rows),
-        "context_pred_cell_summary": cell_summary(rows, metric="context_pred_mae"),
-        "context_pred_winner_per_band": winner_per_band(rows, metric="context_pred_mae"),
-        "paired_vs_incumbent": _paired_by_candidate(rows),
+        "cell_summary": cell_summary(scored_rows),
+        "winner_per_band": winner_per_band(scored_rows),
+        "context_pred_cell_summary": cell_summary(scored_rows, metric="context_pred_mae"),
+        "context_pred_winner_per_band": winner_per_band(scored_rows, metric="context_pred_mae"),
+        "paired_vs_incumbent": _paired_by_candidate(scored_rows),
         "paired_vs_pooled_bayes": _paired_by_candidate(
-            rows,
+            scored_rows,
             baseline_candidate="pooled_bayes",
         ),
+        "paired_by_cell": {
+            "recovery_mae": recovery_cells,
+            "context_pred_mae": context_cells,
+        },
+        "mc_correction": {
+            "recovery_mae": mc_correction_block(
+                recovery_cells,
+                metric="recovery_mae",
+                baseline_candidate="hierarchical_bayes",
+            ),
+            "context_pred_mae": mc_correction_block(
+                context_cells,
+                metric="context_pred_mae",
+                baseline_candidate="hierarchical_bayes",
+            ),
+        },
     }
     if progress:
         progress.log(95, "calibration.write", f"rows={len(rows)} convergence={len(convergence)}")
@@ -310,6 +351,7 @@ def main() -> None:
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--dataset-dir", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--seeds", type=int, default=DEFAULT_SEED_COUNT)
     parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
     logger = ProgressLogger(label="research-calibration", enabled=not args.quiet)
@@ -323,6 +365,7 @@ def main() -> None:
         run_calibration_track(
             dataset_dir=args.dataset_dir,
             out_dir=args.out_dir,
+            seed_count=args.seeds,
             progress=logger,
         )
     )

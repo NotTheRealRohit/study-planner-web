@@ -216,6 +216,7 @@ def forecast_conformal_finish(
     start_date: str | None = None,
     horizon_end_date: str | None = None,
     alpha: float = 0.05,
+    finish_residual_width_days: float | None = None,
 ) -> dict[str, Any]:
     points = cumulative_points(sessions)
     if not points:
@@ -237,13 +238,16 @@ def forecast_conformal_finish(
     start = start_date or points[0]["date"]
     today_index = _date_to_index(points[-1]["date"], start)
     predicted_index = _date_to_index(str(base["predicted_finish_date"]), start)
-    q_days, q_minutes_days, residual_phi = _rolling_finish_residuals(points, alpha=alpha)
-    horizon_scale = math.sqrt(
-        max(1.0, predicted_index - today_index) / max(1.0, len(points) * 0.25)
-    )
-    half_width_days = max(1.0, q_days, q_minutes_days) * max(1.0, horizon_scale)
-    ar1_variance_inflation = 1.0 / max(1.0 - residual_phi**2, 0.20)
-    half_width_days *= math.sqrt(ar1_variance_inflation)
+    if finish_residual_width_days is None:
+        q_days, q_minutes_days, residual_phi = _rolling_finish_residuals(points, alpha=alpha)
+        horizon_scale = math.sqrt(
+            max(1.0, predicted_index - today_index) / max(1.0, len(points) * 0.25)
+        )
+        half_width_days = max(1.0, q_days, q_minutes_days) * max(1.0, horizon_scale)
+        ar1_variance_inflation = 1.0 / max(1.0 - residual_phi**2, 0.20)
+        half_width_days *= math.sqrt(ar1_variance_inflation)
+    else:
+        half_width_days = max(1.0, float(finish_residual_width_days))
 
     low_index = max(0.0, predicted_index - half_width_days)
     high_index = predicted_index + half_width_days
@@ -313,7 +317,9 @@ def forecast_kalman_finish(
     increments = [ys[0], *[right - left for left, right in zip(ys, ys[1:])]]
     initial = statistics.fmean(increments[: min(3, len(increments))])
     result = run_kalman_on_phase(increments, initial, 0.20, 0.05)
-    slope = max(result.finalLevel + result.finalSlope, 1e-6)
+    raw_slope = result.finalLevel + result.finalSlope
+    observed_slope = max(ys[-1] / max(xs[-1] + 1.0, 1.0), 1e-6)
+    slope = raw_slope if raw_slope > 1e-6 else observed_slope
     intercept = ys[-1] - slope * xs[-1]
     uncertainty_minutes = max(result.levelUncertainty * 20.0, 10.0)
     width_days = max(1.0, 1.96 * uncertainty_minutes / slope)

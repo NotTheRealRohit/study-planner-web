@@ -413,7 +413,7 @@ D-A7 redo adds `predict_next(history, next_context)` and a context-aware prequen
 
 ### Phase A3: Statistical rigour — seeds, bootstrap CIs, held-out archetypes, MC correction (PA+.3)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — 57fcc3d6315ba8327e222085622c4f6e8e59ec92
 **Depends on:** Phases A1, A2 (so the new candidates are scored under the rigorous protocol)
 **Estimated scope:** runner flags + writer/paired wiring across all four tracks + full re-run
 
@@ -463,7 +463,17 @@ uv run --package research-comparison pytest research/comparison/tests -q
 
 #### Notes (filled in during implementation)
 
-_(leave blank until implemented)_
+A3 ran on `synthetic-e716cd12dddc-seed0-n3600` (6 archetypes x 3 bands x
+200 seeds) with seed 0 and params hash `e716cd12dddc` unchanged. The reported
+winner summaries, paired deltas, and MC corrections are computed on the
+held-out archetypes (`deadline_sprinter`, `fading_flame`, `weekend_warrior`);
+train rows remain in the raw `rows` arrays for audit. The across-learner
+conformal projection interval uses one max finish-date residual per train
+learner per band; held-out coverage is 0.991 medium and 0.906 max, with
+`gp_ard` retained as the under-covered incumbent. The full 200-seed projection
+run exposed a Kalman overflow on an early negative trend; the fix falls back to
+the learner's observed cumulative minutes-per-day when the Kalman slope is
+non-positive, and a regression test covers the failing fixture.
 
 ---
 

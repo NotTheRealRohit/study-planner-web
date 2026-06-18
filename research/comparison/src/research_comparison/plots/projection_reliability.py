@@ -71,7 +71,11 @@ def write_projection_artifacts(
         progress.log(0, "figs.projection.start", f"source={source}")
     payload = json.loads(source.read_text(encoding="utf-8"))
     if progress:
-        progress.log(30, "figs.projection.loaded", f"rows={len(payload['rows'])} forecasts={len(payload['forecasts'])}")
+        progress.log(
+            30,
+            "figs.projection.loaded",
+            f"rows={len(payload['rows'])} forecasts={len(payload['forecasts'])}",
+        )
     generated_dir = root / "college/mydeliverables/1st-Review/report/generated"
     pdf = write_projection_reliability_plot(
         source,
@@ -82,6 +86,8 @@ def write_projection_artifacts(
     table = write_projection_winners_table(
         payload["winner_by_band"],
         generated_dir / "projection_winners.tex",
+        paired=payload.get("paired_vs_incumbent"),
+        correction=payload.get("mc_correction"),
     )
     if progress:
         progress.log(80, "figs.projection.table_written", str(table))

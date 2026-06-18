@@ -35,6 +35,8 @@ def write_scheduling_artifacts(
     table = write_scheduling_metrics_table(
         payload["winner_by_material_mix"],
         generated_dir / "scheduling_metrics.tex",
+        paired=payload.get("paired_vs_incumbent"),
+        correction=payload.get("mc_correction"),
     )
     if progress:
         progress.log(75, "figs.scheduling.table_written", str(table))

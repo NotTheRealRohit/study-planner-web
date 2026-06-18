@@ -1,15 +1,23 @@
 from __future__ import annotations
 
+import json
+import statistics
 from datetime import date, timedelta
 
 from py_progress import gp_regression
 from research_comparison.baselines.projection import (
     conformal_abs_residual_quantile,
     forecast_gp_finish,
+    forecast_kalman_finish,
     forecast_linear_finish,
 )
+from research_comparison.generator.generate import DEFAULT_ARCHETYPE_MIX, generate_dataset
 from research_comparison.metrics.projection import projection_metrics
-from research_comparison.runners.projection import projection_candidates, run_projection_for_learner
+from research_comparison.runners.projection import (
+    projection_candidates,
+    run_projection_for_learner,
+    run_projection_track,
+)
 
 
 def _sessions(minutes: list[float], start: date = date(2026, 3, 1)) -> list[dict]:
@@ -53,6 +61,16 @@ def test_linear_baseline_interval_is_discriminating_not_fixed_to_nominal():
 
     assert 0.0 <= metrics["coverage"] <= 1.0
     assert abs(metrics["coverage"] - 0.95) > 0.01
+
+
+def test_kalman_forecast_handles_negative_early_trend_without_date_overflow():
+    sessions = _sessions([121.522702, 44.232158, 13.082674, 41.55206, 17.799342])
+
+    forecast = forecast_kalman_finish(sessions, total_minutes=4501.986406618768)
+
+    assert forecast["predicted_finish_date"] >= sessions[-1]["date"]
+    assert forecast["interval_low"] <= forecast["predicted_finish_date"]
+    assert forecast["interval_high"] >= forecast["predicted_finish_date"]
 
 
 def test_projection_runner_reports_coverage_sharpness_and_error():
@@ -103,25 +121,61 @@ def test_default_gp_path_matches_explicit_gaussian_no_ar1():
     )
 
 
-def test_conformal_coverage_on_in_test_medium_and_max_projection_rows():
-    rows: list[dict] = []
-    for band, n_sessions in {"medium": 70, "max": 120}.items():
-        sessions = _sessions([50.0] * n_sessions)
-        learner = {
-            "learner_id": f"projection-{band}-fixture",
-            "band": band,
-            "archetype": "steady",
-            "seed": 12,
-            "sessions": sessions,
-        }
-        truth = {
-            "true_finish_date": sessions[-1]["date"],
-            "r_star": [1.0] * len(sessions),
-        }
+def test_a3_projection_result_carries_ci_correction_and_heldout_split(tmp_path):
+    dataset_id = generate_dataset(
+        archetype_mix=DEFAULT_ARCHETYPE_MIX,
+        bands=["medium"],
+        seeds=[0],
+        out_dir=str(tmp_path / "datasets"),
+    )
+    result_path = run_projection_track(
+        dataset_dir=str(tmp_path / "datasets" / dataset_id),
+        out_dir=str(tmp_path / "results" / "projection"),
+    )
 
-        learner_rows, _forecasts = run_projection_for_learner(learner, truth)
-        rows.extend(row for row in learner_rows if row["candidate"] == "conformal")
+    payload = json.loads(result_path.read_text())
+    split = payload["_provenance"]["archetype_split"]
+    first_cell = next(iter(payload["paired_vs_incumbent"].values()))
+    first_result = next(iter(first_cell.values()))
 
-    coverage_by_band = {row["band"]: row["coverage"] for row in rows}
+    assert set(split["train"]).isdisjoint(split["held_out"])
+    assert payload["scored_split"] == "held_out"
+    assert {"delta_ci_low", "delta_ci_high"} <= set(first_result)
+    assert payload["mc_correction"]["comparisons"]
 
-    assert coverage_by_band == {"medium": 1.0, "max": 1.0}
+
+def test_across_learner_conformal_noisy_fixture_covers_medium_and_max(tmp_path):
+    dataset_id = generate_dataset(
+        archetype_mix=DEFAULT_ARCHETYPE_MIX,
+        bands=["medium", "max"],
+        seeds=list(range(12)),
+        out_dir=str(tmp_path / "datasets"),
+    )
+    result_path = run_projection_track(
+        dataset_dir=str(tmp_path / "datasets" / dataset_id),
+        out_dir=str(tmp_path / "results" / "projection"),
+    )
+    payload = json.loads(result_path.read_text())
+
+    for band in ["medium", "max"]:
+        conformal = [
+            row
+            for row in payload["rows"]
+            if row["split"] == "held_out"
+            and row["band"] == band
+            and row["candidate"] == "conformal"
+        ]
+        gp_ard = [
+            row
+            for row in payload["rows"]
+            if row["split"] == "held_out"
+            and row["band"] == band
+            and row["candidate"] == "gp_ard"
+        ]
+        conformal_coverage = statistics.fmean(float(row["coverage"]) for row in conformal)
+        gp_coverage = statistics.fmean(float(row["coverage"]) for row in gp_ard)
+        sharpness = statistics.fmean(float(row["mean_sharpness_days"]) for row in conformal)
+
+        assert 0.85 <= conformal_coverage <= 1.0
+        assert conformal_coverage > gp_coverage + 0.20
+        assert sharpness > 0.0

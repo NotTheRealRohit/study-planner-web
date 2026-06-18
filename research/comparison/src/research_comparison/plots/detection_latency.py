@@ -83,7 +83,11 @@ def write_detection_artifacts(
         progress.log(0, "figs.detection.start", f"source={source}")
     payload = json.loads(source.read_text(encoding="utf-8"))
     if progress:
-        progress.log(30, "figs.detection.loaded", f"rows={len(payload['rows'])} roc={len(payload['roc'])}")
+        progress.log(
+            30,
+            "figs.detection.loaded",
+            f"rows={len(payload['rows'])} roc={len(payload['roc'])}",
+        )
     generated_dir = root / "college/mydeliverables/1st-Review/report/generated"
     pdf = write_detection_latency_plot(source, generated_dir / "detection_latency.pdf")
     if progress:
@@ -91,6 +95,8 @@ def write_detection_artifacts(
     table = write_detection_winners_table(
         payload["winner_by_shift_type"],
         generated_dir / "detection_winners.tex",
+        paired=payload.get("paired_vs_incumbent"),
+        correction=payload.get("mc_correction"),
     )
     if progress:
         progress.log(80, "figs.detection.table_written", str(table))

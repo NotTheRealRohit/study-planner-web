@@ -292,7 +292,8 @@ def generate_dataset(
                             progress.log(
                                 percent,
                                 "dataset.learners",
-                                f"generated={learner_index}/{n_learners} seed={seed} band={band} archetype={archetype}",
+                                f"generated={learner_index}/{n_learners} seed={seed} "
+                                f"band={band} archetype={archetype}",
                             )
 
     manifest = build_manifest(seed=selected_seeds[0], archetype_mix=mix, n_learners=n_learners)
@@ -301,6 +302,11 @@ def generate_dataset(
         "dataset_id": dataset_id,
         "bands": selected_bands,
         "seeds": selected_seeds,
+        "seed_count": len(selected_seeds),
+        "n_learners_formula": (
+            f"{sum(mix.values())} archetypes x {len(selected_bands)} bands x "
+            f"{len(selected_seeds)} seeds"
+        ),
     }
     (dataset_dir / "manifest.json").write_text(
         json.dumps(manifest_dict, indent=2, sort_keys=True),

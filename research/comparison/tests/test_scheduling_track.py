@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from py_roadmap_engine import Material, RoadmapInput, RoadmapOutput, RoadmapWeek, Slot
+import json
 
+from py_roadmap_engine import Material, RoadmapInput, RoadmapOutput, RoadmapWeek, Slot
+from research_comparison.generator.generate import DEFAULT_ARCHETYPE_MIX, generate_dataset
 from research_comparison.metrics.scheduling import (
     capacity_violation_rate,
     prereq_order_correctness,
 )
 from research_comparison.runners.scheduling import (
     run_scheduling_for_scenario,
+    run_scheduling_track,
     schedule_greedy,
 )
 
@@ -88,3 +91,26 @@ def test_runner_records_gen_time_and_material_mix():
     assert rows
     assert all(row["gen_time_ms"] >= 0.0 for row in rows)
     assert {row["material_mix"] for row in rows} == {"anchor+practice"}
+
+
+def test_a3_scheduling_result_carries_ci_correction_and_heldout_split(tmp_path):
+    dataset_id = generate_dataset(
+        archetype_mix=DEFAULT_ARCHETYPE_MIX,
+        bands=["small"],
+        seeds=[0],
+        out_dir=str(tmp_path / "datasets"),
+    )
+    result_path = run_scheduling_track(
+        dataset_dir=str(tmp_path / "datasets" / dataset_id),
+        out_dir=str(tmp_path / "results" / "scheduling"),
+    )
+
+    payload = json.loads(result_path.read_text())
+    split = payload["_provenance"]["archetype_split"]
+    first_cell = next(iter(payload["paired_vs_incumbent"].values()))
+    first_result = next(iter(first_cell.values()))
+
+    assert set(split["train"]).isdisjoint(split["held_out"])
+    assert payload["scored_split"] == "held_out"
+    assert {"delta_ci_low", "delta_ci_high"} <= set(first_result)
+    assert payload["mc_correction"]["comparisons"]

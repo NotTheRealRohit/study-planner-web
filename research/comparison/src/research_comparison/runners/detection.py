@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -9,7 +10,6 @@ from pathlib import Path
 from typing import Any
 
 from py_progress import run_cusum
-
 from research_comparison.baselines.detection import detect_csd, detect_ewma
 from research_comparison.metrics.detection import (
     SHIFT_TYPES,
@@ -19,7 +19,16 @@ from research_comparison.metrics.detection import (
 )
 from research_comparison.oracles.detection import detection_oracle_breakpoints
 from research_comparison.progress_log import ProgressLogger
-from research_comparison.runners.calibration import latest_dataset_dir
+from research_comparison.runners.rigour import (
+    DEFAULT_SEED_COUNT,
+    annotate_archetype_split,
+    attach_rigour_provenance,
+    mc_correction_block,
+    paired_by_group,
+    read_jsonl,
+    reporting_rows,
+    resolve_dataset_dir,
+)
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
 
 
@@ -34,6 +43,13 @@ def _std(values: list[float]) -> float:
         return 0.05
     value = float(statistics.stdev(values))
     return value if value > 1e-6 else 0.05
+
+
+def _comparison_score(row: dict[str, Any]) -> float:
+    latency = float(row["mean_latency"])
+    if not math.isfinite(latency):
+        latency = 100.0
+    return latency + float(row["missed"]) * 100.0 + float(row["false_alarm_rate"]) * 25.0
 
 
 def detect_cusum(
@@ -121,7 +137,7 @@ def run_detection_for_learner(
             if type_score["n_shifts"] == 0:
                 continue
             rows.append(
-                {
+                row := {
                     "learner_id": learner["learner_id"],
                     "band": learner["band"],
                     "archetype": learner["archetype"],
@@ -137,6 +153,7 @@ def run_detection_for_learner(
                     "breakpoints": breakpoints,
                 }
             )
+            row["comparison_score"] = _comparison_score(row)
 
     oracle_breakpoints = detection_oracle_breakpoints(shifts)
     oracle_score = score_detections(oracle_breakpoints, shifts, n_observations=len(pace_ratios))
@@ -145,7 +162,7 @@ def run_detection_for_learner(
         if type_score["n_shifts"] == 0:
             continue
         rows.append(
-            {
+            row := {
                 "learner_id": learner["learner_id"],
                 "band": learner["band"],
                 "archetype": learner["archetype"],
@@ -161,6 +178,7 @@ def run_detection_for_learner(
                 "breakpoints": oracle_breakpoints,
             }
         )
+        row["comparison_score"] = _comparison_score(row)
 
     baseline = pace_ratios[: min(8, len(pace_ratios))]
     reference_mean = float(statistics.fmean(baseline)) if baseline else 1.0
@@ -193,16 +211,17 @@ def _repo_root() -> Path:
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+    return read_jsonl(path)
 
 
 def run_detection_track(
     dataset_dir: str | None = None,
     out_dir: str | None = None,
+    seed_count: int | None = DEFAULT_SEED_COUNT,
     progress: ProgressLogger | None = None,
 ) -> Path:
     root = _repo_root()
-    dataset_path = Path(dataset_dir) if dataset_dir else latest_dataset_dir()
+    dataset_path = resolve_dataset_dir(root, dataset_dir, seed_count, progress=progress)
     result_root = Path(out_dir) if out_dir else root / "research/results/detection"
     if progress:
         progress.log(0, "detection.start", f"dataset={dataset_path}")
@@ -237,11 +256,40 @@ def run_detection_track(
                 f"processed={learner_index}/{total_learners} rows={len(rows)} roc={len(roc)}",
             )
 
+    dataset_archetypes = {str(learner["archetype"]) for learner in learners}
+    annotate_archetype_split(rows, archetypes=dataset_archetypes)
+    scored_rows, scored_split = reporting_rows(rows)
+    paired = paired_by_group(
+        scored_rows,
+        metric="comparison_score",
+        baseline_candidate="cusum",
+        group_fields=["shift_type"],
+    )
+    paired_cells = paired_by_group(
+        scored_rows,
+        metric="comparison_score",
+        baseline_candidate="cusum",
+        group_fields=["band", "archetype", "shift_type"],
+    )
+    manifest = attach_rigour_provenance(
+        manifest,
+        raw_manifest,
+        rows,
+        archetypes=dataset_archetypes,
+    )
     payload = {
         "dataset_id": raw_manifest["dataset_id"],
+        "scored_split": scored_split,
         "rows": rows,
         "roc": roc,
-        "winner_by_shift_type": winner_by_shift_type(rows),
+        "winner_by_shift_type": winner_by_shift_type(scored_rows),
+        "paired_vs_incumbent": paired,
+        "paired_by_cell": paired_cells,
+        "mc_correction": mc_correction_block(
+            paired_cells,
+            metric="comparison_score",
+            baseline_candidate="cusum",
+        ),
     }
     if progress:
         progress.log(95, "detection.write", f"rows={len(rows)} roc={len(roc)}")
@@ -255,10 +303,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset-dir", default=None)
     parser.add_argument("--out-dir", default=None)
+    parser.add_argument("--seeds", type=int, default=DEFAULT_SEED_COUNT)
     parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")
     args = parser.parse_args()
     logger = ProgressLogger(label="research-detection", enabled=not args.quiet)
-    print(run_detection_track(dataset_dir=args.dataset_dir, out_dir=args.out_dir, progress=logger))
+    print(
+        run_detection_track(
+            dataset_dir=args.dataset_dir,
+            out_dir=args.out_dir,
+            seed_count=args.seeds,
+            progress=logger,
+        )
+    )
 
 
 if __name__ == "__main__":
