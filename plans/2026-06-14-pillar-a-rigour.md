@@ -610,6 +610,14 @@ _(leave blank until implemented)_
 **Trigger:** A5.
 **Resolution path:** Start with OULAD (open, daily-aggregated, has outcomes); document the proxy mapping; add EdNet/Junyi if the OULAD moments are too coarse.
 
+**✅ RESOLVED 2026-06-17 → OULAD (primary); EdNet/Junyi optional.**
+
+Selection criteria (priority-ordered; committed *before* extracting moments, to avoid cherry-picking the dataset that gives the most convenient bounds — same discipline as the no-leakage guard):
+
+1. **Construct match (gating):** must be a longitudinal **engagement / time-on-task** series per learner (→ a "clicks/interactions → minutes toward a roadmap" proxy), **not** KT correctness (§0). 2. **Carries A5.2's moments:** inter-session gap distribution, enough points/learner for lag-1 autocorrelation φ, and observable shifts (ramp/decay, dropout/return). 3. **Granularity matches the generator** (session/day). 4. **Proxy-mapping clarity** (defensible one-line mapping). 5. **License** (publishable + reproducible). 6. **Access friction / reproducibility** (login-free, re-fetchable, modest size). 7. **Corroboration** (secondary — >1 platform), noting these are **bounds only** and N=1 (Phase 5) is the real face-validity anchor, so one clean source suffices.
+
+**Decision:** **OULAD** wins on 1–6 — `studentVle.csv` is per-student **daily click counts** (`date` = days since start, `sum_click`), daily granularity matching the generator, clean **CC-BY 4.0**, login-free; `studentRegistration.csv` `date_unregistration` gives the dropout signal. EdNet (CC BY-NC, ~131M rows) and Junyi (weak license, Kaggle login) are **held as optional corroboration** — add only if OULAD moments are too coarse (per the resolution path). **Acquired and in place at `research/datasets/oulad/`** (full 7-table OULAD; `studentVle.csv` = 10,655,280 rows). Fit moments as **bounds/ranges only** from the pre-committed source, and report them regardless of how convenient they turn out.
+
 ## Out of scope (this plan)
 
 - **The KT bench / Pillar B** — separate plan ([`plans/2026-06-14-kt-realdata-integration.md`](2026-06-14-kt-realdata-integration.md)); irrelevant to Pillar A (§0).

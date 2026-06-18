@@ -41,12 +41,25 @@
 - **Oracles are upper bounds, not deployable candidates** — never present an oracle win as a method win. Same for any `ruptures`/CP-SAT `upper_bound` candidates added in A4.
 - The synthetic generator is **neutral / literature-anchored**; no candidate is seeded with generator truth and no hyperparameter is tuned on scoring cells (the held-out split is the guard). If A5 reality-matches the generator, report ranking-hold honestly.
 
-## Detection / scheduling — pending A4 (placeholder)
+## Detection (A4 `5aa4c2e`, verified)
 
-The A3 protocol already surfaced per-cell structure to characterise once A4 lands the new candidates + Pareto frontier: detection `csd`/`ewma_control_chart` beat `cusum` on some held-out cells (latency↔false-alarm trade-off); scheduling `dp_capacity`/`rule_based` beat `greedy_incumbent` on several cells. Finalise the detection Pareto-frontier framing and the scheduling winner story from the A4 results + their `mc_correction` blocks. Update this section when A4 is verified.
+- Report the **latency↔false-alarm Pareto frontier** (monotone), not a single operating point. Deployable winners under held-out + Holm: **drift → `cusum`**, **step → `page_hinkley`** (a new A4 candidate genuinely wins step).
+- Honest mixed result among new candidates: `page_hinkley` and `csd` survive Holm vs `cusum` on some held-out cells; **`bocpd` and `adwin` are significantly *worse*** on several — do not present BOCPD/ADWIN as improvements. CUSUM's `k`/`h` were tuned on **train archetypes only** (state this; it's the no-leakage guard).
+- `ruptures_pelt_binseg` is a **retrospective upper bound**, not a deployable method — never report it as a win.
+
+## Scheduling (A4 `5aa4c2e`, verified)
+
+- Notable finding: under held-out + Holm, **`dp_capacity`, `local_search_repair`, `topological_prereq`, and `rule_based` all beat the shipped `greedy_incumbent`** on many cells. Frame honestly: **the deployed greedy scheduler is not the strongest** on this contest; the DP/constraint and search-repair approaches are stronger. (Decide separately whether this motivates a product change — out of scope for the report's claims.)
+- Prereq-order correctness is **1.0 across all material mixes** after the A4 greedy fix (chronological day ordering + role pre-order). The earlier `anchor+practice` dip is resolved.
+- `cpsat_optimum` (OR-Tools) is an **optional upper bound**, skipped when ortools is absent — report it as a gold-standard bound only, never a deployable winner.
+
+## Calibration (A4 `5aa4c2e`)
+
+- `kalman` was added and scored under the full protocol — fold its result into the calibration story alongside the A2 caveat above (it does not change the A2 conclusion).
 
 ## Changelog
 
 | Date | Entry | Source |
 |---|---|---|
 | 2026-06-18 | Created. A2 priority caveat + A1/A3.7 projection framing + cross-cutting rules recorded. | VERIFICATION A1–A3 reviewer findings; result JSONs. |
+| 2026-06-18 | A4 verified (`5aa4c2e`): replaced detection/scheduling placeholder with real findings — page_hinkley/csd vs cusum (bocpd/adwin worse); all schedulers beat greedy_incumbent; prereq-order 1.0; upper-bound framing. | VERIFICATION A4 reviewer findings; result JSONs. |
