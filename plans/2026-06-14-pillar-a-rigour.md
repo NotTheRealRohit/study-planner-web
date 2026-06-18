@@ -538,7 +538,7 @@ Python files, and `pytest research/comparison/tests -q` (`78 passed`).
 
 ### Phase A5: Reality-matched generator + external validity (PA+.7)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase A4 (the full, rigorous contest exists to re-run on the new regime)
 **Estimated scope:** generator enrichment (new `dataset_id`) + moments-fit script + re-run + external-validity note
 
