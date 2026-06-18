@@ -23,7 +23,7 @@
 | A0 | Lock findings + rigour scaffolding | PA+.8, PA+.3(utils) | ✅ Complete — e1c6455 | ✅ Verified — 2026-06-17 |
 | A1 | Projection coverage fix (red→green) | PA+.1 | ✅ Complete — `0912297` (redo) | ✅ Verified — scope met under D-A6 (coverage → A3) |
 | A2 | Calibration covariates + EB pooling | PA+.2 | ✅ Complete — `4445701` | ✅ Verified — 2026-06-17 (D-A7; wins on medium/max, honest small-band negative) |
-| A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ✅ Complete — `57fcc3d6315ba8327e222085622c4f6e8e59ec92` | — |
+| A3 | Statistical rigour (seeds/CIs/held-out/MC) | PA+.3 | ✅ Complete — `2b8e23cfda2919c97aad14c1261761e2908621e1` | — |
 | A4 | New candidates + winner tweaks + sweep | PA+.4–.6 | ☐ Not started | — |
 | A5 | Reality-matched generator + external validity | PA+.7 | ☐ Not started | — |
 
@@ -293,7 +293,7 @@ uv run --package research-comparison pytest research/comparison/tests -q
 ### Implementer report / Reviewer findings / Resolution
 
 - Implementer — SHA / files / seeds used / held-out partition / deviations / self-check (A3.1–A3.7):
-  - Commit SHA: `57fcc3d6315ba8327e222085622c4f6e8e59ec92`
+  - Commit SHA: `2b8e23cfda2919c97aad14c1261761e2908621e1`
   - Files changed: `research/comparison/src/research_comparison/runners/rigour.py`; `research/comparison/src/research_comparison/runners/{calibration,detection,projection,scheduling}.py`; `research/comparison/src/research_comparison/baselines/projection.py`; `research/comparison/src/research_comparison/{manifest.py,writers/results.py,writers/tables.py}`; `research/comparison/src/research_comparison/generator/generate.py`; `research/comparison/src/research_comparison/plots/{convergence,detection_latency,projection_reliability,scheduling_metrics}.py`; `research/comparison/tests/test_{calibration,detection,projection,scheduling}_track.py`; generated report artifacts under `college/mydeliverables/1st-Review/report/generated/`; `research/datasets/synthetic-e716cd12dddc-seed0-n3600/manifest.json`; plan/checklist docs.
   - Seeds used: `200` (`n_learners = 3600 = 6 archetypes x 3 bands x 200 seeds`). Seed 0 and params hash `e716cd12dddc` remain frozen.
   - Held-out partition recorded in every result `_provenance`: train `["marathon_runner", "morning_lark", "steady"]`; held-out `["deadline_sprinter", "fading_flame", "weekend_warrior"]`. The sets are disjoint. Runner summaries/pairing/MC corrections use `scored_split = "held_out"` for the full A3 results; tiny one-archetype fixture datasets fall back to `scored_split = "all"` only when no held-out rows exist.
