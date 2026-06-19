@@ -261,7 +261,7 @@ _Files changed:_ `research/comparison/src/research_comparison/baselines/calibrat
 `research/doc/verification-runs/2026-06-19-a6-archetype/{evidence.json,SUMMARY.md}`;
 this plan and verification file.
 
-_Commit SHA:_ `pending`.
+_Commit SHA:_ `a919ea44beaf3f2edbc8a1f5d47edb9d4b9d8d9a`.
 
 _What was done:_ Added the label-free behavioural fingerprint with
 evening-minus-morning, weekend-minus-weekday, late-minus-early,

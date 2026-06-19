@@ -522,7 +522,7 @@ provenance. Phase 3 evidence lives in
 
 ### Phase 4: Archetype-aware variants — hard router + soft, as shrinkage priors (S2–S4 challengers)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — a919ea44beaf3f2edbc8a1f5d47edb9d4b9d8d9a
 **Depends on:** Phase 3
 **Estimated scope:** ~2 files modified, ~180 lines + tests
 
