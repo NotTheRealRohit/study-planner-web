@@ -366,7 +366,7 @@ scratch inputs and not committed; the committed review artifacts are
 
 ### Phase 2: Dataset v2 — extend archetypes, add the observable deadline horizon, re-freeze, regenerate, re-verify against reality (S5 + D-04)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 02cedbc741daec21f208fca379f5af8a5cc10c5b
 **Depends on:** Phase 1
 **Estimated scope:** ~4 files modified + 1 new script; dataset regeneration
 

@@ -105,7 +105,7 @@ _Files changed:_ `college/scope/archetype-preregistration.md`;
 `research/doc/verification-runs/2026-06-19-a6-dataset-v2/{evidence.json,SUMMARY.md,reality_bounds_check.json}`;
 this plan and verification file.
 
-_Commit SHA:_ pending.
+_Commit SHA:_ `02cedbc741daec21f208fca379f5af8a5cc10c5b`.
 
 _What was done:_ Added `night_owl`, `crammer`, and `steady_improver` to
 `ARCHETYPES`; generalized `delta_deadline` with `deadline_ramp_start`; added
