@@ -32,7 +32,7 @@ _Files changed:_ `research/comparison/scripts/capture_evidence.py`;
 `plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md`;
 `plans/2026-06-18-pillar-a-custom-calibration-detection/VERIFICATION.md`.
 
-_Commit SHA:_ `26d296f099c6f66c538b541fc06691ea6cc378ca`.
+_Commit SHA:_ `83bcedea78a70d6c7715e1dba90cfc769c83b952`.
 
 _What was done:_ Committed the plan/verification baseline first (`a10eaff`), then
 ran the Phase 1 prereqs: both frozen/reality dataset files existed and

@@ -302,7 +302,7 @@ flowchart TD
 
 ### Phase 1: Lock the baseline and build the heartbeat-instrumented review scaffolding (S0)
 
-**Status:** ✅ Complete — 26d296f099c6f66c538b541fc06691ea6cc378ca
+**Status:** ✅ Complete — 83bcedea78a70d6c7715e1dba90cfc769c83b952
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 new file (~120 lines), no model/data change
 
