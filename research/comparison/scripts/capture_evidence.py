@@ -100,6 +100,12 @@ def _summarize_result(label: str, path: Path) -> dict[str, Any]:
             metric: _metric_means_by_band(scored_rows, metric) for metric in metrics
         },
         "mc_survivors": _mc_survivors(mc_correction),
+        "population_prior": payload.get("population_prior"),
+        "mc_correction_simple_baselines": payload.get("mc_correction_simple_baselines", {}),
+        "simple_baseline_mc_survivors": {
+            baseline: _mc_survivors(block)
+            for baseline, block in payload.get("mc_correction_simple_baselines", {}).items()
+        },
     }
 
 

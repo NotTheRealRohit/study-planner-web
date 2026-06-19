@@ -6,8 +6,12 @@ import math
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from research_comparison.baselines.calibration import (
     CalibrationCandidate,
+    ENRICHED_FEATURE_NAMES,
+    EnrichedShrinkageCalibrator,
     calibration_candidates,
 )
 from research_comparison.metrics.aggregate import cell_summary, winner_per_band
@@ -18,10 +22,11 @@ from research_comparison.metrics.prequential import (
 )
 from research_comparison.metrics.recovery import recovery_mae, recovery_rmse
 from research_comparison.oracles.calibration import calibration_oracle_estimate
-from research_comparison.progress_log import ProgressLogger
+from research_comparison.progress_log import ProgressLogger, run_with_heartbeat
 from research_comparison.runners.rigour import (
     DEFAULT_SEED_COUNT,
     annotate_archetype_split,
+    archetype_split_for_rows,
     attach_rigour_provenance,
     mc_correction_block,
     paired_by_group,
@@ -104,7 +109,160 @@ def _context_of(session: dict[str, Any]) -> dict[str, Any]:
     return {
         "materialRole": session.get("materialRole") or "foundation",
         "startedAt": session.get("startedAt") or session.get("date"),
+        "planned_horizon": session.get("planned_horizon"),
+        "session_index": session.get("session_index"),
     }
+
+
+def _active_visible_sessions(sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        session
+        for session in sessions
+        if session.get("source") == "active"
+        and session.get("plannedMinutes") is not None
+        and session.get("activeMinutes") is not None
+        and float(session["plannedMinutes"]) > 0
+        and float(session["activeMinutes"]) > 0
+    ]
+
+
+def _with_observable_context(
+    sessions: list[dict[str, Any]],
+    learner: dict[str, Any],
+) -> list[dict[str, Any]]:
+    horizon = learner.get("planned_horizon")
+    return [
+        {
+            **session,
+            "planned_horizon": horizon,
+            "session_index": index,
+        }
+        for index, session in enumerate(sessions)
+    ]
+
+
+def _fit_enriched_population_prior(
+    learners: list[dict[str, Any]],
+    train_archetypes: set[str],
+) -> tuple[float, ...]:
+    coefficient_rows: list[tuple[float, ...]] = []
+    for learner in learners:
+        if str(learner["archetype"]) not in train_archetypes:
+            continue
+        if int(learner["seed"]) >= 20:
+            continue
+        active = _with_observable_context(_active_visible_sessions(learner["sessions"]), learner)
+        if len(active) < 4:
+            continue
+        coefficient_rows.append(
+            EnrichedShrinkageCalibrator(shrink=0.0).fit_coefficients(active).coefficients
+        )
+    if not coefficient_rows:
+        return EnrichedShrinkageCalibrator()._prior()
+    return tuple(float(value) for value in np.mean(np.asarray(coefficient_rows), axis=0))
+
+
+def _score_enriched_option(
+    learners: list[dict[str, Any]],
+    train_archetypes: set[str],
+    *,
+    population_prior: tuple[float, ...],
+    ridge: float,
+    shrink: float,
+) -> float:
+    candidate = EnrichedShrinkageCalibrator(
+        ridge=ridge,
+        shrink=shrink,
+        population_prior=population_prior,
+    )
+    errors: list[float] = []
+    for learner in learners:
+        if str(learner["archetype"]) not in train_archetypes:
+            continue
+        if int(learner["seed"]) >= 5:
+            continue
+        active = _with_observable_context(_active_visible_sessions(learner["sessions"]), learner)
+        if len(active) < 4:
+            continue
+        split_index = max(3, len(active) // 2)
+        if split_index >= len(active):
+            continue
+        target = float(active[split_index]["activeMinutes"]) / float(
+            active[split_index]["plannedMinutes"]
+        )
+        estimate = candidate.predict_next(active[:split_index], _context_of(active[split_index]))
+        errors.append(abs(estimate - target))
+    return _mean(errors)
+
+
+def _prepare_calibration_candidates(
+    learners: list[dict[str, Any]],
+    dataset_archetypes: set[str],
+    progress: ProgressLogger | None,
+) -> tuple[list[CalibrationCandidate], dict[str, Any]]:
+    def prepare() -> tuple[list[CalibrationCandidate], dict[str, Any]]:
+        split = archetype_split_for_rows(
+            [{"archetype": archetype} for archetype in dataset_archetypes],
+            archetypes=dataset_archetypes,
+        )
+        train_archetypes = set(split["train"])
+        population_prior = _fit_enriched_population_prior(learners, train_archetypes)
+        grid: list[dict[str, float]] = []
+        for ridge in [1.0, 2.0]:
+            for shrink in [2.0, 6.0]:
+                score = _score_enriched_option(
+                    learners,
+                    train_archetypes,
+                    population_prior=population_prior,
+                    ridge=ridge,
+                    shrink=shrink,
+                )
+                grid.append({"ridge": ridge, "shrink": shrink, "score": score})
+        finite = [row for row in grid if math.isfinite(row["score"])]
+        selected = min(finite, key=lambda row: row["score"]) if finite else {
+            "ridge": 2.0,
+            "shrink": 6.0,
+            "score": math.inf,
+        }
+        candidates: list[CalibrationCandidate] = []
+        for candidate in calibration_candidates():
+            if isinstance(candidate, EnrichedShrinkageCalibrator):
+                candidates.append(
+                    EnrichedShrinkageCalibrator(
+                        ridge=float(selected["ridge"]),
+                        shrink=float(selected["shrink"]),
+                        population_prior=population_prior,
+                    )
+                )
+            else:
+                candidates.append(candidate)
+        audit = {
+            "method": "fit_on_train_archetypes_only",
+            "population_prior_sample": "train_archetypes_seed_lt_20_per_learner_average",
+            "tuning_method": "grid_search_train_archetypes_seed_lt_5_midpoint_next_session",
+            "train_archetypes": sorted(train_archetypes),
+            "feature_names": list(ENRICHED_FEATURE_NAMES),
+            "selected": {
+                "ridge": float(selected["ridge"]),
+                "shrink": float(selected["shrink"]),
+                "score": float(selected["score"]),
+            },
+            "grid_scores": grid,
+            "population_prior": list(population_prior),
+        }
+        return candidates, audit
+
+    if progress:
+        progress.log(12, "calibration.enriched_prior_start")
+        return run_with_heartbeat(
+            prepare,
+            logger=progress,
+            percent=12,
+            state="calibration.enriched_prior",
+            detail="fit train-archetype population prior and tune grid",
+            heartbeat_seconds=15,
+        )
+    return prepare()
 
 
 def _paired_metric_result(
@@ -192,12 +350,19 @@ def run_calibration_track(
 
     rows: list[dict[str, Any]] = []
     convergence: list[dict[str, Any]] = []
-    candidates = calibration_candidates()
+    dataset_archetypes = {str(learner["archetype"]) for learner in learners}
     total_learners = len(learners)
     if progress:
+        progress.log(10, "calibration.loaded", f"learners={total_learners}")
+    candidates, enriched_prior_audit = _prepare_calibration_candidates(
+        learners,
+        dataset_archetypes,
+        progress,
+    )
+    if progress:
         progress.log(
-            10,
-            "calibration.loaded",
+            15,
+            "calibration.candidates_ready",
             f"learners={total_learners} candidates={len(candidates) + 1}",
         )
     for learner_index, learner in enumerate(learners, start=1):
@@ -205,6 +370,7 @@ def run_calibration_track(
         active_sessions, active_targets = _active_sessions_with_targets(
             learner["sessions"], truth["r_star"]
         )
+        active_sessions = _with_observable_context(active_sessions, learner)
         if len(active_sessions) < 4:
             continue
         t_grid = default_t_grid(len(active_sessions))
@@ -281,12 +447,11 @@ def run_calibration_track(
             or learner_index % max(1, total_learners // 20) == 0
         ):
             progress.log(
-                10 + (learner_index / max(1, total_learners)) * 80,
+                15 + (learner_index / max(1, total_learners)) * 75,
                 "calibration.learners",
                 f"processed={learner_index}/{total_learners} rows={len(rows)}",
             )
 
-    dataset_archetypes = {str(learner["archetype"]) for learner in learners}
     annotate_archetype_split(rows, archetypes=dataset_archetypes)
     scored_rows, scored_split = reporting_rows(rows)
     recovery_cells = paired_by_group(
@@ -295,6 +460,32 @@ def run_calibration_track(
         baseline_candidate="hierarchical_bayes",
         group_fields=["band", "archetype"],
     )
+    simple_baseline_corrections: dict[str, dict[str, Any]] = {}
+    for baseline_candidate in ["pooled_bayes", "ewma"]:
+        simple_recovery_cells = paired_by_group(
+            scored_rows,
+            metric="recovery_mae",
+            baseline_candidate=baseline_candidate,
+            group_fields=["band", "archetype"],
+        )
+        simple_context_cells = paired_by_group(
+            scored_rows,
+            metric="context_pred_mae",
+            baseline_candidate=baseline_candidate,
+            group_fields=["band", "archetype"],
+        )
+        simple_baseline_corrections[baseline_candidate] = {
+            "recovery_mae": mc_correction_block(
+                simple_recovery_cells,
+                metric="recovery_mae",
+                baseline_candidate=baseline_candidate,
+            ),
+            "context_pred_mae": mc_correction_block(
+                simple_context_cells,
+                metric="context_pred_mae",
+                baseline_candidate=baseline_candidate,
+            ),
+        }
     context_cells = paired_by_group(
         scored_rows,
         metric="context_pred_mae",
@@ -321,6 +512,9 @@ def run_calibration_track(
             scored_rows,
             baseline_candidate="pooled_bayes",
         ),
+        "population_prior": {
+            "enriched_shrink": enriched_prior_audit,
+        },
         "paired_by_cell": {
             "recovery_mae": recovery_cells,
             "context_pred_mae": context_cells,
@@ -337,6 +531,7 @@ def run_calibration_track(
                 baseline_candidate="hierarchical_bayes",
             ),
         },
+        "mc_correction_simple_baselines": simple_baseline_corrections,
     }
     if progress:
         progress.log(95, "calibration.write", f"rows={len(rows)} convergence={len(convergence)}")

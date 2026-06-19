@@ -445,7 +445,7 @@ with exactly 3 active sessions had no next session for `context_pred_mae`, so
 
 ### Phase 3: Feature-enriched, partial-pooling pace calibrator + TRAIN-prior pre-pass (S1, the likely workhorse)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 2
 **Estimated scope:** ~2 files modified, ~150 lines + tests
 
@@ -508,7 +508,15 @@ Remove `EnrichedShrinkageCalibrator` + its registration + the pre-pass + the `_c
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Added `EnrichedShrinkageCalibrator` and registered it additively. The runner now
+passes observable `planned_horizon`/`session_index` context, fits an
+`enriched_shrink` population prior on TRAIN archetypes only, tunes ridge/shrink
+on TRAIN seed `<5` midpoint next-session validation, and records both the prior
+and tuning audit in the result payload. The initial full prequential tuning
+approach was too slow; it was replaced with bounded TRAIN-only validation after
+two interrupted attempts, while keeping heartbeat output and explicit
+provenance. Phase 3 evidence lives in
+`research/doc/verification-runs/2026-06-19-a6-enriched/`.
 
 ---
 

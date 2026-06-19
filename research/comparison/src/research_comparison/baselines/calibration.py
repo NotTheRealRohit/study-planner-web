@@ -71,6 +71,27 @@ class CovariateEffectFit:
     session_count: int
 
 
+@dataclass(frozen=True)
+class EnrichedShrinkageFit:
+    coefficients: tuple[float, ...]
+    residual_variance: float
+    session_count: int
+
+
+ENRICHED_FEATURE_NAMES = (
+    "intercept",
+    "anchor",
+    "practice",
+    "morning",
+    "evening",
+    "weekend",
+    "same_day_extra",
+    "planned_progress",
+    "deadline_urgency",
+    "recency",
+)
+
+
 def _context_timestamp(next_context: dict[str, Any]) -> str | None:
     raw = (
         next_context.get("startedAt")
@@ -101,6 +122,101 @@ def _context_day_of_week(next_context: dict[str, Any]) -> str:
     if explicit is not None:
         return str(explicit)
     return infer_day_of_week(_context_timestamp(next_context))
+
+
+def _context_date(next_context: dict[str, Any]) -> str | None:
+    timestamp = _context_timestamp(next_context)
+    return timestamp[:10] if timestamp else None
+
+
+def _planned_horizon(next_context: dict[str, Any]) -> dict[str, Any]:
+    raw = next_context.get("planned_horizon") or next_context.get("plannedHorizon") or {}
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def _session_index(next_context: dict[str, Any], fallback: int) -> int:
+    raw = next_context.get("session_index") or next_context.get("sessionIndex")
+    if raw is None:
+        return fallback
+    return max(0, int(raw))
+
+
+def _same_day_count(history: list[dict], next_context: dict[str, Any]) -> int:
+    target_date = _context_date(next_context)
+    if target_date is None:
+        return 1
+    previous = sum(1 for session in history if _context_date(session) == target_date)
+    return previous + 1
+
+
+def _days_since_epoch(day: str | None) -> int | None:
+    if day is None:
+        return None
+    from datetime import date
+
+    return date.fromisoformat(day).toordinal()
+
+
+def _deadline_urgency(history: list[dict], next_context: dict[str, Any]) -> float:
+    horizon = _planned_horizon(next_context)
+    deadline = _days_since_epoch(str(horizon.get("deadline")) if horizon.get("deadline") else None)
+    current = _days_since_epoch(_context_date(next_context))
+    first = _days_since_epoch(_context_date(history[0])) if history else current
+    if deadline is None or current is None or first is None:
+        return 0.0
+    total_span = max(1, deadline - first)
+    days_remaining = max(0, deadline - current)
+    return float(max(0.0, min(1.0, 1.0 - days_remaining / total_span)))
+
+
+def _planned_progress(next_context: dict[str, Any], fallback_index: int) -> float:
+    horizon = _planned_horizon(next_context)
+    planned_total = int(horizon.get("planned_total_sessions") or 0)
+    if planned_total <= 1:
+        return 0.0
+    index = _session_index(next_context, fallback_index)
+    return float(max(0.0, min(1.0, index / (planned_total - 1))))
+
+
+def _enriched_feature_row(
+    history: list[dict],
+    next_context: dict[str, Any],
+    *,
+    fallback_index: int,
+) -> np.ndarray:
+    role = _context_role(next_context)
+    time_of_day = _context_time_of_day(next_context)
+    day_of_week = _context_day_of_week(next_context)
+    planned_progress = _planned_progress(next_context, fallback_index)
+    planned_total = int(_planned_horizon(next_context).get("planned_total_sessions") or 0)
+    recency_denominator = max(1, planned_total - 1, fallback_index)
+    return np.asarray(
+        [
+            1.0,
+            1.0 if role == "anchor" else 0.0,
+            1.0 if role == "practice" else 0.0,
+            1.0 if time_of_day == "morning" else 0.0,
+            1.0 if time_of_day == "evening" else 0.0,
+            1.0 if day_of_week == "weekend" else 0.0,
+            float(max(0, _same_day_count(history, next_context) - 1)),
+            planned_progress,
+            _deadline_urgency(history, next_context),
+            float(max(0.0, min(1.0, fallback_index / recency_denominator))),
+        ],
+        dtype=float,
+    )
+
+
+def _active_sessions(sessions: list[dict]) -> list[dict]:
+    return [
+        session
+        for session in sessions
+        if session.get("source") == "active"
+        and session.get("plannedMinutes") is not None
+        and session.get("activeMinutes") is not None
+        and float(session["plannedMinutes"]) > 0
+        and float(session["activeMinutes"]) > 0
+    ]
 
 
 def _predict_from_effects(
@@ -399,6 +515,89 @@ class CovariateBayesCalibrator:
 
 
 @dataclass(frozen=True)
+class EnrichedShrinkageCalibrator:
+    name: str = "enriched_shrink"
+    ridge: float = 2.0
+    shrink: float = 6.0
+    population_prior: tuple[float, ...] = ()
+
+    def _prior(self) -> np.ndarray:
+        if self.population_prior:
+            values = np.asarray(self.population_prior, dtype=float)
+            if values.shape == (len(ENRICHED_FEATURE_NAMES),):
+                return values
+        prior = np.zeros(len(ENRICHED_FEATURE_NAMES), dtype=float)
+        prior[0] = _safe_log(BAYESIAN_PRIOR_MEAN)
+        return prior
+
+    def fit_coefficients(self, sessions: list[dict]) -> EnrichedShrinkageFit:
+        active = _active_sessions(sessions)
+        if not active:
+            return EnrichedShrinkageFit(
+                coefficients=tuple(float(value) for value in self._prior()),
+                residual_variance=BAYESIAN_PRIOR_VARIANCE,
+                session_count=0,
+            )
+
+        rows: list[np.ndarray] = []
+        targets: list[float] = []
+        for index, session in enumerate(active):
+            rows.append(
+                _enriched_feature_row(
+                    active[:index],
+                    session,
+                    fallback_index=_session_index(session, index),
+                )
+            )
+            targets.append(
+                _safe_log(float(session["activeMinutes"]) / float(session["plannedMinutes"]))
+            )
+
+        x = np.vstack(rows)
+        y = np.asarray(targets, dtype=float)
+        prior = self._prior()
+        ridge_penalty = np.diag([0.0, *([self.ridge] * (len(ENRICHED_FEATURE_NAMES) - 1))])
+        shrink_penalty = float(self.shrink) * np.eye(len(ENRICHED_FEATURE_NAMES))
+        beta = np.linalg.solve(
+            x.T @ x + ridge_penalty + shrink_penalty,
+            x.T @ y + float(self.shrink) * prior,
+        )
+        residuals = y - x @ beta
+        residual_variance = (
+            float(np.var(residuals, ddof=1))
+            if len(residuals) > 1
+            else BAYESIAN_PRIOR_VARIANCE
+        )
+        return EnrichedShrinkageFit(
+            coefficients=tuple(float(value) for value in beta),
+            residual_variance=max(residual_variance, 0.001),
+            session_count=len(active),
+        )
+
+    def fit_global(self, sessions: list[dict]) -> float:
+        fit = self.fit_coefficients(sessions)
+        return float(math.exp(fit.coefficients[0]))
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        active = _active_sessions(sessions)
+        fit = self.fit_coefficients(active)
+        row = _enriched_feature_row(
+            active,
+            next_context,
+            fallback_index=_session_index(next_context, len(active)),
+        )
+        return float(math.exp(float(row @ np.asarray(fit.coefficients, dtype=float))))
+
+    def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
+        fit = self.fit_coefficients(sessions)
+        return _posterior_interval(
+            math.exp(fit.coefficients[0]),
+            fit.residual_variance,
+            fit.session_count,
+        )
+
+
+@dataclass(frozen=True)
 class EBPartialPoolCalibrator:
     name: str = "eb_partial_pool"
 
@@ -495,6 +694,7 @@ def calibration_candidates() -> list[CalibrationCandidate]:
         IncumbentCalibration(),
         KalmanPaceCalibrator(),
         CovariateBayesCalibrator(),
+        EnrichedShrinkageCalibrator(),
         EBPartialPoolCalibrator(),
         SMACalibrator(),
         EWMACalibrator(),

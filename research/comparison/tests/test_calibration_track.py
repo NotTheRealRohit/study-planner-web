@@ -7,6 +7,7 @@ from py_progress import infer_day_of_week
 from research_comparison.baselines.calibration import (
     CovariateBayesCalibrator,
     EBPartialPoolCalibrator,
+    EnrichedShrinkageCalibrator,
     EWMACalibrator,
     IncumbentCalibration,
     KalmanPaceCalibrator,
@@ -60,6 +61,42 @@ def _session(
         "startedAt": started_at,
         "sessionId": f"structured-{index}",
     }
+
+
+def _enriched_session(
+    index: int,
+    *,
+    ratio: float,
+    started_at: str,
+    planned_total: int = 30,
+    role: str = "foundation",
+) -> dict:
+    session = _session(index, ratio=ratio, role=role, started_at=started_at)
+    session["planned_horizon"] = {
+        "deadline": "2026-02-15",
+        "planned_total_sessions": planned_total,
+    }
+    session["session_index"] = index
+    return session
+
+
+def _enriched_fixture_sessions() -> list[dict]:
+    sessions: list[dict] = []
+    for index in range(30):
+        day = 5 + index // 2
+        hour = 8 if index % 2 == 0 else 19
+        same_day_extra = 1 if index % 2 == 1 else 0
+        progress = index / 29
+        ratio = 0.92 + 0.08 * same_day_extra + 0.28 * progress
+        sessions.append(
+            _enriched_session(
+                index,
+                ratio=ratio,
+                started_at=f"2026-01-{day:02d}T{hour:02d}:00:00Z",
+                role="anchor" if index % 3 == 0 else "foundation",
+            )
+        )
+    return sessions
 
 
 def _structured_covariate_sessions() -> list[dict]:
@@ -221,6 +258,113 @@ def test_covariate_predict_next_applies_upcoming_context_multipliers():
     expected = 1.12 * 1.14 * 1.08
 
     assert abs(prediction - expected) < 0.07
+
+
+def test_enriched_shrink_returns_float_and_finite():
+    sessions = _enriched_fixture_sessions()
+    candidate = EnrichedShrinkageCalibrator()
+
+    assert "enriched_shrink" in {candidate.name for candidate in calibration_candidates()}
+    assert math.isfinite(candidate.fit_global(sessions))
+    assert math.isfinite(
+        candidate.predict_next(
+            sessions[:12],
+            _enriched_session(
+                12,
+                ratio=1.0,
+                started_at="2026-01-11T08:00:00Z",
+            ),
+        )
+    )
+    interval = candidate.fit_interval(sessions)
+    assert interval is not None
+    assert interval[0] < candidate.fit_global(sessions) < interval[1]
+
+
+def test_enriched_shrink_recovers_planted_fatigue_and_deadline_effects():
+    sessions = _enriched_fixture_sessions()
+    candidate = EnrichedShrinkageCalibrator(ridge=0.1, shrink=0.1)
+
+    early = candidate.predict_next(
+        sessions[:10],
+        _enriched_session(
+            10,
+            ratio=1.0,
+            started_at="2026-01-10T08:00:00Z",
+        ),
+    )
+    late = candidate.predict_next(
+        sessions[:26],
+        _enriched_session(
+            26,
+            ratio=1.0,
+            started_at="2026-01-18T08:00:00Z",
+        ),
+    )
+    first_same_day = candidate.predict_next(
+        sessions[:14],
+        _enriched_session(
+            14,
+            ratio=1.0,
+            started_at="2026-01-12T08:00:00Z",
+        ),
+    )
+    second_same_day = candidate.predict_next(
+        sessions[:15],
+        _enriched_session(
+            15,
+            ratio=1.0,
+            started_at="2026-01-12T19:00:00Z",
+        ),
+    )
+
+    assert late > early
+    assert second_same_day > first_same_day
+
+
+def test_enriched_shrink_predict_next_uses_only_observable_context():
+    sessions = _enriched_fixture_sessions()
+    candidate = EnrichedShrinkageCalibrator()
+    observable_context = _enriched_session(
+        20,
+        ratio=1.0,
+        started_at="2026-01-15T19:00:00Z",
+    )
+    polluted_context = {
+        **observable_context,
+        "r_star": 9.9,
+        "archetype": "deadline_sprinter",
+        "regime_schedule": [{"onset_index": 1}],
+    }
+
+    assert candidate.predict_next(sessions[:20], observable_context) == candidate.predict_next(
+        sessions[:20],
+        polluted_context,
+    )
+
+
+def test_enriched_shrink_no_leakage_under_truth_shuffle():
+    sessions = _enriched_fixture_sessions()
+    polluted_sessions = [
+        {
+            **session,
+            "r_star": 9.9 - index,
+            "sidecar_archetype": "night_owl",
+            "regime_schedule": [{"onset_index": index}],
+        }
+        for index, session in enumerate(sessions)
+    ]
+    candidate = EnrichedShrinkageCalibrator()
+    next_context = _enriched_session(
+        25,
+        ratio=1.0,
+        started_at="2026-01-17T19:00:00Z",
+    )
+
+    assert candidate.predict_next(sessions[:25], next_context) == candidate.predict_next(
+        polluted_sessions[:25],
+        {**next_context, "r_star": -100.0, "sidecar_archetype": "steady"},
+    )
 
 
 def test_context_prediction_rewards_planted_context_structure():

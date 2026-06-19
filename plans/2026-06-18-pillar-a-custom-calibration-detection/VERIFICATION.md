@@ -178,7 +178,56 @@ _Per-criterion verdict; check the new hash is reproducible, the split is balance
 
 ### Implementer report (Codex/Sonnet fills)
 
-…
+_Files changed:_ `research/comparison/src/research_comparison/baselines/calibration.py`;
+`research/comparison/src/research_comparison/runners/calibration.py`;
+`research/comparison/scripts/capture_evidence.py`;
+`research/comparison/tests/test_calibration_track.py`;
+`research/doc/verification-runs/2026-06-19-a6-enriched/{evidence.json,SUMMARY.md}`;
+this plan and verification file.
+
+_Commit SHA:_ pending.
+
+_What was done:_ Added `EnrichedShrinkageCalibrator` with L1 features for
+role/time/day, same-day fatigue, planned progress, deadline urgency, and
+recency. It implements `fit_global`, `predict_next`, `fit_interval`, and an
+internal coefficient fit using shrinkage toward an injected population prior.
+The calibration runner now enriches active sessions with observable
+`planned_horizon` and `session_index`, fits an `enriched_shrink` prior on TRAIN
+archetypes only, tunes ridge/shrink on TRAIN seed `<5` midpoint next-session
+validation, registers the tuned enriched candidate without removing shipped
+candidates, and emits `population_prior` plus
+`mc_correction_simple_baselines` for `pooled_bayes` and `ewma`. The capture
+script now preserves those extra correction blocks in review evidence.
+
+_Verification run:_ Focused calibration tests passed (`17 passed`). Candidate
+registration prints `enriched_shrink`. Scored v2 frozen and v2 reality at
+200 seeds; both runs emitted progress and used the TRAIN-only pre-pass. Captured
+Phase 3 evidence at
+`research/doc/verification-runs/2026-06-19-a6-enriched/evidence.json` and
+`SUMMARY.md`. Evidence includes population-prior provenance and simple-baseline
+correction blocks. Frozen selected `ridge=1.0, shrink=6.0`; reality selected
+`ridge=1.0, shrink=2.0`; both use TRAIN archetypes
+`crammer/marathon_runner/morning_lark/steady/steady_improver`. Full research
+suite passed (`90 passed`).
+
+_Deviations + why:_ The first TRAIN tuning implementation used full
+prequential refits and was interrupted twice after heartbeat output showed it
+was too slow for the 5,400-learner dataset. I replaced it with a bounded
+TRAIN-only midpoint next-session validation loop and changed the population
+prior from one pooled all-session fit to a per-learner TRAIN seed `<20`
+coefficient average, avoiding the pooled same-day O(N^2) feature path. This
+keeps tuning and prior fitting strictly TRAIN-only while making the scoring
+run practical. Per the active user goal, I did not stop for Cowork review after
+Phase 3; the review-ready evidence and report are recorded here.
+
+_Self-check vs criteria:_ `enriched_shrink` is added and registered; shipped
+candidates remain present; features are observable only and no generator-truth
+imports were added to `baselines/calibration.py`; shrinkage uses an injected
+population prior; `_context_of` passes only material role, timestamp,
+planned horizon, and session index; TRAIN-only prior/tuning provenance is in
+the payload; `pooled_bayes`/`ewma` MC correction blocks are emitted; no-leakage
+tests pass; frozen and reality 200-seed evidence is captured; heartbeat output
+is present for the pre-pass and learner scoring.
 
 ### Reviewer findings (Cowork fills)
 
