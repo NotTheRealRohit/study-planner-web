@@ -302,7 +302,7 @@ flowchart TD
 
 ### Phase 1: Lock the baseline and build the heartbeat-instrumented review scaffolding (S0)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — 26d296f099c6f66c538b541fc06691ea6cc378ca
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 new file (~120 lines), no model/data change
 
@@ -355,7 +355,12 @@ Delete `research/comparison/scripts/capture_evidence.py`, its test, and the `202
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented a narrow heartbeat-instrumented capture script and fixture test. The two
+200-seed calibration baseline runs were executed unchanged except for `--out-dir`
+so frozen and reality results could both be captured before the later run
+overwrote the default result path. The large raw result JSONs were treated as
+scratch inputs and not committed; the committed review artifacts are
+`evidence.json` and `SUMMARY.md`.
 
 ---
 

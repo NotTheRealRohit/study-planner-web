@@ -25,7 +25,45 @@ Companion to [`PLAN.md`](./PLAN.md). This is the **review round-trip** artifact 
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed:_ …  ·  _Commit SHA:_ …  ·  _What was done:_ …  ·  _Deviations + why:_ …  ·  _Self-check vs criteria:_ …
+_Files changed:_ `research/comparison/scripts/capture_evidence.py`;
+`research/comparison/tests/test_capture_evidence.py`;
+`research/doc/verification-runs/2026-06-19-a6-baseline/evidence.json`;
+`research/doc/verification-runs/2026-06-19-a6-baseline/SUMMARY.md`;
+`plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md`;
+`plans/2026-06-18-pillar-a-custom-calibration-detection/VERIFICATION.md`.
+
+_Commit SHA:_ `26d296f099c6f66c538b541fc06691ea6cc378ca`.
+
+_What was done:_ Committed the plan/verification baseline first (`a10eaff`), then
+ran the Phase 1 prereqs: both frozen/reality dataset files existed and
+`uv run --package research-comparison pytest research/comparison/tests -q`
+passed (`82 passed`). Added a RED test for the new capture script, confirmed it
+failed because the script was missing, then implemented
+`capture_evidence.py` with `ProgressLogger`, `run_with_heartbeat`, repeatable
+`--result label=path`, `--output-dir`, and `--quiet`. Re-ran the focused test
+green (`1 passed`). Ran the calibration track at 200 seeds on frozen and
+reality with `--out-dir` scratch locations to preserve both result JSONs, then
+captured the committed review artifacts at
+`research/doc/verification-runs/2026-06-19-a6-baseline/{evidence.json,SUMMARY.md}`.
+Post-verification file checks passed and the full research test suite passed
+(`83 passed`).
+
+_Deviations + why:_ The runner commands used `--out-dir` scratch directories so
+both frozen and reality outputs could be captured before the second run
+overwrote the default calibration result path. The 45 MB raw result JSONs were
+removed before staging because Phase 1 requires the small stamped
+`evidence.json` and `SUMMARY.md`, not the intermediate raw inputs. Per the
+active user goal, I did not stop for Cowork review after this phase; the
+review-ready artifacts and report are recorded here.
+
+_Self-check vs criteria:_ Calibration was rerun unchanged at 200 seeds on both
+datasets and the incumbent bars are in `SUMMARY.md`; `capture_evidence.py`
+writes A6 `evidence.json` plus `SUMMARY.md` with scored split, seed count,
+params hash, per-band `context_pred_mae`/`recovery_mae`, and Holm survivors;
+the script uses `ProgressLogger` and `run_with_heartbeat` and accepts
+`--quiet`; `test_capture_evidence.py` passes; the full suite passes; source
+changes are limited to the new script, its test, the Phase 1 review artifacts,
+and this plan/verification update.
 
 ### Reviewer findings (Cowork fills)
 
