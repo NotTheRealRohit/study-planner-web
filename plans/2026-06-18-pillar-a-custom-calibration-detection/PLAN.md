@@ -589,7 +589,7 @@ not yet justify a broad recommendation over the simpler enriched model.
 
 ### Phase 5: Honest decision + findings note (S6)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 4
 **Estimated scope:** ~1 new findings doc; scoring runs
 
