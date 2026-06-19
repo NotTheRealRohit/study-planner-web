@@ -445,7 +445,7 @@ with exactly 3 active sessions had no next session for `context_pred_mae`, so
 
 ### Phase 3: Feature-enriched, partial-pooling pace calibrator + TRAIN-prior pre-pass (S1, the likely workhorse)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 8545481648a6db93ba30559b7a8e2d994f48d8d4
 **Depends on:** Phase 2
 **Estimated scope:** ~2 files modified, ~150 lines + tests
 

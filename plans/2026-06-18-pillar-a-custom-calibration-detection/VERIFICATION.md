@@ -185,7 +185,7 @@ _Files changed:_ `research/comparison/src/research_comparison/baselines/calibrat
 `research/doc/verification-runs/2026-06-19-a6-enriched/{evidence.json,SUMMARY.md}`;
 this plan and verification file.
 
-_Commit SHA:_ pending.
+_Commit SHA:_ `8545481648a6db93ba30559b7a8e2d994f48d8d4`.
 
 _What was done:_ Added `EnrichedShrinkageCalibrator` with L1 features for
 role/time/day, same-day fatigue, planned progress, deadline urgency, and
