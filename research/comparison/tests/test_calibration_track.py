@@ -5,6 +5,8 @@ import math
 
 from py_progress import infer_day_of_week
 from research_comparison.baselines.calibration import (
+    ArchetypeRouterHardCalibrator,
+    ArchetypeSoftCalibrator,
     CovariateBayesCalibrator,
     EBPartialPoolCalibrator,
     EnrichedShrinkageCalibrator,
@@ -13,6 +15,7 @@ from research_comparison.baselines.calibration import (
     KalmanPaceCalibrator,
     PooledBayesianCalibrator,
     SMACalibrator,
+    behavioral_fingerprint,
     calibration_candidates,
 )
 from research_comparison.generator.generate import (
@@ -367,6 +370,64 @@ def test_enriched_shrink_no_leakage_under_truth_shuffle():
     )
 
 
+def test_fingerprint_is_label_free():
+    sessions = _enriched_fixture_sessions()
+    polluted = [
+        {
+            **session,
+            "archetype": "deadline_sprinter",
+            "r_star": 99.0,
+            "regime_schedule": [{"onset_index": index}],
+        }
+        for index, session in enumerate(sessions)
+    ]
+
+    assert behavioral_fingerprint(sessions) == behavioral_fingerprint(polluted)
+
+
+def test_router_routes_sprinter_toward_crammer_prior():
+    sessions = [
+        _enriched_session(
+            index,
+            ratio=0.95 + 0.35 * (index / 29) ** 2,
+            started_at=f"2026-01-{5 + index // 2:02d}T19:00:00Z",
+            planned_total=30,
+        )
+        for index in range(30)
+    ]
+    crammer_fingerprint = behavioral_fingerprint(sessions)
+    steady_fingerprint = behavioral_fingerprint(_flat_sessions(ratio=1.0, n=30))
+    router = ArchetypeRouterHardCalibrator(
+        prototype_fingerprints={
+            "crammer": crammer_fingerprint,
+            "steady": steady_fingerprint,
+        },
+        type_priors={
+            "crammer": tuple([0.2, *([0.0] * 9)]),
+            "steady": tuple([0.0, *([0.0] * 9)]),
+        },
+    )
+
+    assert router.route_label(sessions) == "crammer"
+
+
+def test_soft_calibrator_falls_back_to_population_when_ambiguous():
+    population = tuple([0.05, *([0.0] * 9)])
+    soft = ArchetypeSoftCalibrator(
+        population_prior=population,
+        prototype_fingerprints={
+            "crammer": tuple([0.0] * 5),
+            "steady": tuple([0.0] * 5),
+        },
+        type_priors={
+            "crammer": tuple([0.5, *([0.0] * 9)]),
+            "steady": tuple([-0.5, *([0.0] * 9)]),
+        },
+    )
+
+    assert soft.prior_for_history(_enriched_fixture_sessions()) == population
+
+
 def test_context_prediction_rewards_planted_context_structure():
     sessions = _structured_covariate_sessions()
     targets = [
@@ -491,3 +552,8 @@ def test_a3_calibration_result_carries_ci_correction_and_heldout_split(tmp_path)
     assert payload["scored_split"] == "held_out"
     assert {"delta_ci_low", "delta_ci_high"} <= set(first_result)
     assert payload["mc_correction"]["recovery_mae"]["comparisons"]
+    assert (
+        payload["mc_correction_reference_baselines"]["enriched_shrink"]["context_pred_mae"][
+            "comparisons"
+        ]
+    )

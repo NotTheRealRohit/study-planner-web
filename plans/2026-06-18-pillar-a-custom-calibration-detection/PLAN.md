@@ -522,7 +522,7 @@ provenance. Phase 3 evidence lives in
 
 ### Phase 4: Archetype-aware variants — hard router + soft, as shrinkage priors (S2–S4 challengers)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 3
 **Estimated scope:** ~2 files modified, ~180 lines + tests
 
@@ -570,7 +570,20 @@ Remove the two archetype candidates + fingerprint + the pre-pass extension; Phas
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Added a label-free behavioural fingerprint and two additive archetype-aware
+calibrators. The hard router and soft router both use TRAIN-archetype priors as
+shrinkage targets, not fixed substituted shapes. The runner now fits per-TRAIN
+type coefficient priors, TRAIN-fit fingerprint centroids/standardiser values,
+and soft-router temperature on TRAIN seed `<5` midpoint next-session
+validation; all of that provenance is recorded under
+`population_prior.enriched_shrink.archetype_variants`.
+
+During post-verification, I added an explicit
+`mc_correction_reference_baselines.enriched_shrink` block so Phase 4 can judge
+the archetype variants directly against the Phase 3 `enriched_shrink`
+workhorse. The refreshed Phase 4 evidence shows isolated Holm wins versus
+`enriched_shrink`, but also Holm-significant losses, so the archetype layer does
+not yet justify a broad recommendation over the simpler enriched model.
 
 ---
 

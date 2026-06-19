@@ -65,6 +65,20 @@ def test_capture_writes_evidence_and_summary(tmp_path: Path) -> None:
                     },
                     "recovery_mae": {"comparisons": []},
                 },
+                "mc_correction_reference_baselines": {
+                    "enriched_shrink": {
+                        "context_pred_mae": {
+                            "comparisons": [
+                                {
+                                    "candidate": "archetype_soft",
+                                    "survives_holm_win": False,
+                                    "holm_significant": False,
+                                }
+                            ]
+                        },
+                        "recovery_mae": {"comparisons": []},
+                    }
+                },
             },
             indent=2,
         ),
@@ -91,5 +105,13 @@ def test_capture_writes_evidence_and_summary(tmp_path: Path) -> None:
         ]["ewma"]
         == 1
     )
+    assert (
+        evidence["calibration"]["runs"]["fixture"]["reference_baseline_mc_survivors"][
+            "enriched_shrink"
+        ]["context_pred_mae"]["holm_surviving_wins"]
+        == {}
+    )
     assert "hierarchical_bayes" in summary
     assert "context_pred_mae" in summary
+    assert "Reference-Baseline Survivors" in summary
+    assert "baseline `enriched_shrink`" in summary

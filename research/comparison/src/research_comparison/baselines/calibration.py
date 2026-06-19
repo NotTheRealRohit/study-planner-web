@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import numpy as np
@@ -89,6 +89,14 @@ ENRICHED_FEATURE_NAMES = (
     "planned_progress",
     "deadline_urgency",
     "recency",
+)
+
+FINGERPRINT_NAMES = (
+    "evening_minus_morning",
+    "weekend_minus_weekday",
+    "late_minus_early",
+    "final_stretch_bump",
+    "volatility",
 )
 
 
@@ -217,6 +225,54 @@ def _active_sessions(sessions: list[dict]) -> list[dict]:
         and float(session["plannedMinutes"]) > 0
         and float(session["activeMinutes"]) > 0
     ]
+
+
+def _mean_or(values: list[float], fallback: float) -> float:
+    return float(sum(values) / len(values)) if values else fallback
+
+
+def behavioral_fingerprint(sessions: list[dict]) -> tuple[float, ...]:
+    active = _active_sessions(sessions)
+    ratios = [float(session["activeMinutes"]) / float(session["plannedMinutes"]) for session in active]
+    fallback = _mean_or(ratios, BAYESIAN_PRIOR_MEAN)
+    by_time = {"morning": [], "evening": []}
+    by_day = {"weekday": [], "weekend": []}
+    for session, ratio in zip(active, ratios, strict=True):
+        time_of_day = _context_time_of_day(session)
+        if time_of_day in by_time:
+            by_time[time_of_day].append(ratio)
+        day = _context_day_of_week(session)
+        by_day["weekend" if day == "weekend" else "weekday"].append(ratio)
+
+    midpoint = max(1, len(ratios) // 2)
+    early = ratios[:midpoint]
+    late = ratios[midpoint:]
+    stretch_start = max(0, int(len(ratios) * 0.80))
+    final_stretch = ratios[stretch_start:] if ratios else []
+    volatility = float(np.std(np.asarray(ratios, dtype=float))) if len(ratios) > 1 else 0.0
+    return (
+        _mean_or(by_time["evening"], fallback) - _mean_or(by_time["morning"], fallback),
+        _mean_or(by_day["weekend"], fallback) - _mean_or(by_day["weekday"], fallback),
+        _mean_or(late, fallback) - _mean_or(early, fallback),
+        _mean_or(final_stretch, fallback) - fallback,
+        volatility,
+    )
+
+
+def _standardized_fingerprint(
+    sessions: list[dict],
+    center: tuple[float, ...],
+    scale: tuple[float, ...],
+) -> np.ndarray:
+    raw = np.asarray(behavioral_fingerprint(sessions), dtype=float)
+    if len(center) != len(FINGERPRINT_NAMES) or len(scale) != len(FINGERPRINT_NAMES):
+        return raw
+    denominator = np.asarray([value if abs(value) > 1e-9 else 1.0 for value in scale])
+    return (raw - np.asarray(center, dtype=float)) / denominator
+
+
+def _default_enriched_prior() -> tuple[float, ...]:
+    return tuple(float(value) for value in EnrichedShrinkageCalibrator()._prior())
 
 
 def _predict_from_effects(
@@ -598,6 +654,117 @@ class EnrichedShrinkageCalibrator:
 
 
 @dataclass(frozen=True)
+class ArchetypeRouterHardCalibrator:
+    name: str = "archetype_router_hard"
+    ridge: float = 2.0
+    shrink: float = 6.0
+    population_prior: tuple[float, ...] = ()
+    type_priors: dict[str, tuple[float, ...]] = field(default_factory=dict)
+    prototype_fingerprints: dict[str, tuple[float, ...]] = field(default_factory=dict)
+    fingerprint_center: tuple[float, ...] = ()
+    fingerprint_scale: tuple[float, ...] = ()
+
+    def route_label(self, sessions: list[dict]) -> str | None:
+        if not self.prototype_fingerprints:
+            return None
+        fingerprint = _standardized_fingerprint(
+            sessions,
+            self.fingerprint_center,
+            self.fingerprint_scale,
+        )
+        return min(
+            self.prototype_fingerprints,
+            key=lambda label: float(
+                np.linalg.norm(
+                    fingerprint - np.asarray(self.prototype_fingerprints[label], dtype=float)
+                )
+            ),
+        )
+
+    def prior_for_history(self, sessions: list[dict]) -> tuple[float, ...]:
+        label = self.route_label(sessions)
+        if label is not None and label in self.type_priors:
+            return self.type_priors[label]
+        return self.population_prior or _default_enriched_prior()
+
+    def _delegate(self, sessions: list[dict]) -> EnrichedShrinkageCalibrator:
+        return EnrichedShrinkageCalibrator(
+            ridge=self.ridge,
+            shrink=self.shrink,
+            population_prior=self.prior_for_history(sessions),
+        )
+
+    def fit_global(self, sessions: list[dict]) -> float:
+        return self._delegate(sessions).fit_global(sessions)
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        return self._delegate(sessions).predict_next(sessions, next_context)
+
+    def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
+        return self._delegate(sessions).fit_interval(sessions)
+
+
+@dataclass(frozen=True)
+class ArchetypeSoftCalibrator:
+    name: str = "archetype_soft"
+    ridge: float = 2.0
+    shrink: float = 6.0
+    temperature: float = 1.0
+    ambiguity_threshold: float = 0.55
+    population_prior: tuple[float, ...] = ()
+    type_priors: dict[str, tuple[float, ...]] = field(default_factory=dict)
+    prototype_fingerprints: dict[str, tuple[float, ...]] = field(default_factory=dict)
+    fingerprint_center: tuple[float, ...] = ()
+    fingerprint_scale: tuple[float, ...] = ()
+
+    def prior_for_history(self, sessions: list[dict]) -> tuple[float, ...]:
+        if not self.prototype_fingerprints or not self.type_priors:
+            return self.population_prior or _default_enriched_prior()
+        fingerprint = _standardized_fingerprint(
+            sessions,
+            self.fingerprint_center,
+            self.fingerprint_scale,
+        )
+        labels = [label for label in sorted(self.prototype_fingerprints) if label in self.type_priors]
+        if not labels:
+            return self.population_prior or _default_enriched_prior()
+        distances = np.asarray(
+            [
+                float(
+                    np.linalg.norm(
+                        fingerprint - np.asarray(self.prototype_fingerprints[label], dtype=float)
+                    )
+                )
+                for label in labels
+            ],
+            dtype=float,
+        )
+        scaled = -(distances - float(np.min(distances))) / max(1e-6, self.temperature)
+        weights = np.exp(scaled)
+        weights = weights / float(np.sum(weights))
+        if float(np.max(weights)) < self.ambiguity_threshold:
+            return self.population_prior or _default_enriched_prior()
+        priors = np.asarray([self.type_priors[label] for label in labels], dtype=float)
+        return tuple(float(value) for value in weights @ priors)
+
+    def _delegate(self, sessions: list[dict]) -> EnrichedShrinkageCalibrator:
+        return EnrichedShrinkageCalibrator(
+            ridge=self.ridge,
+            shrink=self.shrink,
+            population_prior=self.prior_for_history(sessions),
+        )
+
+    def fit_global(self, sessions: list[dict]) -> float:
+        return self._delegate(sessions).fit_global(sessions)
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        return self._delegate(sessions).predict_next(sessions, next_context)
+
+    def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
+        return self._delegate(sessions).fit_interval(sessions)
+
+
+@dataclass(frozen=True)
 class EBPartialPoolCalibrator:
     name: str = "eb_partial_pool"
 
@@ -695,6 +862,8 @@ def calibration_candidates() -> list[CalibrationCandidate]:
         KalmanPaceCalibrator(),
         CovariateBayesCalibrator(),
         EnrichedShrinkageCalibrator(),
+        ArchetypeRouterHardCalibrator(),
+        ArchetypeSoftCalibrator(),
         EBPartialPoolCalibrator(),
         SMACalibrator(),
         EWMACalibrator(),

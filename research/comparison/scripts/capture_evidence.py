@@ -83,6 +83,8 @@ def _summarize_result(label: str, path: Path) -> dict[str, Any]:
     rows = list(payload.get("rows", []))
     scored_rows = _scored_rows(payload)
     mc_correction = dict(payload.get("mc_correction", {}))
+    simple_baselines = payload.get("mc_correction_simple_baselines", {})
+    reference_baselines = payload.get("mc_correction_reference_baselines", {})
     metrics = ["context_pred_mae", "recovery_mae"]
 
     return {
@@ -101,10 +103,15 @@ def _summarize_result(label: str, path: Path) -> dict[str, Any]:
         },
         "mc_survivors": _mc_survivors(mc_correction),
         "population_prior": payload.get("population_prior"),
-        "mc_correction_simple_baselines": payload.get("mc_correction_simple_baselines", {}),
+        "mc_correction_simple_baselines": simple_baselines,
         "simple_baseline_mc_survivors": {
             baseline: _mc_survivors(block)
-            for baseline, block in payload.get("mc_correction_simple_baselines", {}).items()
+            for baseline, block in simple_baselines.items()
+        },
+        "mc_correction_reference_baselines": reference_baselines,
+        "reference_baseline_mc_survivors": {
+            baseline: _mc_survivors(block)
+            for baseline, block in reference_baselines.items()
         },
     }
 
@@ -144,6 +151,26 @@ def _summary_markdown(evidence: dict[str, Any]) -> str:
                 f"- `{metric}`: Holm wins={wins or '{}'}; significant not-win={not_win or '{}'}"
             )
         lines.append("")
+
+    reference_runs = [
+        (label, run.get("reference_baseline_mc_survivors", {}))
+        for label, run in sorted(runs.items())
+        if run.get("reference_baseline_mc_survivors")
+    ]
+    if reference_runs:
+        lines.extend(["## Reference-Baseline Survivors", ""])
+        for label, reference_blocks in reference_runs:
+            lines.append(f"### {label}")
+            for baseline, metric_blocks in sorted(reference_blocks.items()):
+                lines.append(f"- baseline `{baseline}`:")
+                for metric, survivor_block in sorted(metric_blocks.items()):
+                    wins = survivor_block["holm_surviving_wins"]
+                    not_win = survivor_block["holm_sig_but_not_win"]
+                    lines.append(
+                        f"  - `{metric}`: Holm wins={wins or '{}'}; "
+                        f"significant not-win={not_win or '{}'}"
+                    )
+            lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
 

@@ -9,9 +9,13 @@ from typing import Any
 import numpy as np
 
 from research_comparison.baselines.calibration import (
+    ArchetypeRouterHardCalibrator,
+    ArchetypeSoftCalibrator,
     CalibrationCandidate,
     ENRICHED_FEATURE_NAMES,
+    FINGERPRINT_NAMES,
     EnrichedShrinkageCalibrator,
+    behavioral_fingerprint,
     calibration_candidates,
 )
 from research_comparison.metrics.aggregate import cell_summary, winner_per_band
@@ -162,6 +166,54 @@ def _fit_enriched_population_prior(
     return tuple(float(value) for value in np.mean(np.asarray(coefficient_rows), axis=0))
 
 
+def _fit_archetype_prior_bundle(
+    learners: list[dict[str, Any]],
+    train_archetypes: set[str],
+) -> dict[str, Any]:
+    coefficients_by_type: dict[str, list[tuple[float, ...]]] = {}
+    fingerprints_by_type: dict[str, list[tuple[float, ...]]] = {}
+    all_fingerprints: list[tuple[float, ...]] = []
+    for learner in learners:
+        archetype = str(learner["archetype"])
+        if archetype not in train_archetypes:
+            continue
+        if int(learner["seed"]) >= 20:
+            continue
+        active = _with_observable_context(_active_visible_sessions(learner["sessions"]), learner)
+        if len(active) < 4:
+            continue
+        coefficients_by_type.setdefault(archetype, []).append(
+            EnrichedShrinkageCalibrator(shrink=0.0).fit_coefficients(active).coefficients
+        )
+        fingerprint = behavioral_fingerprint(active)
+        fingerprints_by_type.setdefault(archetype, []).append(fingerprint)
+        all_fingerprints.append(fingerprint)
+
+    if all_fingerprints:
+        raw = np.asarray(all_fingerprints, dtype=float)
+        center = np.mean(raw, axis=0)
+        scale = np.std(raw, axis=0)
+        scale = np.where(np.abs(scale) < 1e-9, 1.0, scale)
+    else:
+        center = np.zeros(len(FINGERPRINT_NAMES), dtype=float)
+        scale = np.ones(len(FINGERPRINT_NAMES), dtype=float)
+
+    type_priors = {
+        archetype: tuple(float(value) for value in np.mean(np.asarray(rows), axis=0))
+        for archetype, rows in sorted(coefficients_by_type.items())
+    }
+    prototypes = {}
+    for archetype, rows in sorted(fingerprints_by_type.items()):
+        mean_fingerprint = np.mean(np.asarray(rows, dtype=float), axis=0)
+        prototypes[archetype] = tuple(float(value) for value in (mean_fingerprint - center) / scale)
+    return {
+        "type_priors": type_priors,
+        "prototype_fingerprints": prototypes,
+        "fingerprint_center": tuple(float(value) for value in center),
+        "fingerprint_scale": tuple(float(value) for value in scale),
+    }
+
+
 def _score_enriched_option(
     learners: list[dict[str, Any]],
     train_archetypes: set[str],
@@ -195,6 +247,46 @@ def _score_enriched_option(
     return _mean(errors)
 
 
+def _score_soft_temperature(
+    learners: list[dict[str, Any]],
+    train_archetypes: set[str],
+    *,
+    population_prior: tuple[float, ...],
+    archetype_bundle: dict[str, Any],
+    ridge: float,
+    shrink: float,
+    temperature: float,
+) -> float:
+    candidate = ArchetypeSoftCalibrator(
+        ridge=ridge,
+        shrink=shrink,
+        temperature=temperature,
+        population_prior=population_prior,
+        type_priors=archetype_bundle["type_priors"],
+        prototype_fingerprints=archetype_bundle["prototype_fingerprints"],
+        fingerprint_center=archetype_bundle["fingerprint_center"],
+        fingerprint_scale=archetype_bundle["fingerprint_scale"],
+    )
+    errors: list[float] = []
+    for learner in learners:
+        if str(learner["archetype"]) not in train_archetypes:
+            continue
+        if int(learner["seed"]) >= 5:
+            continue
+        active = _with_observable_context(_active_visible_sessions(learner["sessions"]), learner)
+        if len(active) < 4:
+            continue
+        split_index = max(3, len(active) // 2)
+        if split_index >= len(active):
+            continue
+        target = float(active[split_index]["activeMinutes"]) / float(
+            active[split_index]["plannedMinutes"]
+        )
+        estimate = candidate.predict_next(active[:split_index], _context_of(active[split_index]))
+        errors.append(abs(estimate - target))
+    return _mean(errors)
+
+
 def _prepare_calibration_candidates(
     learners: list[dict[str, Any]],
     dataset_archetypes: set[str],
@@ -207,6 +299,7 @@ def _prepare_calibration_candidates(
         )
         train_archetypes = set(split["train"])
         population_prior = _fit_enriched_population_prior(learners, train_archetypes)
+        archetype_bundle = _fit_archetype_prior_bundle(learners, train_archetypes)
         grid: list[dict[str, float]] = []
         for ridge in [1.0, 2.0]:
             for shrink in [2.0, 6.0]:
@@ -224,6 +317,30 @@ def _prepare_calibration_candidates(
             "shrink": 6.0,
             "score": math.inf,
         }
+        temperature_grid = []
+        for temperature in [0.5, 1.0, 2.0]:
+            temperature_grid.append(
+                {
+                    "temperature": temperature,
+                    "score": _score_soft_temperature(
+                        learners,
+                        train_archetypes,
+                        population_prior=population_prior,
+                        archetype_bundle=archetype_bundle,
+                        ridge=float(selected["ridge"]),
+                        shrink=float(selected["shrink"]),
+                        temperature=temperature,
+                    ),
+                }
+            )
+        finite_temperature = [
+            row for row in temperature_grid if math.isfinite(float(row["score"]))
+        ]
+        selected_temperature = (
+            min(finite_temperature, key=lambda row: row["score"])
+            if finite_temperature
+            else {"temperature": 1.0, "score": math.inf}
+        )
         candidates: list[CalibrationCandidate] = []
         for candidate in calibration_candidates():
             if isinstance(candidate, EnrichedShrinkageCalibrator):
@@ -232,6 +349,31 @@ def _prepare_calibration_candidates(
                         ridge=float(selected["ridge"]),
                         shrink=float(selected["shrink"]),
                         population_prior=population_prior,
+                    )
+                )
+            elif isinstance(candidate, ArchetypeRouterHardCalibrator):
+                candidates.append(
+                    ArchetypeRouterHardCalibrator(
+                        ridge=float(selected["ridge"]),
+                        shrink=float(selected["shrink"]),
+                        population_prior=population_prior,
+                        type_priors=archetype_bundle["type_priors"],
+                        prototype_fingerprints=archetype_bundle["prototype_fingerprints"],
+                        fingerprint_center=archetype_bundle["fingerprint_center"],
+                        fingerprint_scale=archetype_bundle["fingerprint_scale"],
+                    )
+                )
+            elif isinstance(candidate, ArchetypeSoftCalibrator):
+                candidates.append(
+                    ArchetypeSoftCalibrator(
+                        ridge=float(selected["ridge"]),
+                        shrink=float(selected["shrink"]),
+                        temperature=float(selected_temperature["temperature"]),
+                        population_prior=population_prior,
+                        type_priors=archetype_bundle["type_priors"],
+                        prototype_fingerprints=archetype_bundle["prototype_fingerprints"],
+                        fingerprint_center=archetype_bundle["fingerprint_center"],
+                        fingerprint_scale=archetype_bundle["fingerprint_scale"],
                     )
                 )
             else:
@@ -246,6 +388,28 @@ def _prepare_calibration_candidates(
                 "ridge": float(selected["ridge"]),
                 "shrink": float(selected["shrink"]),
                 "score": float(selected["score"]),
+            },
+            "archetype_variants": {
+                "method": "per_train_type_prior_and_fingerprint_centroid",
+                "fingerprint_names": list(FINGERPRINT_NAMES),
+                "temperature_tuning_method": (
+                    "grid_search_train_archetypes_seed_lt_5_midpoint_next_session"
+                ),
+                "selected_temperature": {
+                    "temperature": float(selected_temperature["temperature"]),
+                    "score": float(selected_temperature["score"]),
+                },
+                "temperature_grid_scores": temperature_grid,
+                "type_priors": {
+                    key: list(value)
+                    for key, value in archetype_bundle["type_priors"].items()
+                },
+                "prototype_fingerprints": {
+                    key: list(value)
+                    for key, value in archetype_bundle["prototype_fingerprints"].items()
+                },
+                "fingerprint_center": list(archetype_bundle["fingerprint_center"]),
+                "fingerprint_scale": list(archetype_bundle["fingerprint_scale"]),
             },
             "grid_scores": grid,
             "population_prior": list(population_prior),
@@ -460,8 +624,8 @@ def run_calibration_track(
         baseline_candidate="hierarchical_bayes",
         group_fields=["band", "archetype"],
     )
-    simple_baseline_corrections: dict[str, dict[str, Any]] = {}
-    for baseline_candidate in ["pooled_bayes", "ewma"]:
+    reference_baseline_corrections: dict[str, dict[str, Any]] = {}
+    for baseline_candidate in ["pooled_bayes", "ewma", "enriched_shrink"]:
         simple_recovery_cells = paired_by_group(
             scored_rows,
             metric="recovery_mae",
@@ -474,7 +638,7 @@ def run_calibration_track(
             baseline_candidate=baseline_candidate,
             group_fields=["band", "archetype"],
         )
-        simple_baseline_corrections[baseline_candidate] = {
+        reference_baseline_corrections[baseline_candidate] = {
             "recovery_mae": mc_correction_block(
                 simple_recovery_cells,
                 metric="recovery_mae",
@@ -531,7 +695,11 @@ def run_calibration_track(
                 baseline_candidate="hierarchical_bayes",
             ),
         },
-        "mc_correction_simple_baselines": simple_baseline_corrections,
+        "mc_correction_simple_baselines": {
+            baseline: reference_baseline_corrections[baseline]
+            for baseline in ["pooled_bayes", "ewma"]
+        },
+        "mc_correction_reference_baselines": reference_baseline_corrections,
     }
     if progress:
         progress.log(95, "calibration.write", f"rows={len(rows)} convergence={len(convergence)}")

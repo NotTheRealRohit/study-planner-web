@@ -253,7 +253,62 @@ _Review the diff at SHA + the evidence.json: did `enriched_shrink` beat the incu
 
 ### Implementer report (Codex/Sonnet fills)
 
-…
+_Files changed:_ `research/comparison/src/research_comparison/baselines/calibration.py`;
+`research/comparison/src/research_comparison/runners/calibration.py`;
+`research/comparison/scripts/capture_evidence.py`;
+`research/comparison/tests/test_calibration_track.py`;
+`research/comparison/tests/test_capture_evidence.py`;
+`research/doc/verification-runs/2026-06-19-a6-archetype/{evidence.json,SUMMARY.md}`;
+this plan and verification file.
+
+_Commit SHA:_ `pending`.
+
+_What was done:_ Added the label-free behavioural fingerprint with
+evening-minus-morning, weekend-minus-weekday, late-minus-early,
+final-stretch-bump, and volatility features. Added
+`ArchetypeRouterHardCalibrator` and `ArchetypeSoftCalibrator`, both registered
+additively and both delegating to the enriched shrinkage fit with a routed or
+soft-blended TRAIN-type prior. Extended the TRAIN pre-pass to fit per-TRAIN-type
+coefficient priors, TRAIN-fit fingerprint prototypes/standardiser values, and a
+soft temperature grid. The runner records the archetype audit under
+`population_prior.enriched_shrink.archetype_variants`. I also added
+`mc_correction_reference_baselines`, including `enriched_shrink`, so Phase 4 can
+directly evaluate the archetype variants against the Phase 3 workhorse.
+
+_Verification run:_ Candidate registration prints both
+`archetype_router_hard` and `archetype_soft`. Focused tests passed
+(`21 passed`). Scored v2 frozen and v2 reality at 200 seeds with heartbeat
+progress; captured review artifacts at
+`research/doc/verification-runs/2026-06-19-a6-archetype/evidence.json` and
+`SUMMARY.md`, then removed raw scratch result JSONs. Evidence records TRAIN
+archetypes `crammer/marathon_runner/morning_lark/steady/steady_improver` for
+both runs and selected soft temperature `0.5` for both runs. Full research suite
+passed (`93 passed`).
+
+_Result vs `enriched_shrink`:_ Direct Holm correction versus `enriched_shrink`
+is now in `reference_baseline_mc_survivors.enriched_shrink`. On frozen
+`context_pred_mae`, `archetype_router_hard` and `archetype_soft` each have
+3 Holm-surviving wins, but `archetype_router_hard` also has 8 significant
+not-wins and `archetype_soft` has 1. On reality `context_pred_mae`,
+`archetype_router_hard` has 2 wins and 1 significant not-win; `archetype_soft`
+has no Holm-surviving wins over `enriched_shrink`. This is not a clean Phase 4
+recommendation for archetype-awareness over the simpler enriched model.
+
+_Deviations + why:_ The plan already required the variants to beat
+`enriched_shrink`, but the Phase 3 runner only emitted Holm blocks versus the
+incumbent and simple baselines. I added the reference-baseline correction block
+and preserved/surfaced it in `capture_evidence.py` so the acceptance question is
+auditable from the evidence artifact. Per the active user goal, I did not stop
+for Cowork review after Phase 4; the review-ready evidence and report are
+recorded here.
+
+_Self-check vs criteria:_ The fingerprint is computed from observed sessions
+only and has a truth-shuffle invariant test; the TRAIN pre-pass fits type priors
+and prototypes using TRAIN archetypes only; both archetype candidates are
+registered additively and route to shrinkage priors; temperature tuning is
+TRAIN-only and recorded in provenance; focused and full tests pass; frozen and
+reality 200-seed evidence is captured; scripts emit heartbeat progress during
+scoring and capture.
 
 ### Reviewer findings (Cowork fills)
 
