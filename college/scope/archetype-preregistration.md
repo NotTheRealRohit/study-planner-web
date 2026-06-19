@@ -2,8 +2,8 @@
 title: Archetype Parameter Pre-Registration (Synthetic Generator)
 purpose: Freeze the exact numeric parameters of the synthetic learner generator BEFORE any algorithm comparison is run, with provenance for each value, so the Monte-Carlo study cannot be accused of post-hoc tuning toward a winner.
 audience: candidate (***REMOVED***), examiners, future agents
-status: PRE-REGISTERED / FROZEN (2026-06-13)
-last_updated: 2026-06-13
+status: PRE-REGISTERED / FROZEN (2026-06-13); A6 v2 amendment frozen (2026-06-19)
+last_updated: 2026-06-19
 related:
   - ./research-build-plan.md
   - ./asOfReview1/phase1-research-plan.md
@@ -81,10 +81,33 @@ are archetype-defining. Shift *counts* per length band follow §5.
 | **Weekend-Warrior** | 1.02 | 0.18 | pace flat; ν(weekend)=1.02 | weekday **0.45**, weekend **0.95** |
 | **Deadline-Sprinter** | 1.00 | 0.25 | `δ_deadline` ramp ×1.00→**×1.30** over final 20% of timeline (nonlinear) | early **0.45** → final-20% **0.95** |
 | **Marathon-Runner** | 1.05 | 0.18 | 2–3 **abrupt steps**, magnitude ±0.12–0.18 | 0.92 uniform |
+| **Night-Owl** | 0.98 | 0.16 | τ override: morning **1.20**, afternoon 1.00, evening **0.85** (mirror of Morning-Lark) | 0.85 uniform |
+| **Crammer** | 1.00 | 0.22 | `δ_deadline` ramp ×1.00→**×1.35** over final 10% (`deadline_ramp_start=0.90`) | 0.88 uniform |
+| **Steady-Improver** | 1.00 → **1.20** | 0.18 | additive `trend_total=+0.20` monotone improvement across the sequence | 0.88 uniform |
 
 Provenance: archetype *shapes* `[anchored: phase1-research-plan archetypes; Saqr 2026 for
 gradual-disengagement (Fading-Flame); Alhazbi 2024 for adherence/time-management variation]`;
 exact magnitudes `[default→sweep]`.
+
+**A6 v2 train/held-out split (frozen 2026-06-19):**
+
+| Pattern | TRAIN archetype | HELD-OUT archetype |
+|---|---|---|
+| plain | Steady | — |
+| time-of-day | Morning-Lark | Night-Owl |
+| deadline ramp | Crammer | Deadline-Sprinter |
+| long-term trend | Steady-Improver | Fading-Flame |
+| sudden jumps | Marathon-Runner | — |
+| weekend adherence | — | Weekend-Warrior |
+
+TRAIN = `steady`, `morning_lark`, `marathon_runner`, `crammer`,
+`steady_improver`. HELD-OUT = `deadline_sprinter`, `fading_flame`,
+`night_owl`, `weekend_warrior`.
+
+The A6 v2 observable learner record also carries
+`planned_horizon = {deadline: <ISO date>, planned_total_sessions: <int>}`.
+This is a plan input mirroring the product deadline/roadmap length, not a
+derived outcome or sidecar truth field.
 
 ## 5 · Shift schedule per length band (FROZEN)
 
@@ -149,6 +172,7 @@ If a track's oracle cannot separate from the field, the SNR is mis-set — adjus
 | Date | Change | Reason |
 |---|---|---|
 | 2026-06-13 | Initial pre-registration frozen | grill session decisions (research-build-plan §7) |
+| 2026-06-19 | A6 v2 adds Night-Owl, Crammer, and Steady-Improver; freezes the 5/4 TRAIN/HELD-OUT split; adds observable planned horizon | Every key pace pattern now appears on both sides of the split before scoring; deadline horizon is a real product input. `fading_flame` keeps its existing drift regime, while `steady_improver` uses additive `trend_total` to avoid changing prior frozen behaviour. |
 
 ## See also
 

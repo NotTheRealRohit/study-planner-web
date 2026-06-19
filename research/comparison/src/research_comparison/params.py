@@ -34,6 +34,18 @@ ARCHETYPES = {
         "step_mag": (0.12, 0.18),
         "attempt_prob": 0.92,
     },
+    "night_owl": {
+        "m_global": 0.98,
+        "sigma_log": 0.16,
+        "tau": {"morning": 1.20, "afternoon": 1.00, "evening": 0.85},
+    },
+    "crammer": {
+        "m_global": 1.00,
+        "sigma_log": 0.22,
+        "deadline_ramp": 1.35,
+        "deadline_ramp_start": 0.90,
+    },
+    "steady_improver": {"m_global": 1.00, "sigma_log": 0.18, "trend_total": 0.20},
 }
 BANDS = {  # pre-reg §5 + build-plan §4
     "small": {"sessions": (8, 20), "shifts": (0, 1)},

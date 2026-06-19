@@ -366,7 +366,7 @@ scratch inputs and not committed; the committed review artifacts are
 
 ### Phase 2: Dataset v2 — extend archetypes, add the observable deadline horizon, re-freeze, regenerate, re-verify against reality (S5 + D-04)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1
 **Estimated scope:** ~4 files modified + 1 new script; dataset regeneration
 
@@ -430,7 +430,16 @@ Revert `params.py`, `effects.py`, `generate.py`, `reality.py`, the pre-registrat
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Frozen 9-archetype params hash is `21c2cdabfa91`; the regenerated dataset ids
+are `synthetic-21c2cdabfa91-seed0-n5400` and
+`synthetic-reality-c545404bcacf-seed0-n5400`. The pre-registration doc now
+records the A6 v2 archetypes, the 5/4 TRAIN/HELD-OUT split, the planned-horizon
+schema, and the OQ-02 decision to keep `fading_flame`'s existing drift separate
+while adding `trend_total` for `steady_improver`. Reality bounds passed against
+the A5 OULAD moment bounds. During v2 baseline recapture, two very short frozen
+learners exposed a pre-existing calibration aggregation edge case: learners
+with exactly 3 active sessions had no next session for `context_pred_mae`, so
+`run_calibration_track` now requires at least 4 active sessions.
 
 ---
 

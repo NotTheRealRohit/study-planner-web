@@ -12,7 +12,7 @@ import numpy as np
 from research_comparison.generator.adherence import attempt_probability, choose_source
 from research_comparison.generator.archetypes import archetype_config
 from research_comparison.generator.capacity import PlannedSlot, build_capacity_plan
-from research_comparison.generator.effects import delta_deadline, phi_fatigue
+from research_comparison.generator.effects import delta_deadline, phi_fatigue, trend_multiplier
 from research_comparison.generator.materials import Material, sample_material_mix
 from research_comparison.generator.noise import apply_lognormal_ar1
 from research_comparison.generator.pace import latent_base
@@ -46,6 +46,9 @@ DEFAULT_ARCHETYPE_MIX = {
     "weekend_warrior": 1,
     "deadline_sprinter": 1,
     "marathon_runner": 1,
+    "night_owl": 1,
+    "crammer": 1,
+    "steady_improver": 1,
 }
 DEFAULT_BANDS = ["small", "medium", "max"]
 DEFAULT_SEEDS = list(range(40))
@@ -139,6 +142,18 @@ def _event_for_slot(
     return base
 
 
+def _planned_horizon_from_sessions(
+    sessions: list[SessionEvent],
+    planned_total_sessions: int,
+) -> dict[str, Any]:
+    if not sessions:
+        raise ValueError("planned horizon requires at least one session")
+    return {
+        "deadline": str(sessions[-1]["date"]),
+        "planned_total_sessions": int(planned_total_sessions),
+    }
+
+
 def _draw_emitted_ratios_under_clip_guard(
     r_star: list[float],
     emitted_slots: list[tuple[PlannedSlot, str]],
@@ -214,6 +229,7 @@ def generate_learner(
             * regime_multiplier
             * phi_fatigue(slot.same_day_count)
             * delta_deadline(index, len(emitted_slots), config)
+            * trend_multiplier(index, len(emitted_slots), config)
         )
         r_star.append(round(float(latent), 6))
 
@@ -283,6 +299,7 @@ def generate_reality_matched_learner(
             * regime_multiplier
             * phi_fatigue(slot.same_day_count)
             * delta_deadline(index, len(emitted_slots), config)
+            * trend_multiplier(index, len(emitted_slots), config)
         )
         r_star.append(round(float(latent), 6))
 
@@ -338,6 +355,10 @@ def generate_reality_matched_learner(
             },
         ],
         "missingness": missingness,
+        "planned_horizon": {
+            "deadline": missingness["planned_deadline"],
+            "planned_total_sessions": missingness["planned_total_sessions"],
+        },
         "logged_time_misreporting": {
             "hidden_from_candidate_inputs": True,
             "entries": misreporting,
@@ -397,6 +418,12 @@ def generate_dataset(
                             )
                         else:
                             sessions, truth = generate_learner(archetype, band, learner_seed)
+                        planned_horizon = sidecar_extras.pop("planned_horizon", None)
+                        if planned_horizon is None:
+                            planned_horizon = _planned_horizon_from_sessions(
+                                sessions,
+                                len(sessions),
+                            )
                         metadata = {
                             "learner_id": f"{archetype}-{band}-{seed}-{learner_index:05d}",
                             "archetype": archetype,
@@ -405,7 +432,11 @@ def generate_dataset(
                         }
                         learner_file.write(
                             json.dumps(
-                                {**metadata, "sessions": sessions},
+                                {
+                                    **metadata,
+                                    "planned_horizon": planned_horizon,
+                                    "sessions": sessions,
+                                },
                                 sort_keys=True,
                                 default=_json_default,
                             )

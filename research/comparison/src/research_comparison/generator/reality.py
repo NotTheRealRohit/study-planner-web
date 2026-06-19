@@ -13,7 +13,13 @@ from research_comparison.generator.capacity import PlannedSlot, build_capacity_p
 from research_comparison.generator.materials import Material
 from research_comparison.generator.noise import apply_lognormal_ar1
 from research_comparison.generator.types import Shift
-from research_comparison.params import AR1_PHI, CLIP_HIGH, CLIP_LOW, MANUAL_FRACTION
+from research_comparison.params import (
+    AR1_PHI,
+    CLIP_HIGH,
+    CLIP_LOW,
+    MANUAL_FRACTION,
+    PARAMS_VERSION_HASH,
+)
 
 REALITY_REGIME = "reality_matched"
 
@@ -37,6 +43,7 @@ def reality_params_hash(moment_bounds: dict[str, Any] | None) -> str:
     selected = normalise_moment_bounds(moment_bounds)
     payload = {
         "regime": REALITY_REGIME,
+        "base_params_version_hash": PARAMS_VERSION_HASH,
         "bounds_version": selected.get("bounds_version"),
         "bounds": selected.get("bounds", selected),
     }
@@ -154,13 +161,33 @@ def collect_reality_slots(
                     break
         slots_needed *= 2
 
+    planned_emitted = emitted[:target_sessions]
+    planned_deadline = planned_emitted[-1][0].date if planned_emitted else None
+    dropout_probability = _sample_range(
+        moment_bounds,
+        "dropout_probability",
+        (0.15, 0.35),
+        rng,
+    )
+    dropped_out = bool(target_sessions >= 6 and float(rng.random()) < dropout_probability)
+    if dropped_out:
+        observed_sessions = max(3, int(round(target_sessions * float(rng.uniform(0.55, 0.88)))))
+        emitted = planned_emitted[: min(observed_sessions, max(1, target_sessions - 1))]
+    else:
+        emitted = planned_emitted
+
     metadata = {
         "hiatus_start": hiatus_start.isoformat() if hiatus_start else None,
         "hiatus_end": hiatus_end.isoformat() if hiatus_end else None,
         "hiatus_days": hiatus_days,
         "weekend_clustering": "weekend attempt probability boosted, weekday probability damped",
+        "planned_deadline": planned_deadline.isoformat() if planned_deadline else None,
+        "planned_total_sessions": target_sessions,
+        "observed_sessions": len(emitted),
+        "dropout_probability": round(float(dropout_probability), 6),
+        "dropped_out": dropped_out,
     }
-    return emitted[:target_sessions], metadata
+    return emitted, metadata
 
 
 def build_reality_regime_series(

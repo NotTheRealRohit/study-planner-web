@@ -11,7 +11,10 @@ from research_comparison.generator.generate import (
     generate_learner,
     generate_reality_matched_learner,
 )
+from research_comparison.generator.archetypes import archetype_config
+from research_comparison.generator.effects import delta_deadline, trend_multiplier
 from research_comparison.generator.oulad_moments import derive_oulad_moment_bounds
+from research_comparison.generator.pace import latent_base
 from research_comparison.params import ARCHETYPES, BANDS, PARAMS_VERSION_HASH
 
 
@@ -94,6 +97,54 @@ def test_clip_rate_under_two_percent_for_each_archetype():
     for index, archetype in enumerate(ARCHETYPES):
         _, truth = generate_learner(archetype, "medium", 900 + index)
         assert truth.clip_rate < 0.02
+
+
+def test_phase2_archetype_shapes_are_pre_registered():
+    assert {"night_owl", "crammer", "steady_improver"} <= set(ARCHETYPES)
+
+    night_owl = archetype_config("night_owl")
+    morning_pace = latent_base(
+        float(night_owl["m_global"]),
+        "foundation",
+        "morning",
+        "monday",
+        night_owl,
+    )
+    evening_pace = latent_base(
+        float(night_owl["m_global"]),
+        "foundation",
+        "evening",
+        "monday",
+        night_owl,
+    )
+    assert evening_pace < morning_pace
+
+    crammer = archetype_config("crammer")
+    assert delta_deadline(8, 11, crammer) == 1.0
+    assert delta_deadline(9, 11, crammer) == 1.0
+    assert delta_deadline(10, 11, crammer) > 1.30
+
+    improver = archetype_config("steady_improver")
+    assert trend_multiplier(0, 10, improver) == 1.0
+    assert trend_multiplier(9, 10, improver) > trend_multiplier(1, 10, improver)
+
+
+def test_phase2_dataset_emits_observable_planned_horizon_without_sidecar_leakage(tmp_path):
+    dataset_dir = generate_dataset(
+        archetype_mix={"steady": 1},
+        bands=["small"],
+        seeds=[1],
+        out_dir=str(tmp_path),
+    )
+
+    dataset_path = tmp_path / dataset_dir
+    learner = json.loads((dataset_path / "learners.jsonl").read_text().splitlines()[0])
+    sidecar = json.loads((dataset_path / "sidecars.jsonl").read_text().splitlines()[0])
+
+    assert set(learner["planned_horizon"]) == {"deadline", "planned_total_sessions"}
+    assert learner["planned_horizon"]["planned_total_sessions"] >= len(learner["sessions"])
+    assert date.fromisoformat(learner["planned_horizon"]["deadline"])
+    assert "planned_horizon" not in sidecar
 
 
 def test_generate_dataset_writes_manifest_sidecar_and_face_validity(tmp_path):

@@ -35,7 +35,7 @@ import numpy as np
 
 DeltaCI: TypeAlias = tuple[float, float, float]
 DEFAULT_HELDOUT_TRAIN_ARCHETYPES = frozenset(
-    {"steady", "marathon_runner", "morning_lark"}
+    {"steady", "morning_lark", "marathon_runner", "crammer", "steady_improver"}
 )
 
 
@@ -118,7 +118,10 @@ def heldout_archetype_split(
     """Return the declared train/test archetype partition for tuning protocols."""
     del seed  # The default split is pre-declared, not sampled from performance.
     all_archetypes = set(archetypes)
-    train_set = set(DEFAULT_HELDOUT_TRAIN_ARCHETYPES if train is None else train)
+    if train is None:
+        train_set = set(DEFAULT_HELDOUT_TRAIN_ARCHETYPES) & all_archetypes
+    else:
+        train_set = set(train)
     missing = train_set - all_archetypes
     if missing:
         missing_list = ", ".join(sorted(missing))

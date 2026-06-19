@@ -90,7 +90,66 @@ _Per-criterion verdict / issues / required changes:_ …  ·  **Status:** ☐ pe
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed / SHA / what / deviations / self-check:_ …
+_Files changed:_ `college/scope/archetype-preregistration.md`;
+`research/comparison/src/research_comparison/params.py`;
+`research/comparison/src/research_comparison/generator/effects.py`;
+`research/comparison/src/research_comparison/generator/generate.py`;
+`research/comparison/src/research_comparison/generator/reality.py`;
+`research/comparison/src/research_comparison/metrics/rigour.py`;
+`research/comparison/src/research_comparison/runners/calibration.py`;
+`research/comparison/scripts/verify_reality_bounds.py`;
+`research/comparison/tests/test_generator.py`;
+`research/comparison/tests/test_reality_bounds.py`;
+`research/datasets/synthetic-21c2cdabfa91-seed0-n5400/manifest.json`;
+`research/datasets/synthetic-reality-c545404bcacf-seed0-n5400/manifest.json`;
+`research/doc/verification-runs/2026-06-19-a6-dataset-v2/{evidence.json,SUMMARY.md,reality_bounds_check.json}`;
+this plan and verification file.
+
+_Commit SHA:_ pending.
+
+_What was done:_ Added `night_owl`, `crammer`, and `steady_improver` to
+`ARCHETYPES`; generalized `delta_deadline` with `deadline_ramp_start`; added
+`trend_multiplier`; wired both frozen and reality generation to apply trend;
+emitted learner-visible `planned_horizon` while keeping it out of sidecars;
+included `PARAMS_VERSION_HASH` in the reality hash payload so v2 reality data
+gets a new id; recorded sidecar-only dropout metadata in reality generation;
+updated the train split to
+`steady/morning_lark/marathon_runner/crammer/steady_improver` while preserving
+legacy six-archetype compatibility; added the heartbeat-instrumented
+`verify_reality_bounds.py`; and added focused generator/reality-bounds tests.
+The new frozen params hash is `21c2cdabfa91`. Generated datasets:
+`synthetic-21c2cdabfa91-seed0-n5400` and
+`synthetic-reality-c545404bcacf-seed0-n5400`.
+
+_Verification run:_ Focused Phase 2 tests passed
+(`13 passed`). Generated both 200-seed v2 datasets with progress logs. Ran
+`verify_reality_bounds.py` against the v2 reality dataset and A5 OULAD bounds;
+`reality_bounds_check.json` reports `status=pass`, overall
+`ar1_phi=0.2194209267`, `shift_frequency_per_100_days=9.5235711487`,
+`dropout_probability=0.2170370370`, and gap quantiles within bounds. Re-ran
+calibration on v2 frozen and reality datasets, captured
+`evidence.json`/`SUMMARY.md`, then removed raw scratch result JSONs. Phase DONE
+checks passed: `9 21c2cdabfa91`, new dataset manifest dirs exist, learner
+records carry `planned_horizon`, bounds artifact exists, and the full research
+suite passed (`86 passed`).
+
+_Deviations + why:_ The pre-registration content was written before scoring,
+but Cowork did not mark it `✅ Verified` before regeneration because the active
+user goal asks Codex to complete Phases 1-5 in this run. During v2 baseline
+recapture, learners with exactly 3 active sessions produced no next-session
+context-prediction errors, leading to NaN aggregation; I fixed the runner to
+skip learners with fewer than 4 active sessions. Only dataset `manifest.json`
+files are staged per existing repo convention; large generated
+`learners.jsonl`/`sidecars.jsonl`/`face_validity.json` remain ignored.
+
+_Self-check vs criteria:_ New archetypes, split, params, and horizon schema are
+pre-registered in `college/scope/archetype-preregistration.md`; `PARAMS_VERSION_HASH`
+changed to `21c2cdabfa91`; `delta_deadline` and `trend_multiplier` cover the
+new shapes; `planned_horizon` is observable in learner records and absent from
+sidecars; frozen and reality datasets were regenerated at 200 seeds; the
+reality verifier is heartbeat-instrumented and wrote passing bounds evidence;
+generator and bounds tests pass; the full suite passes; v2 incumbent baseline
+evidence has been recaptured for Phase 3.
 
 ### Reviewer findings (Cowork fills)
 

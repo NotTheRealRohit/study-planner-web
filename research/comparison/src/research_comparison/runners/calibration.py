@@ -205,7 +205,7 @@ def run_calibration_track(
         active_sessions, active_targets = _active_sessions_with_targets(
             learner["sessions"], truth["r_star"]
         )
-        if len(active_sessions) < 3:
+        if len(active_sessions) < 4:
             continue
         t_grid = default_t_grid(len(active_sessions))
         oracle_estimate = calibration_oracle_estimate(truth)
