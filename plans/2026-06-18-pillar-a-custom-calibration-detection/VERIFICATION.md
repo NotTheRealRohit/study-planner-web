@@ -331,7 +331,44 @@ _Does either variant beat `enriched_shrink` on held-out `context_pred_mae` (Holm
 
 ### Implementer report (Codex/Sonnet fills)
 
-…
+_Files changed:_ `research/doc/verification-runs/2026-06-19-a6-final/evidence.json`;
+`research/doc/verification-runs/2026-06-19-a6-final/SUMMARY.md`;
+`research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`;
+this plan and verification file.
+
+_Commit SHA:_ `pending`.
+
+_What was done:_ Re-scored the full calibration candidate set at 200 seeds on
+the v2 frozen dataset and the v2 reality-matched dataset. Captured final
+review artifacts under
+`research/doc/verification-runs/2026-06-19-a6-final/`, then removed raw scratch
+result JSONs. Rewrote the final summary decision section and updated the claims
+and caveats ledger with the A6 calibration outcome.
+
+_Decision:_ Recommend `enriched_shrink` for the primary held-out
+`context_pred_mae` use case. It has Holm-surviving wins against `pooled_bayes`
+in 11/12 frozen cells and 9/12 reality cells, and against `ewma` in 11/12
+frozen cells and 5/12 reality cells. Do not recommend the archetype hard/soft
+layer over `enriched_shrink`: direct comparisons show isolated wins but also
+significant losses, and the soft variant has no Holm-surviving reality
+`context_pred_mae` wins over `enriched_shrink`. `recovery_mae` remains mixed and
+is not the headline claim.
+
+_Verification run:_ Phase 5 prereq full suite passed (`93 passed`). Final frozen
+and reality scoring runs emitted heartbeat progress and wrote raw scratch JSONs;
+`capture_evidence.py` wrote `evidence.json` and `SUMMARY.md`. DONE checks passed:
+the final evidence file exists, it contains `survives_holm_win`, and the final
+summary exists. Final full research suite passed (`93 passed`).
+
+_Deviations + why:_ Raw scratch result JSONs were removed after capture; only
+the small review artifacts are committed. Per the active user goal, I did not
+stop for Cowork review after Phase 5; the review-ready evidence and report are
+recorded here.
+
+_Self-check vs criteria:_ Final evidence and summary are present; the summary
+states per-regime/band means plus the decision framing; the claims ledger
+records the A6 outcome with evidence path; full tests pass; no source code was
+changed in Phase 5.
 
 ### Reviewer findings (Cowork fills)
 

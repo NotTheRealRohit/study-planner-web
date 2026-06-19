@@ -57,6 +57,29 @@
 
 - `kalman` was added and scored under the full protocol — fold its result into the calibration story alongside the A2 caveat above (it does not change the A2 conclusion).
 
+## Calibration (A6 `pending`)
+
+- A6 regenerated a 9-archetype v2 generator (`21c2cdabfa91` frozen,
+  `c545404bcacf` reality) and added the deployable `enriched_shrink` pace
+  calibrator: observable fatigue, deadline/progress, and recency features with
+  TRAIN-only shrinkage priors.
+- Primary result: on held-out `context_pred_mae`, `enriched_shrink` has
+  Holm-surviving wins versus `pooled_bayes` in **11/12 frozen cells** and
+  **9/12 reality cells**, and versus `ewma` in **11/12 frozen cells** and
+  **5/12 reality cells**. Report this as a qualified next-session context
+  prediction win that holds in the reality-matched regime.
+- Do **not** claim an archetype-membership win. The hard/soft archetype variants
+  route to TRAIN-type shrinkage priors and are close on means, but direct Holm
+  comparisons versus `enriched_shrink` show isolated wins plus significant
+  losses: hard router frozen 3 wins / 8 significant not-wins, reality 2 wins /
+  1 significant not-win; soft router frozen 3 wins / 1 significant not-win,
+  reality 0 wins. The simpler `enriched_shrink` model remains the recommended
+  candidate.
+- Secondary `recovery_mae` remains mixed and should not be used as the headline
+  A6 claim.
+
+**Evidence:** `research/doc/verification-runs/2026-06-19-a6-final/{SUMMARY.md,evidence.json}`.
+
 ## External validity (A5 `68f4a121ed1ab6533db2f2949625f367258146d2`)
 
 - Reality-matched regime: `synthetic-reality-3b404c903563-seed0-n3600`, with base frozen hash `e716cd12dddc` preserved. OULAD was used for **moment bounds only**: daily `studentVle.sum_click` aggregated per learner/course/day as an engagement-intensity proxy for minutes toward a roadmap. Bounds are ranges, not point fits; pre-start days are excluded.
@@ -74,3 +97,4 @@
 | 2026-06-18 | Created. A2 priority caveat + A1/A3.7 projection framing + cross-cutting rules recorded. | VERIFICATION A1–A3 reviewer findings; result JSONs. |
 | 2026-06-18 | A4 verified (`5aa4c2e`): replaced detection/scheduling placeholder with real findings — page_hinkley/csd vs cusum (bocpd/adwin worse); all schedulers beat greedy_incumbent; prereq-order 1.0; upper-bound framing. | VERIFICATION A4 reviewer findings; result JSONs. |
 | 2026-06-18 | A5 implemented (`68f4a121ed1ab6533db2f2949625f367258146d2`): added OULAD-bounded reality-matched generator and recorded mixed ranking-hold — projection/scheduling hold, detection partially holds, calibration structured-candidate story does not hold. | A5 verification-run evidence; result JSONs. |
+| 2026-06-19 | A6 implemented (`pending`): `enriched_shrink` is the recommended context-prediction candidate; archetype hard/soft variants do not earn their complexity over enriched shrinkage. | A6 final verification-run evidence. |

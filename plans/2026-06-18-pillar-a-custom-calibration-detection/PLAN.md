@@ -589,7 +589,7 @@ not yet justify a broad recommendation over the simpler enriched model.
 
 ### Phase 5: Honest decision + findings note (S6)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 4
 **Estimated scope:** ~1 new findings doc; scoring runs
 
@@ -629,7 +629,18 @@ Revert the ledger edit + delete the final verification-run dir. No source change
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Re-scored the full calibration candidate set on the v2 frozen and
+reality-matched datasets, captured final evidence, and wrote the A6 decision
+summary. The primary result is a qualified next-session context-prediction win
+for `enriched_shrink`: it has Holm-surviving held-out `context_pred_mae` wins
+against `pooled_bayes` in 11/12 frozen cells and 9/12 reality cells, and
+against `ewma` in 11/12 frozen cells and 5/12 reality cells.
+
+The archetype hard/soft variants do not earn their extra complexity over
+`enriched_shrink`; direct Holm comparisons show isolated wins plus significant
+losses. The claims ledger now records this as the A6 calibration framing:
+recommend `enriched_shrink` for context prediction, do not claim an
+archetype-membership win, and keep `recovery_mae` as a mixed secondary result.
 
 ---
 
