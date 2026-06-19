@@ -57,7 +57,7 @@
 
 - `kalman` was added and scored under the full protocol — fold its result into the calibration story alongside the A2 caveat above (it does not change the A2 conclusion).
 
-## Calibration (A6 `pending`)
+## Calibration (A6 `922c64e56975d639e4e22e70115a4663486c5c1f`)
 
 - A6 regenerated a 9-archetype v2 generator (`21c2cdabfa91` frozen,
   `c545404bcacf` reality) and added the deployable `enriched_shrink` pace
@@ -97,4 +97,4 @@
 | 2026-06-18 | Created. A2 priority caveat + A1/A3.7 projection framing + cross-cutting rules recorded. | VERIFICATION A1–A3 reviewer findings; result JSONs. |
 | 2026-06-18 | A4 verified (`5aa4c2e`): replaced detection/scheduling placeholder with real findings — page_hinkley/csd vs cusum (bocpd/adwin worse); all schedulers beat greedy_incumbent; prereq-order 1.0; upper-bound framing. | VERIFICATION A4 reviewer findings; result JSONs. |
 | 2026-06-18 | A5 implemented (`68f4a121ed1ab6533db2f2949625f367258146d2`): added OULAD-bounded reality-matched generator and recorded mixed ranking-hold — projection/scheduling hold, detection partially holds, calibration structured-candidate story does not hold. | A5 verification-run evidence; result JSONs. |
-| 2026-06-19 | A6 implemented (`pending`): `enriched_shrink` is the recommended context-prediction candidate; archetype hard/soft variants do not earn their complexity over enriched shrinkage. | A6 final verification-run evidence. |
+| 2026-06-19 | A6 implemented (`922c64e56975d639e4e22e70115a4663486c5c1f`): `enriched_shrink` is the recommended context-prediction candidate; archetype hard/soft variants do not earn their complexity over enriched shrinkage. | A6 final verification-run evidence. |

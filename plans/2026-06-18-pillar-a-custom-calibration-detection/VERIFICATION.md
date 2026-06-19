@@ -336,7 +336,7 @@ _Files changed:_ `research/doc/verification-runs/2026-06-19-a6-final/evidence.js
 `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`;
 this plan and verification file.
 
-_Commit SHA:_ `pending`.
+_Commit SHA:_ `922c64e56975d639e4e22e70115a4663486c5c1f`.
 
 _What was done:_ Re-scored the full calibration candidate set at 200 seeds on
 the v2 frozen dataset and the v2 reality-matched dataset. Captured final

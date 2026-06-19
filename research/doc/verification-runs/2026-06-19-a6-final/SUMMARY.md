@@ -2,7 +2,7 @@
 
 Evidence file: `research/doc/verification-runs/2026-06-19-a6-final/evidence.json`
 
-Commit: `pending`
+Commit: `922c64e56975d639e4e22e70115a4663486c5c1f`
 
 ## Decision
 
