@@ -149,11 +149,44 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `packages/py-progress/src/py_progress/types.py`;
+`packages/py-progress/src/py_progress/calibration.py`;
+`packages/progress/src/types.ts`;
+`services/intelligence/app/schemas/progress.py`;
+`services/intelligence/app/routers/calibration.py`;
+`services/intelligence/tests/test_v1_integration.py`;
+`tests/fixtures/pillar-a/progress/compute-calibration-*.expected.json`.
+
+_Commit SHA:_ `eef569acd5076f2df7b931bdea97d984586acdf6`.
+
+_What was done:_ Added optional `nextSessionForecast` to the Python and TS
+`CalibrationState` contract and to the FastAPI payload model. `compute_calibration`
+now preserves the existing hierarchical/CUSUM/trend pipeline, but replaces
+`globalMultiplier` and `globalPosterior.mean` with
+`production_calibrator().fit_global(visible)` and computes
+`nextSessionForecast` from `predict_next(visible, next_context)` only when a
+request supplies `nextContext`. The calibration router now passes `nextContext`
+through. Added an inline service test that verifies the enriched pace equals
+`production_calibrator().fit_global(sessions)`, the forecast is non-null with
+context, and the forecast is null without context.
+
+_Deviations + why:_ The plan expected inline payload tests only, but this
+checkout already has golden fixture coverage for `computeCalibration`. Those
+five expected JSON files were regenerated from the current Python implementation
+so the existing py-progress parity suite and service golden suite continue to
+cover the changed contract. No TS `computeCalibration` implementation was
+modified.
+
+_Self-check vs criteria:_ `CalibrationState` gained additive optional
+`nextSessionForecast`; `roleMultipliers`, `trend`, `promptNeeded`, and
+`insightsByContext` still come from the existing hierarchical/CUSUM/trend path;
+`CalibrationRequest` accepts optional `nextContext` with `planned_horizon`;
+router passes it through; `/v1/progress` and `/v1/roadmap/*` golden tests still
+run through the same service suite. Verification:
+`uv run --package intelligence pytest services/intelligence/tests -q` passed
+(`38 passed`, one existing Starlette/httpx warning) and
+`uv run --package py-progress pytest packages/py-progress/tests -q` passed
+(`76 passed`).
 
 ### Reviewer findings (Cowork fills)
 

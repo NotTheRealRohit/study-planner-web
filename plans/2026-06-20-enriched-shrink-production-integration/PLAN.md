@@ -452,7 +452,7 @@ strategy is `dual_prior`.
 
 ### Phase 2: Wire enriched pace + `nextSessionForecast` through `compute_calibration` and the FastAPI endpoint
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — eef569acd5076f2df7b931bdea97d984586acdf6
 **Depends on:** Phase 1
 **Estimated scope:** 6 files, ~140 lines
 
@@ -601,7 +601,8 @@ Revert the four files; `nextSessionForecast` is optional so reverting leaves no 
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented in `eef569acd5076f2df7b931bdea97d984586acdf6`; SHA recorded in
+`VERIFICATION.md` by the follow-up docs commit.
 
 ---
 
