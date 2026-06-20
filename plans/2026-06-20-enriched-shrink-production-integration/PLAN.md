@@ -342,7 +342,7 @@ that it also has 2 Holm-significant small-band regressions.
 
 ### Phase 1: Promote the enriched calibrator into `py_progress`
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — 003247907257dda5749dfd09cff5a5843dd8c74f
 **Depends on:** Phase 0 (its go/no-go selects dual-prior vs reality-alone as the default strategy)
 **Estimated scope:** 3 files, ~280 lines
 
@@ -444,7 +444,9 @@ Delete `enriched.py`, revert the `__init__.py` export. `compute_calibration` is 
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented in `003247907257dda5749dfd09cff5a5843dd8c74f`; SHA recorded in
+`VERIFICATION.md` by the follow-up docs commit. Phase 0 was GO, so production
+strategy is `dual_prior`.
 
 ---
 

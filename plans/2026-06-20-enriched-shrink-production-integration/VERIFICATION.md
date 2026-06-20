@@ -95,11 +95,37 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `packages/py-progress/src/py_progress/enriched.py`;
+`packages/py-progress/src/py_progress/__init__.py`;
+`packages/py-progress/tests/test_enriched.py`.
+
+_Commit SHA:_ `003247907257dda5749dfd09cff5a5843dd8c74f`.
+
+_What was done:_ Promoted the enriched shrinkage calibrator into
+`py_progress.enriched`, including the enriched feature helpers,
+`EnrichedShrinkageFit`, `EnrichedShrinkageCalibrator`, Phase 0's
+`DualPriorWeightedCalibrator`, frozen reality/frozen TRAIN prior constants, and
+`production_calibrator()`. Exported the production symbols from
+`py_progress.__init__`. Added focused py-progress tests for neutral cold-start
+global pace, deterministic positive next-session prediction with
+`planned_horizon`, research-class parity for the single-prior enriched model,
+and dual-prior cold-start weights.
+
+_Deviations + why:_ Phase 0 was GO, so `PRODUCTION_PRIOR_STRATEGY` is
+`"dual_prior"`. The single-prior `EnrichedShrinkageCalibrator` was lifted with
+the production import block and preserved for parity. The dual-prior production
+wrapper adds one cold-start guard in `fit_global([])` to return
+`BAYESIAN_PRIOR_MEAN`, satisfying this phase's acceptance criterion for empty
+history while keeping `predict_next` and the single-prior parity path unchanged.
+
+_Self-check vs criteria:_ `enriched.py` contains the required enriched symbols
+without archetype/fingerprint/router variants; `REALITY_POPULATION_PRIOR` and
+`FROZEN_POPULATION_PRIOR` match the evidence vectors and include provenance
+comments; `PRODUCTION_PRIOR_STRATEGY` matches Phase 0 GO; exports are present in
+`__all__`; `compute_calibration` was not touched in this phase. Verification:
+`uv run --package py-progress pytest packages/py-progress/tests -q` passed
+(`76 passed`), and the import smoke printed `1.0` for
+`production_calibrator().fit_global([])`.
 
 ### Reviewer findings (Cowork fills)
 
