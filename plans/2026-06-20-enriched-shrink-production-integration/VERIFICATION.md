@@ -210,11 +210,50 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `apps/app/src/lib/intelligenceClient.ts`;
+`apps/app/src/progress/useCalibration.ts`;
+`apps/app/src/progress/useCalibration.test.ts`;
+`apps/app/src/events/ProgressEngine.ts`;
+`apps/app/.env.example`;
+`e2e/calibration-service.spec.ts`.
+
+_Commit SHA:_ `e4555c14a52d88b4a47265bbd7e2e0271fcaf5c6`.
+
+_What was done:_ Added the app-side Intelligence Service client and rewired
+`useCalibrationState` so the hook maps Dexie events into the FastAPI
+`/v1/calibration` request shape. The request includes sessions, exceptional
+tags, resolutions, and an optional `nextContext` derived from the latest roadmap:
+up-next date/role/index plus `planned_horizon.deadline` and
+`planned_horizon.planned_total_sessions`. The hook now returns the service
+`CalibrationState` on success and `null` while loading or if the request fails.
+`ProgressEngine.getUpNextSlot` was generalized so the app can reuse the same
+up-next slot logic with the progress mapper's roadmap shape. Added
+`VITE_INTELLIGENCE_URL` to the app env template, a Vitest hook test, and a
+Playwright spec that mocks `/v1/calibration` and asserts Home sends planned
+horizon context.
+
+_Deviations + why:_ The Playwright spec was written but not run, per the phase's
+E2E constraint. The app test gate initially exposed two pre-existing
+date-sensitive test fixtures: `Step1Deadline.test.tsx` used `2026-06-15`, which
+is now before the current minimum date (`2026-06-20`), and
+`SessionLifecycle.test.ts` attempted to test local-midnight stale handling with
+UTC literals that no longer crossed the local date boundary before the six-hour
+rule. Those fixture fixes were committed separately as
+`14af4ac7a57af69cb9dda8913029b03c1624dc90` before the Phase 3 implementation
+commit.
+
+_Self-check vs criteria:_ `intelligenceClient.ts` reads
+`import.meta.env.VITE_INTELLIGENCE_URL` with the `http://localhost:8000`
+fallback and throws on non-2xx responses. `useCalibration.ts` no longer imports
+`computeCalibration`; it builds the mapped request, derives `nextContext` through
+the shared `getUpNextSlot` path, posts to the service, and preserves the existing
+`null` loading/error behaviour expected by `Home` and `Week`.
+`VITE_INTELLIGENCE_URL` is documented in `apps/app/.env.example`.
+`useCalibration.test.ts` covers planned horizon request construction, success
+state mapping, and rejection-to-null. Verification:
+`pnpm --filter app test` passed (`31 passed`, `369 passed`) and
+`pnpm --filter app typecheck` passed. E2E coverage was added in
+`e2e/calibration-service.spec.ts` but not run.
 
 ### Reviewer findings (Cowork fills)
 

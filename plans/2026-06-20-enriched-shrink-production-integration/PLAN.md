@@ -608,7 +608,7 @@ Implemented in `eef569acd5076f2df7b931bdea97d984586acdf6`; SHA recorded in
 
 ### Phase 3: Switch the app's `useCalibrationState` to call the FastAPI service
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — e4555c14a52d88b4a47265bbd7e2e0271fcaf5c6
 **Depends on:** Phase 2
 **Estimated scope:** 4 files, ~120 lines
 
@@ -720,7 +720,15 @@ Revert `useCalibration.ts` to the `computeCalibration` import (the TS path is in
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented in `e4555c14a52d88b4a47265bbd7e2e0271fcaf5c6`; verification
+details are recorded in `VERIFICATION.md` by the follow-up docs commit. The
+app now posts mapped calibration requests to `/v1/calibration` through
+`apps/app/src/lib/intelligenceClient.ts`, derives `nextContext` from the latest
+roadmap and up-next slot, and returns `null` while loading or when the service
+rejects. The Playwright spec was written but intentionally not run, matching the
+phase constraint. During the app test gate, two existing date-sensitive fixtures
+failed under the current date (`2026-06-20`); they were stabilized separately in
+`14af4ac7a57af69cb9dda8913029b03c1624dc90` before the Phase 3 commit.
 
 ---
 
