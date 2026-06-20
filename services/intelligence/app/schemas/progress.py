@@ -42,10 +42,24 @@ class RecalibrationResolution(ApiModel):
     resolvedAt: str
 
 
+class PlannedHorizon(ApiModel):
+    deadline: str | None = None
+    planned_total_sessions: int | None = None
+
+
+class NextContext(ApiModel):
+    startedAt: str | None = None
+    date: str | None = None
+    materialRole: MaterialRole | None = None
+    session_index: int | None = None
+    planned_horizon: PlannedHorizon | None = None
+
+
 class CalibrationRequest(ApiModel):
     sessions: list[SessionEvent] = Field(default_factory=list)
     exceptionalTags: list[ExceptionalTag] = Field(default_factory=list)
     resolutions: list[RecalibrationResolution] = Field(default_factory=list)
+    nextContext: NextContext | None = None
 
 
 class PromptDetailRequest(ApiModel):
@@ -116,6 +130,7 @@ class CalibrationStatePayload(ApiModel):
     trend: TrendPayload
     promptNeeded: bool
     insightsByContext: list[ContextInsightPayload] = Field(default_factory=list)
+    nextSessionForecast: float | None = None
 
 
 class ProgressRequest(ApiModel):
@@ -154,4 +169,5 @@ def to_calibration_state(payload: CalibrationStatePayload) -> CalibrationState:
             ContextInsight(**insight)
             for insight in data.get("insightsByContext", [])
         ],
+        nextSessionForecast=data.get("nextSessionForecast"),
     )

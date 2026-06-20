@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from app.main import app
+from py_progress import production_calibrator
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "pillar-a"
@@ -90,3 +91,67 @@ def test_v1_endpoint_matches_golden_fixture(case_name: str, input_path: Path, en
 
     assert response.status_code == 200, response.text
     _assert_close(response.json(), expected, case_name)
+
+
+def _calibration_sessions() -> list[dict[str, Any]]:
+    return [
+        {
+            "date": f"2026-01-{index + 1:02d}",
+            "source": "active",
+            "plannedMinutes": 60,
+            "activeMinutes": active,
+            "duration": active,
+            "materialRole": "anchor" if index % 3 == 0 else "foundation",
+            "startedAt": f"2026-01-{index + 1:02d}T18:00:00Z",
+            "sessionId": f"phase2-{index}",
+        }
+        for index, active in enumerate([48, 52, 55, 50, 58, 54])
+    ]
+
+
+def test_calibration_endpoint_uses_enriched_pace_and_optional_forecast() -> None:
+    sessions = _calibration_sessions()
+    next_context = {
+        "date": "2026-01-07",
+        "startedAt": "2026-01-07T18:00:00Z",
+        "materialRole": "foundation",
+        "session_index": 6,
+        "planned_horizon": {
+            "deadline": "2026-02-15",
+            "planned_total_sessions": 24,
+        },
+    }
+
+    response = asyncio.run(
+        _post_json(
+            "/v1/calibration",
+            {
+                "sessions": sessions,
+                "exceptionalTags": [],
+                "resolutions": [],
+                "nextContext": next_context,
+            },
+        )
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    expected_pace = production_calibrator().fit_global(sessions)
+    assert math.isclose(body["globalMultiplier"], expected_pace, rel_tol=1e-9)
+    assert math.isclose(body["globalPosterior"]["mean"], expected_pace, rel_tol=1e-9)
+    assert body["nextSessionForecast"] is not None
+    assert body["nextSessionForecast"] > 0
+
+    no_context_response = asyncio.run(
+        _post_json(
+            "/v1/calibration",
+            {
+                "sessions": sessions,
+                "exceptionalTags": [],
+                "resolutions": [],
+            },
+        )
+    )
+
+    assert no_context_response.status_code == 200, no_context_response.text
+    assert no_context_response.json()["nextSessionForecast"] is None

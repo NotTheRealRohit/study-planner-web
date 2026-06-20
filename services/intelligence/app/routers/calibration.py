@@ -16,6 +16,7 @@ def calibration(payload: CalibrationRequest) -> dict:
         data.get("sessions", []),
         data.get("exceptionalTags", []),
         data.get("resolutions", []),
+        data.get("nextContext"),
     )
     return to_json_value(result)
 

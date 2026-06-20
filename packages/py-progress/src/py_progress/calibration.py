@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+from typing import Any
+
 from py_progress.bayesian import compute_hierarchical_model, infer_time_of_day
 from py_progress.config import BAYESIAN_PRIOR_MEAN
 from py_progress.cusum import detect_regime_shifts
+from py_progress.enriched import production_calibrator
 from py_progress.trend import analyze_trend
 from py_progress.types import (
+    BayesianPosterior,
     CalibrationState,
     ExceptionalTag,
     PromptDetail,
@@ -18,6 +22,7 @@ def compute_calibration(
     sessions: list[SessionEvent],
     exceptional_tags: list[ExceptionalTag],
     resolutions: list[RecalibrationResolution],
+    next_context: dict[str, Any] | None = None,
 ) -> CalibrationState:
     exceptional_ids: set[str] = set()
     for tag in exceptional_tags:
@@ -36,14 +41,29 @@ def compute_calibration(
     )
 
     trend = analyze_trend(sessions, exceptional_ids, bayesian_result, cusum_result)
+    visible = [s for s in sessions if s.get("sessionId") not in exceptional_ids]
+    calibrator = production_calibrator()
+    enriched_pace = calibrator.fit_global(visible)
+    interval = calibrator.fit_interval(visible)
+    posterior_variance = (
+        ((interval[1] - interval[0]) / (2 * 1.96)) ** 2
+        if interval
+        else bayesian_result.globalPosterior.variance
+    )
+    forecast = calibrator.predict_next(visible, next_context) if next_context else None
 
     return CalibrationState(
-        globalMultiplier=bayesian_result.globalMultiplier,
-        globalPosterior=bayesian_result.globalPosterior,
+        globalMultiplier=enriched_pace,
+        globalPosterior=BayesianPosterior(
+            mean=enriched_pace,
+            variance=posterior_variance,
+            sessionCount=bayesian_result.globalPosterior.sessionCount,
+        ),
         roleMultipliers=bayesian_result.roleMultipliers,
         trend=trend,
         promptNeeded=cusum_result.promptNeeded,
         insightsByContext=bayesian_result.insights,
+        nextSessionForecast=forecast,
     )
 
 

@@ -90,6 +90,7 @@ export interface CalibrationState {
   trend: TrendAnalysis
   promptNeeded: boolean
   insightsByContext: ContextInsight[]
+  nextSessionForecast?: number | null
 }
 
 // --- PromptDetail (cold path, only when modal opens) ---

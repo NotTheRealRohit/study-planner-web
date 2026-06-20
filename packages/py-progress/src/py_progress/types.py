@@ -99,6 +99,7 @@ class CalibrationState:
     trend: TrendAnalysis
     promptNeeded: bool
     insightsByContext: list[ContextInsight]
+    nextSessionForecast: float | None = None
 
 
 @dataclass

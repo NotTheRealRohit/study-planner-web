@@ -1,8 +1,8 @@
 {
-  "globalMultiplier": 0.8722566793893131,
+  "globalMultiplier": 0.9420708691219984,
   "globalPosterior": {
-    "mean": 0.8722566793893131,
-    "variance": 0.000644083969465649,
+    "mean": 0.9420708691219984,
+    "variance": 0.00021448589671262732,
     "sessionCount": 35
   },
   "roleMultipliers": {
@@ -67,5 +67,6 @@
       "sessionCount": 35,
       "label": "anchor in the evening"
     }
-  ]
+  ],
+  "nextSessionForecast": null
 }
