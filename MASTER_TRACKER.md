@@ -122,7 +122,7 @@ Hardens the Pillar-A tracks (calibration / detection / projection / scheduling) 
 
 **Key findings:** projection coverage fixed; **pace calibration is an honest null** under rigour (simple pooling/EWMA near-optimal; structured candidates overfit and fail Holm on held-out) — this is the null A6 then set out to beat; **change detection = a Pareto frontier with no single dominator** (CUSUM owns low-FAR, CSD owns fast-mid). Report caveats: [`research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`](research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md).
 
-## 4. Pillar-A A6 — custom calibration + detection  ·  status: ✅ calibration done; detection = honest null (probe only); ✅ prod integration implemented locally
+## 4. Pillar-A A6 — custom calibration + detection  ·  status: ✅ calibration done; detection = honest null (probe only); ✅ prod integration verified (Cowork 2026-06-20)
 
 Deliberate, honest attempt to beat the A-series calibration null, then (deferred) detection.
 **Canonical:** [`plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md`](plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md) + `VERIFICATION.md` (all 5 calibration phases `✅ Verified`). **Latest baton:** [`handovers/2026-06-19-a6-calibration-done-detection-null-next.md`](handovers/2026-06-19-a6-calibration-done-detection-null-next.md).
@@ -139,7 +139,12 @@ Deliberate, honest attempt to beat the A-series calibration null, then (deferred
 **Final calibration evidence:** `research/doc/verification-runs/2026-06-19-a6-final/{evidence.json,SUMMARY.md}`.
 **Open loose ends:** (a) OQ-03 ledger caveat (frozen regime "over-clean"; lead deadline claim with reality) **not yet added** to the claims ledger; (b) the Phase 1–5 `VERIFICATION.md` reviewer edits + the lit-survey doc are **uncommitted**; (c) restore the pre-registration stop-gate (bypassed in the batch run) for any Phase 6 dataset change.
 
-**Production integration (implemented locally 2026-06-20):** [`plans/2026-06-20-enriched-shrink-production-integration/PLAN.md`](plans/2026-06-20-enriched-shrink-production-integration/PLAN.md) (+ `VERIFICATION.md`) shipped `enriched_shrink` into `py_progress` → FastAPI `/v1/calibration` → app `useCalibrationState` (server-side, D-01). Phase 0 was **GO**, so production uses the per-learner reality+frozen dual-prior blend (D-02). Detection/projection/scheduling remain untouched (D-03). 4 implementation phases complete through `e4555c1`; local verification covered `py-progress`, `intelligence`, app Vitest, and app typecheck. Playwright calibration-service coverage is written but not run per the repo E2E constraint. Follow-ups: OQ-01 projection wiring, OQ-02 offline cache/fallback, OQ-03 production service deploy/auth/CORS.
+**Production integration (implemented locally 2026-06-20):** [`plans/2026-06-20-enriched-shrink-production-integration/PLAN.md`](plans/2026-06-20-enriched-shrink-production-integration/PLAN.md) (+ `VERIFICATION.md`) shipped `enriched_shrink` into `py_progress` → FastAPI `/v1/calibration` → app `useCalibrationState` (server-side, D-01). Phase 0 was **GO**, so production uses the per-learner reality+frozen dual-prior blend (D-02). Detection/projection/scheduling remain untouched (D-03). 4 implementation phases complete through `e4555c1` and **Cowork-reviewed against the committed diffs — all four `✅ Verified` (2026-06-20)**; local verification covered `py-progress` (76), `intelligence` (38), app Vitest (369), and app typecheck. Playwright calibration-service coverage is written but not run per the repo E2E constraint. **Verification caveat:** the Phase-0 dual-prior GO is a *net* win but band-dependent — 7 Holm wins vs 2 Holm-significant small-band losses on `context_pred_mae` (`recovery_mae` broadly better) — so the claims ledger must record it as a net win with a small-band exception before any write-up.
+
+**Deferred open questions (from the integration plan — carried forward):**
+- **OQ-01 — projection wiring:** should `nextSessionForecast` drive the burn-up projection/ETA, not just display? (`compute_progress` currently ignores calibration.)
+- **OQ-02 — offline / caching:** server-side calibration means the UI returns `null` (pace/prompt blank) while offline and briefly between refetches; decide whether to cache the last `CalibrationState` / add a local fallback.
+- **OQ-03 — production deploy:** Intelligence Service URL + CORS for `studytracker.app`, and whether `/v1/calibration` must require the Supabase JWT (local dev uses `http://localhost:8000`).
 
 ## 5. Pillar-B — Knowledge-Tracing bench  ·  status: ✅ (Phase 4; credibility-gated)
 
@@ -182,7 +187,7 @@ Feeds the A6 Phase-6 decision (§4).
 4. **Research Phase 6 (report wiring):** `make figs` → `\input` generated artifacts into `main.tex`; provenance stamps; reproducibility gate.
 5. **Dissertation:** assemble Review 2 from Phases 0–3 results; plan Review 3 (needs Phases 4–6).
 6. **App polish:** PWA (issue 13); confirm Plausible (17) and Week streaming narrative (11).
-7. **Production calibration hardening:** carry forward `plans/2026-06-20-enriched-shrink-production-integration/` OQ-01/OQ-02/OQ-03 — decide whether `nextSessionForecast` should drive projection, add offline cache/fallback if needed, and deploy/protect the Intelligence Service URL before production release.
+7. **Production calibration hardening:** `plans/2026-06-20-enriched-shrink-production-integration/` is ✅ Cowork-verified. **Immediate:** record the Phase-0 dual-prior small-band caveat in `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`. **Then carry forward the deferred OQs (see §4):** OQ-01 projection wiring, OQ-02 offline cache/fallback, OQ-03 Intelligence Service deploy/auth/CORS before production release.
 
 ## 9. Infra / housekeeping notes
 

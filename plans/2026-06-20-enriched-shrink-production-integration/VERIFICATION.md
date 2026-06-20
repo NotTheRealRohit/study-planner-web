@@ -75,9 +75,19 @@ under `research/`; this follow-up docs commit records the SHA and GO result.
 
 ### Reviewer findings (Cowork fills)
 
+**Reviewed:** `git show bd9eafa` (+ pre-fix `acee4e9`); `SUMMARY.md` reference-baseline `enriched_shrink` / reality.
+
 _Per-criterion verdict:_
-_Issues / required changes:_
-_Status:_ ☐ ✅ Verified / 🔁 Changes requested
+- ✅ `DualPriorWeightedCalibrator` present (`baselines/calibration.py`): composes reality+frozen `EnrichedShrinkageCalibrator` members, LOO weighting, `[0.6,0.4]` cold-start fallback (<2 active), no generator-truth import.
+- ✅ Registered in the runner; `dual_prior_audit` emitted (both vectors + static weights + per-band summary).
+- ✅ Scored on reality, 200 seeds, held-out, Holm, baseline `enriched_shrink`; `evidence.json` + `SUMMARY.md` written.
+- ✅ GO recorded; criterion ("a Holm-surviving win over `enriched_shrink` on `context_pred_mae`/reality") met — **7 Holm wins**.
+- ✅ Tests pass (`94 passed`); zero changes outside `research/`.
+
+_Issues / required changes (non-blocking):_
+- **Caveat — the win is band-dependent (carry to the claims ledger).** Vs reality-alone on `context_pred_mae`/reality: **7 Holm wins but 2 Holm-significant losses, both small-band** (small 0.14326 vs 0.14213, ≈+0.8% worse). The blend helps with more history (max/medium) and slightly hurts the cold-start point estimate — the reverse of D-02's stated rationale. It is *net* a real win, and `recovery_mae` is broadly better including small band (0.10282 vs 0.11499). **Required before the claim is written up:** frame it as a net win with a small-band point-estimate exception, not a uniform win — add to `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md` (same spirit as OQ-03).
+
+_Status:_ ✅ Verified (GO upheld; ledger caveat required before write-up)
 
 ### Resolution (implementer fills on redo)
 
@@ -129,9 +139,17 @@ comments; `PRODUCTION_PRIOR_STRATEGY` matches Phase 0 GO; exports are present in
 
 ### Reviewer findings (Cowork fills)
 
+**Reviewed:** `git show 0032479`; current `enriched.py` / `__init__.py`.
+
 _Per-criterion verdict:_
-_Issues / required changes:_
-_Status:_ ☐ ✅ Verified / 🔁 Changes requested
+- ✅ Faithful promotion — enriched class + helpers + `EnrichedShrinkageFit` + `ENRICHED_FEATURE_NAMES` + `_safe_log`/`_posterior_interval`; **no** archetype/fingerprint/router code; imports reduced to `py_progress.bayesian`/`config` + numpy.
+- ✅ `REALITY_/FROZEN_POPULATION_PRIOR` match the evidence vectors with a provenance comment; `PRODUCTION_PRIOR_STRATEGY="dual_prior"` (matches GO); `production_calibrator()` returns the dual wrapper.
+- ✅ Exports in `__all__`; `compute_calibration` untouched this phase; tests pass (`76 passed`).
+
+_Issues / required changes (non-blocking):_
+- **Note (my acceptance criterion's doing).** The dual wrapper's `fit_global([])` guards empty active history to return `BAYESIAN_PRIOR_MEAN` (1.0), diverging from the model's natural cold-start `exp(reality_intercept)≈0.878`. My criterion ("empty → ≈BAYESIAN_PRIOR_MEAN") forced this; it only affects the zero-active-session case and is a reasonable neutral "no data" default. Accepted — confirm it's intended (UI shows neutral pace before any active session).
+
+_Status:_ ✅ Verified
 
 ### Resolution (implementer fills on redo)
 
@@ -190,9 +208,19 @@ run through the same service suite. Verification:
 
 ### Reviewer findings (Cowork fills)
 
+**Reviewed:** `git show eef569a`; current `calibration.py`; golden-fixture diffs.
+
 _Per-criterion verdict:_
-_Issues / required changes:_
-_Status:_ ☐ ✅ Verified / 🔁 Changes requested
+- ✅ `nextSessionForecast` added as the last, optional field on the Python dataclass, TS `types.ts` (`?: number | null`), and `CalibrationStatePayload` — additive, backward-compatible (D-04).
+- ✅ `compute_calibration` keeps `compute_hierarchical_model` + `detect_regime_shifts` (CUSUM) + `analyze_trend`; `globalMultiplier`/`globalPosterior.mean` = `production_calibrator().fit_global(visible)`; `nextSessionForecast` = `predict_next(visible, next_context)` iff `next_context`, else `None`; role/trend/prompt/insights still from the existing pipeline.
+- ✅ `CalibrationRequest` gains optional `nextContext` (planned_horizon + role/date/index); router passes it through.
+- ✅ **D-03 intact** — `cusum.py`/`gp.py`/`trend.py`/roadmap engine untouched. **D-01 intact** — TS `calibration.ts` implementation unchanged (only `types.ts` +1).
+- ✅ Tests pass (intelligence `38`, py-progress `76`).
+
+_Issues / required changes (none):_
+- **Golden-fixture regeneration verified clean.** Spot-checked `compute-calibration-30-sessions`: only `globalMultiplier`/`globalPosterior` changed materially (0.9201→0.8994); `roleMultipliers`/`trend`/`insights` moved only at ~1e-16 (floating-point noise), `promptNeeded` unchanged → the regeneration did **not** silently alter the unchanged hierarchical/CUSUM/trend pipeline.
+
+_Status:_ ✅ Verified
 
 ### Resolution (implementer fills on redo)
 
@@ -257,9 +285,19 @@ state mapping, and rejection-to-null. Verification:
 
 ### Reviewer findings (Cowork fills)
 
+**Reviewed:** `git show e4555c1`; current `useCalibration.ts`, `intelligenceClient.ts`, `ProgressEngine.ts` diff.
+
 _Per-criterion verdict:_
-_Issues / required changes:_
-_Status:_ ☐ ✅ Verified / 🔁 Changes requested
+- ✅ `intelligenceClient.ts` reads `VITE_INTELLIGENCE_URL` (localhost fallback), throws on non-2xx.
+- ✅ `useCalibration.ts` no longer imports `computeCalibration`; builds the request from mapped events; derives `nextContext` with `planned_horizon{deadline, planned_total_sessions=slots.length}` + up-next slot via the shared `getUpNextSlot`; returns `null` while loading / on error (Home/Week null-guards hold).
+- ✅ `VITE_INTELLIGENCE_URL` documented in `.env.example`; `useCalibration.test.ts` covers request construction / success / rejection→null; `pnpm --filter app test` (`369`) + typecheck pass.
+- ✅ Playwright `e2e/calibration-service.spec.ts` written, not run (CLAUDE.md E2E constraint).
+
+_Issues / required changes (non-blocking):_
+- **Deviation (accepted):** `ProgressEngine.ts` was modified (not in the plan's file index) to make `getProjectedFinish`/`getUpNextSlot` generic over a `RoadmapSlotLike` shape so the hook can reuse them. Backward-compatible — existing `RoadmapCreatedPayload` callers still satisfy the constraint and the filter/return logic is unchanged.
+- **UX note (→ OQ-02):** the hook `setState(null)` before each refetch, so pace/progress briefly blanks on every event change and a POST fires per change. Minor flicker; fold into the offline/caching follow-up.
+
+_Status:_ ✅ Verified
 
 ### Resolution (implementer fills on redo)
 
@@ -267,7 +305,7 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ## Sign-off
 
-- [ ] All four phases `✅ Verified` by Cowork review. Implementer reports and command evidence are complete, but the Cowork reviewer sections remain pending.
+- [x] All four phases `✅ Verified` by Cowork review (2026-06-20), against the committed diffs at `bd9eafa` / `0032479` / `eef569a` / `e4555c1`. **One non-blocking follow-up:** add the Phase-0 small-band caveat (band-dependent `context_pred_mae` win — 2 Holm-significant small-band losses) to `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md` before the dual-prior win is written up.
 - [x] MASTER_TRACKER §4 + §8 rows reflect production integration state; `last_updated` is already `2026-06-20` and remains current for this same-day update.
 - [x] OQ-01 (projection wiring), OQ-02 (offline caching), OQ-03 (prod auth/deploy) carried forward in the open questions and MASTER_TRACKER §8.
 
