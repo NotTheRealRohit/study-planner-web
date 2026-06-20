@@ -186,6 +186,6 @@ Feeds the A6 Phase-6 decision (§4).
 
 ## 9. Infra / housekeeping notes
 
-- **Uncommitted working tree (as of 2026-06-20):** A6 `VERIFICATION.md` reviewer edits, `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md` edits, `research/doc/2026-06-20-change-detection-literature-survey.md`, generated `unified_detector_{results.json,summary.md}` (gitignore candidates), and this file. Cowork cannot commit — native side should commit (Step 0) before next work.
+- **Earlier 2026-06-20 housekeeping note:** Cowork had flagged A6 `VERIFICATION.md` reviewer edits, `plans/2026-06-14-pillar-a-rigour-VERIFICATION.md` edits, `research/doc/2026-06-20-change-detection-literature-survey.md`, and generated `unified_detector_{results.json,summary.md}` as possible native-side Step 0 cleanup. Re-check `git status` before acting on that older list; the enriched calibration production-integration work itself is clean through `00d1e12`.
 - **Build gotchas (see `.claude/rules/`):** pnpm build needs internal registry (`COREPACK_NPM_REGISTRY`); LaTeX via TinyTeX on PATH; Dexie schema migrations must version-up; React Router `basename="/study"` (never include `/study` in `to`).
 - **This tracker's reconciliation:** last full reconcile 2026-06-20. If a marker here conflicts with a workstream's canonical file, the canonical file wins — fix the row.
