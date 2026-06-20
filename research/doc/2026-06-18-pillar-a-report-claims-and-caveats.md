@@ -68,6 +68,20 @@
   **9/12 reality cells**, and versus `ewma` in **11/12 frozen cells** and
   **5/12 reality cells**. Report this as a qualified next-session context
   prediction win that holds in the reality-matched regime.
+- **Caveat — production dual-prior variant (A6 integration, 2026-06-20).**
+  Production ships a per-learner Bayesian-weighted blend of the reality + frozen
+  TRAIN priors (`enriched_dual_prior`, `PRODUCTION_PRIOR_STRATEGY="dual_prior"`
+  in `py_progress/enriched.py`), validated under the rigour protocol on the
+  reality regime
+  (`research/doc/verification-runs/2026-06-20-enriched-dualprior/`). Against
+  reality-alone `enriched_shrink` it is a **net** win on `context_pred_mae` (7
+  Holm-surviving wins) but **band-dependent**: it wins the max band (0.1370 vs
+  0.1384) and medium band (0.1386 vs 0.1397) and **loses the small / cold-start
+  band with 2 Holm-significant not-win cells** (0.1433 vs 0.1421, ≈+0.8% worse).
+  On `recovery_mae` it is broadly better, including the small band (0.1028 vs
+  0.1150, 11 Holm wins). **Claim discipline:** report the dual-prior as a *net*
+  improvement over reality-alone with an explicit small-band point-estimate
+  exception — never as a uniform win.
 - Do **not** claim an archetype-membership win. The hard/soft archetype variants
   route to TRAIN-type shrinkage priors and are close on means, but direct Holm
   comparisons versus `enriched_shrink` show isolated wins plus significant
