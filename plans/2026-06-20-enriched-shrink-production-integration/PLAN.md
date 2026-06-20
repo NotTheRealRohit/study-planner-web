@@ -217,7 +217,7 @@ The seam is `useCalibrationState`. Everything downstream of `CalibrationState` (
 
 ### Phase 0: Validate the dual-prior weighting in the research harness (go/no-go)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — bd9eafafc33ec399ee8fec5f49ad7d0b982b3498
 **Depends on:** none — can start immediately
 **Estimated scope:** ~3 files + 1 evidence dir, ~150 lines
 
@@ -332,7 +332,11 @@ Pure research additions; revert the commit. No production impact.
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented in `bd9eafafc33ec399ee8fec5f49ad7d0b982b3498`; SHA recorded in
+`VERIFICATION.md` by the follow-up docs commit. Phase 0 is GO under the plan's
+literal criterion (`enriched_dual_prior` has 7 Holm-surviving
+`context_pred_mae` wins versus `enriched_shrink` on reality), with the caveat
+that it also has 2 Holm-significant small-band regressions.
 
 ---
 

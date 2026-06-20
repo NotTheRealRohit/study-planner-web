@@ -30,12 +30,48 @@ Companion to [`PLAN.md`](./PLAN.md). This is the **review round-trip** artifact 
 
 ### Implementer report (Codex/Sonnet fills)
 
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_GO / NO-GO:_  (and the deciding numbers from `SUMMARY.md`)
-_Self-check vs criteria:_
+_Files changed:_ `research/comparison/src/research_comparison/baselines/calibration.py`;
+`research/comparison/src/research_comparison/runners/calibration.py`;
+`research/comparison/tests/test_calibration_track.py`;
+`research/doc/verification-runs/2026-06-20-enriched-dualprior/evidence.json`;
+`research/doc/verification-runs/2026-06-20-enriched-dualprior/SUMMARY.md`.
+
+_Commit SHA:_ `bd9eafafc33ec399ee8fec5f49ad7d0b982b3498`.
+
+_What was done:_ Added `DualPriorWeightedCalibrator` to the research calibration
+baselines, registered it in the calibration runner, and emitted
+`dual_prior_audit` with the reality/frozen TRAIN-fit prior vectors, static
+weights, and per-band weight summaries. Updated calibration tests for candidate
+registration, cold-start fallback weights, scored runner output, and the audit
+block. Ran the plan-required 200-seed reality calibration harness and captured
+`evidence.json` plus `SUMMARY.md`.
+
+_Deviations + why:_ The first prereq test run failed before Phase 0 because two
+existing detector-sim entrypoints used a local `Progress` class name that the
+repo-wide progress-logging gate did not recognize; fixed and committed that
+separately as `acee4e9` before starting Phase 0. The runner resolves the
+counterpart frozen/reality prior from the canonical 200-seed reference datasets
+when the canonical datasets are scored; non-canonical test fixtures fall back to
+the current dataset prior so tests stay hermetic.
+
+_GO / NO-GO:_ **GO by the plan's stated criterion.** In `SUMMARY.md`, reference
+baseline `enriched_shrink` / `context_pred_mae` on reality reports
+`enriched_dual_prior` as a Holm-surviving winner in 7 cells. Held-out means:
+max `0.137036` vs `0.138436`, medium `0.138572` vs `0.139730`, small
+`0.143258` vs `0.142129`. Caveat: the result is mixed; the same reference block
+also reports 2 Holm-significant not-win cells for `enriched_dual_prior` in
+small-band archetypes.
+
+_Self-check vs criteria:_ `DualPriorWeightedCalibrator` composes reality/frozen
+`EnrichedShrinkageCalibrator` members and returns `[0.6, 0.4]` for cold-start
+histories; no generator-truth imports or fields are used in `baselines/`.
+Runner output includes `dual_prior_audit` with both prior vectors, static
+weights, and per-band summaries. Evidence was scored on
+`synthetic-reality-c545404bcacf-seed0-n5400` with 200 seeds, held-out
+archetypes, Holm correction, and reference baseline `enriched_shrink`. Tests:
+`uv run --package research-comparison pytest research/comparison/tests -q`
+passed (`94 passed`). Implementation/evidence changes in the phase commit are
+under `research/`; this follow-up docs commit records the SHA and GO result.
 
 ### Reviewer findings (Cowork fills)
 
