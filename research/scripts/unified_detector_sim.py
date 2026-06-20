@@ -83,7 +83,7 @@ VERSION = ("a6-detsim-v3 (survey candidates: kswin, mmd_window, newma, e_detecto
 # Heartbeat progress logger (D-08 parity with research_comparison.progress_log)
 # ----------------------------------------------------------------------------
 @dataclass
-class Progress:
+class ProgressLogger:
     label: str = "detsim"
     enabled: bool = True
     started: float = field(default_factory=time.monotonic)
@@ -906,7 +906,7 @@ def tune_secondary(spec, train):
     return best[0]
 
 
-def run_regime(regime: str, args, prog: Progress) -> dict[str, Any]:
+def run_regime(regime: str, args, prog: ProgressLogger) -> dict[str, Any]:
     reg = detector_registry(args.quick)
     # Every non-baseline detector is a candidate to be tested for dominance over the
     # cusum+csd frontier (v3: was previously only names starting with "unified").
@@ -1036,7 +1036,7 @@ def main():
     if args.quick:
         args.train = min(args.train, 80); args.test = min(args.test, 80); args.reps = min(args.reps, 1)
 
-    prog = Progress(enabled=not args.quiet)
+    prog = ProgressLogger(enabled=not args.quiet)
     prog.log(0, "start", f"{VERSION} | train={args.train} test={args.test} reps={args.reps} regime={args.regime}")
     regimes = ["frozen", "reality"] if args.regime == "both" else [args.regime]
     detector_names = list(detector_registry(args.quick))
