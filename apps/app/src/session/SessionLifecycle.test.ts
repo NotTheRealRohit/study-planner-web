@@ -353,6 +353,7 @@ describe('SessionLifecycle', () => {
     });
 
     it('abandons active session crossing midnight', async () => {
+      const localLateNightStart = new Date(2026, 3, 29, 23, 30);
       const record: ActiveSessionRecord = {
         id: 1,
         sessionId: 'session-midnight',
@@ -361,14 +362,14 @@ describe('SessionLifecycle', () => {
         slotDate: '2026-04-29',
         weekIndex: 0,
         plannedMinutes: 60,
-        startedAt: '2026-04-29T23:30:00Z',
+        startedAt: localLateNightStart.toISOString(),
         status: 'active',
         pauseIntervals: [],
         pomodoroConfig: DEFAULT_POMODORO_CONFIG,
       };
       await eventStore.table('activeSession').put(record);
 
-      currentTime = new Date('2026-04-30T07:00:00Z'); // next day
+      currentTime = new Date(2026, 3, 30, 1, 30); // next local day, under 6h
 
       const lc = new SessionLifecycle(makeDeps());
       const state = await lc.initialize();

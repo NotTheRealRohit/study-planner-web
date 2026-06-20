@@ -18,6 +18,11 @@ const mockUseEventStore = vi.mocked(useEventStore)
 const mockUseEventStoreContext = vi.mocked(useEventStoreContext)
 
 const TEST_DB_NAME = 'StudyTrackerTestStep1'
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function futureDateInputValue(daysFromNow: number): string {
+  return new Date(Date.now() + daysFromNow * MS_PER_DAY).toISOString().split('T')[0]
+}
 
 async function createTestEventStore() {
   const db = new Dexie(TEST_DB_NAME)
@@ -114,7 +119,7 @@ describe('Step1Deadline', () => {
       expect(screen.getByLabelText('Target date')).toBeInTheDocument()
     })
     const dateInput = screen.getByLabelText('Target date') as HTMLInputElement
-    fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
+    fireEvent.change(dateInput, { target: { value: futureDateInputValue(14) } })
 
     const continueBtn = screen.getByText('Continue')
     fireEvent.click(continueBtn)
