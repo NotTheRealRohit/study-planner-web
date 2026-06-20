@@ -18,6 +18,15 @@ from py_progress.config import (
     MIN_SESSIONS_PER_BUCKET,
 )
 from py_progress.cusum import detect_regime_shifts, run_cusum
+from py_progress.enriched import (
+    ENRICHED_FEATURE_NAMES,
+    FROZEN_POPULATION_PRIOR,
+    PRODUCTION_PRIOR_STRATEGY,
+    REALITY_POPULATION_PRIOR,
+    DualPriorWeightedCalibrator,
+    EnrichedShrinkageCalibrator,
+    production_calibrator,
+)
 from py_progress.gp import (
     cholesky_decompose,
     cholesky_solve,
@@ -46,6 +55,13 @@ __all__ = [
     "compute_hierarchical_model",
     "run_cusum",
     "detect_regime_shifts",
+    "ENRICHED_FEATURE_NAMES",
+    "FROZEN_POPULATION_PRIOR",
+    "PRODUCTION_PRIOR_STRATEGY",
+    "REALITY_POPULATION_PRIOR",
+    "DualPriorWeightedCalibrator",
+    "EnrichedShrinkageCalibrator",
+    "production_calibrator",
     "init_kalman",
     "kalman_predict",
     "kalman_update",
