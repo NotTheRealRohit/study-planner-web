@@ -14,6 +14,7 @@ from research_comparison.baselines.calibration import (
     CalibrationCandidate,
     ENRICHED_FEATURE_NAMES,
     FINGERPRINT_NAMES,
+    DualPriorWeightedCalibrator,
     EnrichedShrinkageCalibrator,
     behavioral_fingerprint,
     calibration_candidates,
@@ -43,6 +44,10 @@ from research_comparison.runners.rigour import (
     latest_dataset_dir as _latest_dataset_dir,
 )
 from research_comparison.writers.results import manifest_from_dataset, write_stamped_json
+
+
+FROZEN_REFERENCE_DATASET_ID = "synthetic-21c2cdabfa91-seed0-n5400"
+REALITY_REFERENCE_DATASET_ID = "synthetic-reality-c545404bcacf-seed0-n5400"
 
 
 def _repo_root() -> Path:
@@ -164,6 +169,80 @@ def _fit_enriched_population_prior(
     if not coefficient_rows:
         return EnrichedShrinkageCalibrator()._prior()
     return tuple(float(value) for value in np.mean(np.asarray(coefficient_rows), axis=0))
+
+
+def _fit_reference_enriched_population_prior(
+    root: Path,
+    dataset_id: str,
+    train_archetypes: set[str],
+) -> tuple[float, ...] | None:
+    dataset_path = root / "research/datasets" / dataset_id
+    learners_path = dataset_path / "learners.jsonl"
+    if not learners_path.exists():
+        return None
+    return _fit_enriched_population_prior(_read_jsonl(learners_path), train_archetypes)
+
+
+def _reference_or_current_prior(
+    *,
+    root: Path,
+    current_dataset_id: str,
+    reference_dataset_id: str,
+    current_prior: tuple[float, ...],
+    train_archetypes: set[str],
+) -> tuple[tuple[float, ...], dict[str, Any]]:
+    if current_dataset_id == reference_dataset_id:
+        return current_prior, {
+            "dataset_id": current_dataset_id,
+            "source": "current_dataset",
+            "fallback": False,
+        }
+    if current_dataset_id in {FROZEN_REFERENCE_DATASET_ID, REALITY_REFERENCE_DATASET_ID}:
+        reference_prior = _fit_reference_enriched_population_prior(
+            root,
+            reference_dataset_id,
+            train_archetypes,
+        )
+        if reference_prior is not None:
+            return reference_prior, {
+                "dataset_id": reference_dataset_id,
+                "source": "reference_dataset",
+                "fallback": False,
+            }
+    return current_prior, {
+        "dataset_id": current_dataset_id,
+        "source": "current_dataset_fallback",
+        "fallback": True,
+    }
+
+
+def _dual_prior_weight_summary(
+    learners: list[dict[str, Any]],
+    candidate: DualPriorWeightedCalibrator,
+) -> dict[str, Any]:
+    by_band: dict[str, list[np.ndarray]] = {}
+    for learner in learners:
+        if int(learner["seed"]) >= 5:
+            continue
+        active = _with_observable_context(_active_visible_sessions(learner["sessions"]), learner)
+        if not active:
+            continue
+        by_band.setdefault(str(learner["band"]), []).append(candidate._weights(active))
+
+    summary: dict[str, Any] = {}
+    for band, weights in sorted(by_band.items()):
+        arr = np.vstack(weights)
+        summary[band] = {
+            "n_learners": int(arr.shape[0]),
+            "mean_reality_weight": float(np.mean(arr[:, 0])),
+            "mean_frozen_weight": float(np.mean(arr[:, 1])),
+            "p10_reality_weight": float(np.quantile(arr[:, 0], 0.10)),
+            "p90_reality_weight": float(np.quantile(arr[:, 0], 0.90)),
+        }
+    return {
+        "method": "weights_on_observable_histories_seed_lt_5_by_band",
+        "by_band": summary,
+    }
 
 
 def _fit_archetype_prior_bundle(
@@ -291,6 +370,9 @@ def _prepare_calibration_candidates(
     learners: list[dict[str, Any]],
     dataset_archetypes: set[str],
     progress: ProgressLogger | None,
+    *,
+    root: Path | None = None,
+    raw_manifest: dict[str, Any] | None = None,
 ) -> tuple[list[CalibrationCandidate], dict[str, Any]]:
     def prepare() -> tuple[list[CalibrationCandidate], dict[str, Any]]:
         split = archetype_split_for_rows(
@@ -298,7 +380,23 @@ def _prepare_calibration_candidates(
             archetypes=dataset_archetypes,
         )
         train_archetypes = set(split["train"])
+        repo_root = root or _repo_root()
+        current_dataset_id = str((raw_manifest or {}).get("dataset_id") or "")
         population_prior = _fit_enriched_population_prior(learners, train_archetypes)
+        reality_prior, reality_prior_source = _reference_or_current_prior(
+            root=repo_root,
+            current_dataset_id=current_dataset_id,
+            reference_dataset_id=REALITY_REFERENCE_DATASET_ID,
+            current_prior=population_prior,
+            train_archetypes=train_archetypes,
+        )
+        frozen_prior, frozen_prior_source = _reference_or_current_prior(
+            root=repo_root,
+            current_dataset_id=current_dataset_id,
+            reference_dataset_id=FROZEN_REFERENCE_DATASET_ID,
+            current_prior=population_prior,
+            train_archetypes=train_archetypes,
+        )
         archetype_bundle = _fit_archetype_prior_bundle(learners, train_archetypes)
         grid: list[dict[str, float]] = []
         for ridge in [1.0, 2.0]:
@@ -341,6 +439,12 @@ def _prepare_calibration_candidates(
             if finite_temperature
             else {"temperature": 1.0, "score": math.inf}
         )
+        dual_prior_candidate = DualPriorWeightedCalibrator(
+            ridge=float(selected["ridge"]),
+            shrink=float(selected["shrink"]),
+            reality_prior=reality_prior,
+            frozen_prior=frozen_prior,
+        )
         candidates: list[CalibrationCandidate] = []
         for candidate in calibration_candidates():
             if isinstance(candidate, EnrichedShrinkageCalibrator):
@@ -351,6 +455,8 @@ def _prepare_calibration_candidates(
                         population_prior=population_prior,
                     )
                 )
+            elif isinstance(candidate, DualPriorWeightedCalibrator):
+                candidates.append(dual_prior_candidate)
             elif isinstance(candidate, ArchetypeRouterHardCalibrator):
                 candidates.append(
                     ArchetypeRouterHardCalibrator(
@@ -413,6 +519,23 @@ def _prepare_calibration_candidates(
             },
             "grid_scores": grid,
             "population_prior": list(population_prior),
+            "dual_prior_audit": {
+                "method": "per_learner_leave_one_out_log_pace_weighting",
+                "reality_prior": {
+                    **reality_prior_source,
+                    "population_prior": list(reality_prior),
+                },
+                "frozen_prior": {
+                    **frozen_prior_source,
+                    "population_prior": list(frozen_prior),
+                },
+                "static_weights": list(dual_prior_candidate.static_weights),
+                "temperature": "loo_sse_mean_scale",
+                "weight_summary": _dual_prior_weight_summary(
+                    learners,
+                    dual_prior_candidate,
+                ),
+            },
         }
         return candidates, audit
 
@@ -522,6 +645,8 @@ def run_calibration_track(
         learners,
         dataset_archetypes,
         progress,
+        root=root,
+        raw_manifest=raw_manifest,
     )
     if progress:
         progress.log(
@@ -678,6 +803,7 @@ def run_calibration_track(
         ),
         "population_prior": {
             "enriched_shrink": enriched_prior_audit,
+            "dual_prior_audit": enriched_prior_audit["dual_prior_audit"],
         },
         "paired_by_cell": {
             "recovery_mae": recovery_cells,

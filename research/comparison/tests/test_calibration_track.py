@@ -8,6 +8,7 @@ from research_comparison.baselines.calibration import (
     ArchetypeRouterHardCalibrator,
     ArchetypeSoftCalibrator,
     CovariateBayesCalibrator,
+    DualPriorWeightedCalibrator,
     EBPartialPoolCalibrator,
     EnrichedShrinkageCalibrator,
     EWMACalibrator,
@@ -284,6 +285,25 @@ def test_enriched_shrink_returns_float_and_finite():
     assert interval[0] < candidate.fit_global(sessions) < interval[1]
 
 
+def test_dual_prior_candidate_registers_and_uses_cold_start_fallback_weights():
+    candidate = DualPriorWeightedCalibrator()
+
+    assert "enriched_dual_prior" in {candidate.name for candidate in calibration_candidates()}
+
+    weights = candidate._weights(
+        [
+            _enriched_session(
+                0,
+                ratio=1.0,
+                started_at="2026-01-05T08:00:00Z",
+            )
+        ]
+    )
+
+    assert abs(float(weights[0]) - 0.6) < 1e-9
+    assert abs(float(weights[1]) - 0.4) < 1e-9
+
+
 def test_enriched_shrink_recovers_planted_fatigue_and_deadline_effects():
     sessions = _enriched_fixture_sessions()
     candidate = EnrichedShrinkageCalibrator(ridge=0.1, shrink=0.1)
@@ -524,11 +544,14 @@ def test_tracer_bullet_dataset_compare_figs_produces_artifacts_in_temp_workspace
     pdf = generated / "calibration_convergence.pdf"
     table = generated / "calibration_winners.tex"
     result_files = sorted((results_root / "calibration").glob("*.json"))
+    payload = json.loads(result_files[0].read_text())
 
     assert pdf.exists() and pdf.stat().st_size > 0
     assert table.exists() and table.stat().st_size > 0
     assert result_files
-    assert "_provenance" in json.loads(result_files[0].read_text())
+    assert "_provenance" in payload
+    assert "enriched_dual_prior" in {row["candidate"] for row in payload["rows"]}
+    assert "dual_prior_audit" in payload["population_prior"]
 
 
 def test_a3_calibration_result_carries_ci_correction_and_heldout_split(tmp_path):

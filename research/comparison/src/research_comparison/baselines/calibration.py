@@ -654,6 +654,74 @@ class EnrichedShrinkageCalibrator:
 
 
 @dataclass(frozen=True)
+class DualPriorWeightedCalibrator:
+    name: str = "enriched_dual_prior"
+    ridge: float = 2.0
+    shrink: float = 6.0
+    reality_prior: tuple[float, ...] = ()
+    frozen_prior: tuple[float, ...] = ()
+    static_weights: tuple[float, float] = (0.6, 0.4)
+
+    def _members(self) -> tuple[EnrichedShrinkageCalibrator, EnrichedShrinkageCalibrator]:
+        return (
+            EnrichedShrinkageCalibrator(
+                ridge=self.ridge,
+                shrink=self.shrink,
+                population_prior=self.reality_prior,
+            ),
+            EnrichedShrinkageCalibrator(
+                ridge=self.ridge,
+                shrink=self.shrink,
+                population_prior=self.frozen_prior,
+            ),
+        )
+
+    def _weights(self, sessions: list[dict]) -> np.ndarray:
+        active = _active_sessions(sessions)
+        base = np.asarray(self.static_weights, dtype=float)
+        base = base / base.sum()
+        if len(active) < 2:
+            return base
+        members = self._members()
+        loo = np.zeros(2, dtype=float)
+        for k, member in enumerate(members):
+            sse = 0.0
+            for i in range(len(active)):
+                rest = active[:i] + active[i + 1 :]
+                pred = member.predict_next(rest, active[i])
+                actual = float(active[i]["activeMinutes"]) / float(active[i]["plannedMinutes"])
+                sse += (_safe_log(pred) - _safe_log(actual)) ** 2
+            loo[k] = sse / len(active)
+        s2 = max(float(np.mean(loo)), 1e-6)
+        log_w = np.log(base) - 0.5 * loo / s2
+        log_w -= float(np.max(log_w))
+        w = np.exp(log_w)
+        return w / float(np.sum(w))
+
+    def predict_next(self, sessions: list[dict], next_context: dict[str, Any]) -> float:
+        w = self._weights(sessions)
+        members = self._members()
+        preds = np.asarray([m.predict_next(sessions, next_context) for m in members], dtype=float)
+        return float(preds @ w)
+
+    def fit_global(self, sessions: list[dict]) -> float:
+        w = self._weights(sessions)
+        members = self._members()
+        vals = np.asarray([m.fit_global(sessions) for m in members], dtype=float)
+        return float(vals @ w)
+
+    def fit_interval(self, sessions: list[dict]) -> tuple[float, float] | None:
+        w = self._weights(sessions)
+        members = self._members()
+        intervals = [m.fit_interval(sessions) for m in members]
+        if any(iv is None for iv in intervals):
+            return None
+        lowers = np.asarray([iv[0] for iv in intervals], dtype=float)
+        uppers = np.asarray([iv[1] for iv in intervals], dtype=float)
+        return (float(lowers @ w), float(uppers @ w))
+
+
+@dataclass(frozen=True)
 class ArchetypeRouterHardCalibrator:
     name: str = "archetype_router_hard"
     ridge: float = 2.0
@@ -862,6 +930,7 @@ def calibration_candidates() -> list[CalibrationCandidate]:
         KalmanPaceCalibrator(),
         CovariateBayesCalibrator(),
         EnrichedShrinkageCalibrator(),
+        DualPriorWeightedCalibrator(),
         ArchetypeRouterHardCalibrator(),
         ArchetypeSoftCalibrator(),
         EBPartialPoolCalibrator(),
