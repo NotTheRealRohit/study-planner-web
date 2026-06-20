@@ -67,11 +67,11 @@ and this plan/verification update.
 
 ### Reviewer findings (Cowork fills)
 
-_Per-criterion verdict / issues / required changes:_ …  ·  **Status:** ☐ pending
+_Per-criterion verdict / issues / required changes:_ Reviewed diff at `83bcede`. ✅ All five criteria met: calibration track re-run unchanged at 200 seeds on frozen + reality, incumbent `context_pred_mae`/`recovery_mae` per band recorded as the bar in `SUMMARY.md`; `capture_evidence.py` uses `ProgressLogger` + `run_with_heartbeat` + `--quiet` (D-08) and emits `evidence.json` (A3/A4 field shape) + `SUMMARY.md`; `test_capture_evidence.py` added and passing; changes confined to the new script, its test, and the `2026-06-19-a6-baseline/` dir (zero source/data/config touched). Accepted note: the per-phase stop was collapsed because the user authorised batch execution of Phases 1–5.  ·  **Status:** ✅ Verified
 
 ### Resolution (Codex fills on redo)
 
-…
+n/a — verified.
 
 ---
 
@@ -153,11 +153,11 @@ evidence has been recaptured for Phase 3.
 
 ### Reviewer findings (Cowork fills)
 
-_Per-criterion verdict; check the new hash is reproducible, the split is balanced (D-03), horizon is non-leaky, reality bounds pass:_ …  ·  **Status:** ☐ pending
+_Per-criterion verdict; check the new hash is reproducible, the split is balanced (D-03), horizon is non-leaky, reality bounds pass:_ Reviewed diff at `02cedbc`. ✅ Technical criteria all met: `night_owl` (τ-mirror), `crammer` (`deadline_ramp=1.35`, `deadline_ramp_start=0.90`), `steady_improver` (`trend_total=+0.20`) added to `params.py` with principled params; `delta_deadline` honours `deadline_ramp_start` and `trend_multiplier` is additive (OQ-02 resolved as recommended — `fading_flame`'s regime left untouched); `planned_horizon` is emitted into the **learner record only** (confirmed absent from the truth sidecar) and derived from the plan, not `r_star` (D-04); pre-registration re-frozen with a dated changelog entry carrying the exact D-03 5/4 split; `PARAMS_VERSION_HASH` → `21c2cdabfa91`; frozen (`…-n5400`) + reality (`synthetic-reality-c545404bcacf-…`) regenerated at 200 seeds; `verify_reality_bounds.py` is heartbeat-instrumented and `reality_bounds_check.json` status = `pass`; generator + bounds tests added. The two shared-code edits are both sound and **symmetric across all candidates** (no per-candidate bias): `metrics/rigour.py` only updates `DEFAULT_HELDOUT_TRAIN_ARCHETYPES` to the 5 train types and makes the splitter intersect with available archetypes (legacy-dataset safety); the `<3`→`<4` active-session skip is a NaN-handling fix (a 3-active-session learner yields no context-prediction point). **Process deviation, accepted retroactively:** criterion #1 (Cowork marks the pre-registration `✅ Verified` *before* regeneration) was bypassed in the batch run. I reviewed the pre-registration content retroactively — it matches the design agreed during grill-me exactly, with provenance, and was frozen before the new candidates were *scored*, so the no-post-hoc-tuning guard holds. Restore the gate for Phase 6.  ·  **Status:** ✅ Verified
 
 ### Resolution (Codex fills on redo)
 
-…
+n/a — verified. (Process: re-instate the pre-registration stop-gate before Phase 6.)
 
 ---
 
@@ -231,11 +231,11 @@ is present for the pre-pass and learner scoring.
 
 ### Reviewer findings (Cowork fills)
 
-_Review the diff at SHA + the evidence.json: did `enriched_shrink` beat the incumbent and `pooled_bayes`/`ewma` on held-out `context_pred_mae` (Holm)? Does it hold on reality? Any wrong-direction Holm-significant cells? No-leakage test genuine?_ …  ·  **Status:** ☐ pending
+_Review the diff at SHA + the evidence.json: did `enriched_shrink` beat the incumbent and `pooled_bayes`/`ewma` on held-out `context_pred_mae` (Holm)? Does it hold on reality? Any wrong-direction Holm-significant cells? No-leakage test genuine?_ Reviewed diff at `8545481` + `evidence.json`. ✅ All criteria met. Integrity: **no generator-truth import** in `baselines/calibration.py` (grep-confirmed — only `py_progress`/`numpy`); features observable-only (fatigue via same-day grouping, session-position progress + calendar days-to-deadline from `planned_horizon`, recency, ρ/τ/ν); shrinkage is exactly `(XᵀX + ridge + shrink·I)β = Xᵀy + shrink·prior` (D-05); `_context_of` passes observable next-context only (no `r_star`); population prior + λ/shrink tuning are strictly **TRAIN-archetype-only** (`seed<20` / `seed<5`), recorded in provenance as `fit_on_train_archetypes_only`; `pooled_bayes`/`ewma` `mc_correction` blocks added (D-07); the no-leakage test is **genuine** (pollutes history + next-context with `r_star`/`sidecar_archetype`/`regime_schedule`, asserts identical `predict_next`). **Result is a real, earned win:** held-out `context_pred_mae` Holm-surviving vs the `hierarchical_bayes` incumbent (11/12 frozen) and vs `pooled_bayes` (11/12 frozen, 9/12 reality) and `ewma` (11/12 frozen, 5/12 reality); means ≈0.074 vs pooled ≈0.104 at max band; **holds on reality**. No wrong-direction Holm cells for `enriched_shrink` on `context_pred_mae` (1 significant not-win frozen, 0 reality). The deviation (prior = per-learner TRAIN-`seed<20` coefficient average rather than a pooled all-session fit; bounded midpoint tuning for runtime) is transparently recorded, TRAIN-only, and principled. This overturns the prior calibration null *honestly*, via the observable signals the baselines ignored.  ·  **Status:** ✅ Verified
 
 ### Resolution (Codex fills on redo)
 
-…
+n/a — verified.
 
 ---
 
@@ -312,11 +312,11 @@ scoring and capture.
 
 ### Reviewer findings (Cowork fills)
 
-_Does either variant beat `enriched_shrink` on held-out `context_pred_mae` (Holm)? If not, that's a legitimate result (D-06) — confirm it's reported as such, not hidden._ …  ·  **Status:** ☐ pending
+_Does either variant beat `enriched_shrink` on held-out `context_pred_mae` (Holm)? If not, that's a legitimate result (D-06) — confirm it's reported as such, not hidden._ Reviewed diff at `a919ea4` + `evidence.json`. ✅ All criteria met. The behavioural fingerprint is label-free (genuine truth-shuffle invariance test); both `ArchetypeRouterHardCalibrator` and `ArchetypeSoftCalibrator` are registered additively and **delegate to the enriched fit with a routed/blended prior — not a fixed shape** (D-05 honoured; this is the exact correction the design probe proved necessary, and `test_router_routes_sprinter_toward_crammer_prior` confirms the routing mechanism); type-priors/prototypes/standardiser and the soft temperature are fit/tuned **TRAIN-only**, recorded in provenance; a `reference_baseline` `mc_correction` vs `enriched_shrink` was added so the D-06 question is auditable from the artifact. **Honest negative result, correctly reported as a non-recommendation:** neither variant cleanly beats `enriched_shrink` on held-out `context_pred_mae` — hard router 3 wins / 8 significant not-wins (frozen), 2 / 1 (reality); soft 3 / 1 (frozen), **0 wins (reality)**. This matches D-06 and the simulation's prediction (the membership layer adds ~nothing over shrinkage); it is surfaced in the evidence and SUMMARY, not hidden.  ·  **Status:** ✅ Verified
 
 ### Resolution (Codex fills on redo)
 
-…
+n/a — verified.
 
 ---
 
@@ -372,7 +372,7 @@ changed in Phase 5.
 
 ### Reviewer findings (Cowork fills)
 
-_Verify every claim against the stamped evidence; confirm no overstatement beyond Holm-surviving held-out wins._ …  ·  **Status:** ☐ pending
+_Verify every claim against the stamped evidence; confirm no overstatement beyond Holm-surviving held-out wins._ Reviewed diff at `922c64e` + final `evidence.json`. ✅ Decision and scoring are correct; **one required honest-framing addition.** The final evidence carries `delta_ci`, `scored_split="held_out"`, both incumbent and `pooled_bayes`/`ewma` `mc_correction` blocks, the `reference_baseline` block, `params_version_hash`, and seed count. I cross-checked every headline number against the `mc_survivors`/reference blocks: `enriched_shrink` 11/12 vs pooled (frozen) and 9/12 (reality); 11/12 vs ewma (frozen) and 5/12 (reality); the archetype variants' win/loss tallies match. The recommendation (recommend `enriched_shrink`; archetype layer not recommended; `recovery_mae` mixed and not the headline) is faithful to the numbers and not overstated; the claims-ledger update is honest and appropriately qualified. **Required follow-up (documentation, non-blocking for the science — do before the report/Phase 6):** add the OQ-03 caveat to the claims ledger — on the *frozen* regime `planned_total_sessions ≡ realized count` and `deadline = last realized session date`, so the session-position progress feature there is essentially exact; the deadline-feature claim is defensible because it **holds on the reality regime, where dropout makes `planned ≠ observed`**. Lead the deadline-feature claim with the reality result and disclose the frozen over-cleanness.  ·  **Status:** ✅ Verified (with the ledger caveat to add before the report)
 
 ### Resolution (Codex fills on redo)
 
