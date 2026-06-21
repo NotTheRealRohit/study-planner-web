@@ -7,7 +7,7 @@ purpose: >
   blocked, and next. It is an INDEX over the per-workstream canonical files, not a runbook.
 audience: [cowork-planning-review-agent, codex-gpt-5.5, claude-code-sonnet, rohit]
 status: active living document
-last_updated: 2026-06-20
+last_updated: 2026-06-21
 maintainer: Cowork planning/review agent proposes edits; the native side commits (Cowork cannot commit — see infra notes)
 status_legend:
   "✅": done / verified
@@ -143,8 +143,8 @@ Deliberate, honest attempt to beat the A-series calibration null, then (deferred
 
 **Deferred open questions (from the integration plan — carried forward):**
 - **OQ-01 — projection wiring:** should `nextSessionForecast` drive the burn-up projection/ETA, not just display? (`compute_progress` currently ignores calibration.)
-- **OQ-02 — offline / caching:** server-side calibration means the UI returns `null` (pace/prompt blank) while offline and briefly between refetches; decide whether to cache the last `CalibrationState` / add a local fallback.
-- **OQ-03 — production deploy:** Intelligence Service URL + CORS for `studytracker.app`, and whether `/v1/calibration` must require the Supabase JWT (local dev uses `http://localhost:8000`).
+- **OQ-02 — offline / caching:** server-side calibration means the UI returns `null` (pace/prompt blank) while offline and briefly between refetches. → **Implemented** in [`plans/2026-06-20-dev-production-readiness/PLAN.md`](plans/2026-06-20-dev-production-readiness/PLAN.md) Phase 3 (Dexie-persisted stale cache + UI states), commit `3655f34`; ⏳ pending Cowork review.
+- **OQ-03 — production deploy:** Intelligence Service URL + CORS for `studytracker.app`; local dev now requires Supabase JWTs on `/v1/*` and supports both legacy HS256 and Supabase JWKS-backed ES256/RS256 tokens.
 
 ## 5. Pillar-B — Knowledge-Tracing bench  ·  status: ✅ (Phase 4; credibility-gated)
 
@@ -188,6 +188,7 @@ Feeds the A6 Phase-6 decision (§4).
 5. **Dissertation:** assemble Review 2 from Phases 0–3 results; plan Review 3 (needs Phases 4–6).
 6. **App polish:** PWA (issue 13); confirm Plausible (17) and Week streaming narrative (11).
 7. **Production calibration hardening:** `plans/2026-06-20-enriched-shrink-production-integration/` is ✅ Cowork-verified. **Immediate:** record the Phase-0 dual-prior small-band caveat in `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`. **Then carry forward the deferred OQs (see §4):** OQ-01 projection wiring, OQ-02 offline cache/fallback, OQ-03 Intelligence Service deploy/auth/CORS before production release.
+8. **Dev production-readiness (2026-06-20):** [`plans/2026-06-20-dev-production-readiness/PLAN.md`](plans/2026-06-20-dev-production-readiness/PLAN.md) (+ `VERIFICATION.md`) — 5 phases: Supabase-JWT auth on `/v1`, resilient calibration client (timeout/retry/typed errors), Dexie-persisted stale cache + UI states + error boundary, service hardening (request-id/logging/input-bounds/`/readiness`/rate-limit stub/compose healthcheck), and a one-command `pnpm dev:full` stack. Makes dev mirror prod so going live is config-only. **✅ All 5 phases implemented + committed (SHAs `b71d962`, `5cabf41`, `3655f34`, `dcb1069`, `18dd144`, ES256/JWKS fix `3c7092a` on `project/phase-1`); browser-verified with Rohit's real Supabase account: `/v1/calibration` returned 200 and no auth/service banner rendered. ⏳ Cowork reviewer findings still not filled.** Resolves prior-plan OQ-02; production hosting (OQ-03) still deferred.
 
 ## 9. Infra / housekeeping notes
 

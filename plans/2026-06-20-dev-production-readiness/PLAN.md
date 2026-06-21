@@ -619,7 +619,7 @@ D-06 and is configurable through `INTELLIGENCE_RATE_LIMIT_PER_MINUTE` for tests.
 
 ### Phase 5: One-command dev stack (F)
 
-**Status:** 🛑 Blocked: waiting for real Supabase JWT secret for real-account browser verification
+**Status:** ✅ Complete — 3c7092a
 **Depends on:** none — can start immediately (independent; do last so docs reflect the finished system)
 **Estimated scope:** 2–3 files, ~30 lines
 
@@ -680,13 +680,17 @@ Manual stack verification with a temporary test JWT secret proved the script and
 service path: `pnpm dev:full` started uvicorn on `:8000`, Vite on `:5173`,
 `/health` and `/readiness` returned 200, and a headless browser with a synthetic
 matching JWT received `POST /v1/calibration` 200 and rendered seeded Home
-progress content. Rohit's real browser session then returned 401 because the
-service was still running with the temporary test secret, while the browser token
-is signed by the actual Supabase project secret. There is no real
-`SUPABASE_JWT_SECRET` in the local env files, and it cannot be derived from the
-anon or service role key. Final real-account browser verification is blocked
-until the real project JWT secret is added to `services/intelligence/.env` or the
-shell and the stack is restarted.
+progress content.
+
+Rohit's real browser session then exposed a stale assumption in D-02: the live
+Supabase access token uses `alg: ES256`, not legacy `HS256`. Commit `3c7092a`
+kept the HS256 path for legacy projects and added Supabase JWKS verification for
+`ES256`/`RS256` tokens, plus `SUPABASE_URL` wiring for local dev and compose.
+Final verification after restarting `pnpm dev:full`: `/health` 200,
+`/readiness` 200, a real Supabase-issued `ES256` token received
+`POST /v1/calibration` 200, and a Chrome browser run using Rohit's account loaded
+`http://localhost:5173/study/home` with one calibration 200, no calibration 401,
+and no auth/service banner.
 
 ---
 
@@ -705,7 +709,7 @@ shell and the stack is restarted.
 ## Out of scope
 
 - **Production hosting / platform / domains / secrets for the service** — deferred (apps not deployed yet); this plan makes dev mirror prod so that's config-only later.
-- **JWKS / asymmetric JWT verification** — not now (project uses HS256); the `require_user` seam makes it a one-function swap.
+- **JWKS / asymmetric JWT verification** — originally out of scope under the HS256 assumption; implemented in Phase 5 follow-up after live Supabase tokens proved this project uses ES256.
 - **In-browser TS recompute as an offline fallback** — explicitly excluded (D-03); the TS calibrator stays legacy/parity-only.
 - **Hard per-request compute timeout** — replaced by input-size bounds (D-06); sync endpoints make a true timeout fragile.
 - **Real distributed rate limiter** — dev stub only (D-06 / OQ-01).

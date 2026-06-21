@@ -133,7 +133,7 @@ _Files changed:_ `package.json`, `pnpm-lock.yaml`, `README.md`, `services/intell
 _Commit SHA:_ `18dd144`
 _What was done:_ Added one-command dev orchestration with `dev:intelligence` and `dev:full`, root devDeps `concurrently` and `wait-on`, a Node launcher that loads `services/intelligence/.env`, validates `SUPABASE_JWT_SECRET`, and starts uvicorn, plus root/service README setup notes. Changed `wait-on` to `http-get://localhost:8000/health` after FastAPI returned 405 to HEAD. Added an auth-specific calibration status/banner so a `/v1/calibration` 401 tells the user to check `SUPABASE_JWT_SECRET` instead of reporting a generic service outage.
 _Deviations + why:_ Added `scripts/dev-intelligence.mjs` rather than keeping all logic inside a package-script one-liner so `services/intelligence/.env` can be loaded and child-process signal handling stays readable. The app status enum now includes `auth-error`; this is a narrow response to live browser evidence that a wrong service JWT secret otherwise appears as "Couldn't reach the calibration service."
-_Self-check vs criteria:_ Script/docs criteria satisfied and automated checks pass. Verified `env CI=true pnpm install --frozen-lockfile --offline`, `pnpm --filter @study-tracker/app test -- useCalibration ServiceStatusBanner` (`35 files / 379 tests passed`), `pnpm --filter @study-tracker/app typecheck`, `pnpm dev:intelligence` fail-fast with no secret, and `pnpm dev:full` startup with a temporary test secret (`:8000` uvicorn, `:5173` Vite, `/health` 200, `/readiness` 200). Headless browser verification with a synthetic matching JWT got `POST /v1/calibration` 200 and rendered seeded Home progress content. Real-account browser verification is blocked until the real Supabase project JWT secret is configured; Rohit's browser correctly reproduced `401 Unauthorized` while the service was running with the temporary test secret.
+_Self-check vs criteria:_ Script/docs criteria satisfied and automated checks pass. Verified `env CI=true pnpm install --frozen-lockfile --offline`, `pnpm --filter @study-tracker/app test -- useCalibration ServiceStatusBanner` (`35 files / 379 tests passed`), `pnpm --filter @study-tracker/app typecheck`, `pnpm dev:intelligence` fail-fast with no secret, and `pnpm dev:full` startup with a temporary test secret (`:8000` uvicorn, `:5173` Vite, `/health` 200, `/readiness` 200). Headless browser verification with a synthetic matching JWT got `POST /v1/calibration` 200 and rendered seeded Home progress content. Real-account browser verification initially reproduced `401 Unauthorized`; the root cause was that the live Supabase project issues `ES256` access tokens, not legacy `HS256` tokens.
 
 ### Reviewer findings (Cowork fills)
 _Per-criterion verdict:_
@@ -142,10 +142,15 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ### Resolution (implementer fills on redo)
 
+_Files changed:_ `services/intelligence/app/security.py`, `services/intelligence/tests/test_auth.py`, `services/intelligence/pyproject.toml`, `uv.lock`, `scripts/dev-intelligence.mjs`, `services/intelligence/.env.example`, `services/intelligence/README.md`, `README.md`, `apps/app/.env.example`, `docker-compose.yml`.
+_Commit SHA:_ `3c7092a`
+_What was fixed:_ Added Supabase asymmetric JWT support while preserving the legacy HS256 path. `require_user` now branches by JWT `alg`: `HS256` verifies with `SUPABASE_JWT_SECRET`; `ES256`/`RS256` verifies against the Supabase JWKS endpoint under `SUPABASE_URL` and validates issuer plus `audience="authenticated"`. The dev launcher reuses `SUPABASE_URL` from `apps/app/.env.local` when the service env does not set it, and compose now passes the service auth env vars.
+_Verification:_ `uv run --package intelligence pytest services/intelligence/tests/test_auth.py -q` (`11 passed, 1 warning`); `uv run --package intelligence pytest services/intelligence/tests -q` (`54 passed, 1 warning`); `docker compose config`; `git diff --check`; `pnpm --filter @study-tracker/app typecheck`; live `/health` 200; live `/readiness` 200; direct real Supabase-issued access token probe reported `alg:"ES256"`, `/v1/calibration` status `200`, `hasGlobalMultiplier:true`; Chrome browser verification using Rohit's account loaded `/study/home` with `calibrationStatuses:[200]`, `hasCalibration401:false`, `hasAuthBanner:false`, `hasServiceBanner:false`.
+
 ---
 
 ## Sign-off
 
 - [ ] All five phases `✅ Verified` by Cowork review.
-- [ ] `MASTER_TRACKER.md` updated (new dev-readiness row/note; OQ-02 of the prior plan resolved here); `last_updated` bumped if a new day.
-- [ ] Carry-forward: production hosting/secrets (OQ-03 of prior plan) still deferred; rate-limit thresholds (OQ-01) and toast system (OQ-02) noted.
+- [x] `MASTER_TRACKER.md` updated (new dev-readiness row/note; OQ-02 of the prior plan resolved here); `last_updated` bumped if a new day.
+- [x] Carry-forward: production hosting/secrets (OQ-03 of prior plan) still deferred; rate-limit thresholds (OQ-01) and toast system (OQ-02) noted.
