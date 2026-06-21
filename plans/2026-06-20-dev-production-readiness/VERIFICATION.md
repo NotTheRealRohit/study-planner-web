@@ -27,11 +27,11 @@ Companion to [`PLAN.md`](./PLAN.md). The **review round-trip** artifact for the 
 - [ ] `test_auth.py`: 401 (no/!valid/expired/wrong-secret), 200 (valid), `/health` open. `uv run --package intelligence pytest services/intelligence/tests -q` passes.
 
 ### Implementer report (Codex/Sonnet fills)
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `services/intelligence/pyproject.toml`, `uv.lock`, `services/intelligence/app/security.py`, `services/intelligence/app/main.py`, `services/intelligence/tests/test_auth.py`, `services/intelligence/tests/test_v1_integration.py`, `services/intelligence/.env.example`, `apps/app/src/lib/intelligenceClient.ts`, `apps/app/.env.example`, `plans/2026-06-20-dev-production-readiness/PLAN.md`, `plans/2026-06-20-dev-production-readiness/VERIFICATION.md`.
+_Commit SHA:_ `9525eac`
+_What was done:_ Added PyJWT, a service-side `require_user` dependency that verifies Supabase HS256 bearer tokens with `audience="authenticated"` and returns `sub`, protected all `/v1` routers while leaving `/health` open, and attached the current Supabase session access token from the app client. Added service env documentation and auth coverage for missing/malformed/invalid/expired/no-sub/unconfigured/valid token cases.
+_Deviations + why:_ Updated existing service golden-test helper to mint a valid JWT because the suite exercises protected `/v1` endpoints and would otherwise fail after the planned router dependency. The app `.env.example` uses a comment-only note for `SUPABASE_JWT_SECRET` because this Vite app exposes `SUPABASE_*` env vars.
+_Self-check vs criteria:_ All Phase 1 criteria satisfied. Verified with `uv run --package intelligence pytest services/intelligence/tests -q` (`46 passed, 1 warning`), manual unauthenticated `/v1/calibration` probe (`401`), manual `/health` probe (`{"status":"ok"}`), and `pnpm --filter @study-tracker/app typecheck`.
 
 ### Reviewer findings (Cowork fills)
 _Per-criterion verdict:_

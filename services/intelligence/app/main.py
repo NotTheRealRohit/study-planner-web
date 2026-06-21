@@ -1,9 +1,10 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import calibration, progress, roadmap
+from app.security import require_user
 
 DEFAULT_CORS_ORIGINS = ["http://localhost:5173"]
 
@@ -36,6 +37,6 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-app.include_router(calibration.router, prefix="/v1")
-app.include_router(progress.router, prefix="/v1")
-app.include_router(roadmap.router, prefix="/v1")
+app.include_router(calibration.router, prefix="/v1", dependencies=[Depends(require_user)])
+app.include_router(progress.router, prefix="/v1", dependencies=[Depends(require_user)])
+app.include_router(roadmap.router, prefix="/v1", dependencies=[Depends(require_user)])

@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import json
 import math
+import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import httpx
+import jwt
 import pytest
 
 from app.main import app
@@ -15,6 +18,7 @@ from py_progress import production_calibrator
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "pillar-a"
 TOLERANCE = 1e-6
+TEST_AUTH_SECRET = "test-supabase-jwt-secret-32-bytes-min"
 
 ENDPOINT_BY_FN = {
     "computeCalibration": "/v1/calibration",
@@ -37,10 +41,27 @@ def _fixture_cases() -> list[tuple[str, Path, str]]:
     return cases
 
 
+def _auth_headers() -> dict[str, str]:
+    now = datetime.now(UTC)
+    token = jwt.encode(
+        {
+            "aud": "authenticated",
+            "exp": now + timedelta(minutes=5),
+            "iat": now,
+            "sub": "fixture-user",
+            "role": "authenticated",
+        },
+        TEST_AUTH_SECRET,
+        algorithm="HS256",
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
 async def _post_json(endpoint: str, payload: dict[str, Any]) -> httpx.Response:
+    os.environ["SUPABASE_JWT_SECRET"] = TEST_AUTH_SECRET
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        return await client.post(endpoint, json=payload)
+        return await client.post(endpoint, json=payload, headers=_auth_headers())
 
 
 def _assert_close(actual: Any, expected: Any, path: str = "") -> None:

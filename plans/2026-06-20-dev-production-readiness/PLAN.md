@@ -203,7 +203,7 @@ Seams: the FastAPI router dependencies (auth), the `intelligenceClient` transpor
 
 ### Phase 1: Real Supabase-JWT auth on all `/v1` endpoints (A + G)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — 9525eac
 **Depends on:** none — can start immediately
 **Estimated scope:** ~5 files, ~120 lines
 
@@ -329,7 +329,11 @@ Revert the four files + drop the dep. The app keeps calling the service; if the 
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented as planned. Existing service golden tests were updated to send a valid
+Supabase-shaped JWT because protecting all `/v1` routers made their previously
+open fixture calls return 401. `SUPABASE_JWT_SECRET` is documented as
+service-side only; the app `.env.example` intentionally references it only in a
+comment because this Vite app exposes `SUPABASE_*` env vars.
 
 ---
 
