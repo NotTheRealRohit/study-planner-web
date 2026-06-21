@@ -53,7 +53,7 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 
 ### Implementer report (Codex/Sonnet fills)
 _Files changed:_ `apps/app/src/lib/intelligenceClient.ts`, `apps/app/src/lib/intelligenceClient.test.ts`, `plans/2026-06-20-dev-production-readiness/PLAN.md`, `plans/2026-06-20-dev-production-readiness/VERIFICATION.md`.
-_Commit SHA:_ pending
+_Commit SHA:_ `5cabf41`
 _What was done:_ Added typed `CalibrationAuthError` and `CalibrationServiceError`, an 8s `AbortController` timeout, bounded retry/backoff for network/abort and 5xx failures, immediate no-retry 401 handling, and final failure warning for service/network failures. Added client tests for bearer token attachment, retry-then-success, no-retry auth failure, and timeout abort behavior.
 _Deviations + why:_ The retry loop intentionally does not retry non-401 4xx responses even though the illustrative code block would have retried any `CalibrationServiceError`; this matches the acceptance criterion that retries are for transient 5xx/network failures only. The test uses a hand-written fake for the local `./supabase` module because importing the real singleton in Vitest requires app env vars before the client behavior can be tested.
 _Self-check vs criteria:_ All Phase 2 criteria satisfied. Verified with `pnpm --filter @study-tracker/app test` (`32 files / 373 tests passed`) and `pnpm --filter @study-tracker/app typecheck`.
