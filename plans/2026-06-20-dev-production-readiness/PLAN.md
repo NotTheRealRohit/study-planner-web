@@ -556,7 +556,7 @@ Supabase JWT signing secret needed for an authenticated app-to-service fetch.
 
 ### Phase 4: Service hardening (E + service-side I)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — dcb1069
 **Depends on:** Phase 1
 **Estimated scope:** ~4 files, ~140 lines
 
