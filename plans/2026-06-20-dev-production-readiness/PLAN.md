@@ -619,7 +619,7 @@ D-06 and is configurable through `INTELLIGENCE_RATE_LIMIT_PER_MINUTE` for tests.
 
 ### Phase 5: One-command dev stack (F)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** none — can start immediately (independent; do last so docs reflect the finished system)
 **Estimated scope:** 2–3 files, ~30 lines
 
