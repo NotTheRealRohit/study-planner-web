@@ -203,7 +203,7 @@ Seams: the FastAPI router dependencies (auth), the `intelligenceClient` transpor
 
 ### Phase 1: Real Supabase-JWT auth on all `/v1` endpoints (A + G)
 
-**Status:** ✅ Complete — 9525eac
+**Status:** ✅ Complete — b71d962
 **Depends on:** none — can start immediately
 **Estimated scope:** ~5 files, ~120 lines
 
