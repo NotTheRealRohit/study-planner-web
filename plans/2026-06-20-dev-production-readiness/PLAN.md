@@ -339,7 +339,7 @@ comment because this Vite app exposes `SUPABASE_*` env vars.
 
 ### Phase 2: Resilient calibration client (B + client-side I)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1
 **Estimated scope:** 2 files, ~90 lines
 
