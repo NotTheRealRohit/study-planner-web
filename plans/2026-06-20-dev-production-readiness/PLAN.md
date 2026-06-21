@@ -339,7 +339,7 @@ comment because this Vite app exposes `SUPABASE_*` env vars.
 
 ### Phase 2: Resilient calibration client (B + client-side I)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1
 **Estimated scope:** 2 files, ~90 lines
 
@@ -428,7 +428,12 @@ Revert `intelligenceClient.ts` to the Phase 1 version (token attach, no retry).
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented with retry limited to transient failures: network/abort errors and
+HTTP 5xx responses retry up to two times, while 401 fails immediately as
+`CalibrationAuthError` and other non-2xx responses fail as
+`CalibrationServiceError`. Tests use a hand-written fake for the local
+`./supabase` module because importing the real singleton requires browser env
+vars in Vitest.
 
 ---
 
