@@ -439,7 +439,7 @@ vars in Vitest.
 
 ### Phase 3: Resilient UI + Dexie stale cache (C + D)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 2
 **Estimated scope:** ~7 files, ~180 lines
 
