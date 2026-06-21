@@ -6,9 +6,10 @@ import type { ProgressSnapshot, CalibrationState } from '@study-tracker/progress
 
 let mockProgress: ProgressSnapshot | null = null
 let mockCalibration: CalibrationState | null = null
+let mockCalibrationStatus: 'loading' | 'ready' | 'stale' | 'error' = 'ready'
 
 vi.mock('../progress', () => ({
-  useCalibrationState: () => mockCalibration,
+  useCalibrationState: () => ({ calibration: mockCalibration, status: mockCalibrationStatus }),
   useProgressSnapshot: () => mockProgress,
 }))
 
@@ -92,6 +93,8 @@ function mockRoadmapWithPastWeeks() {
 describe('Week', () => {
   beforeEach(() => {
     mockFindRoadmap.mockReturnValue(null)
+    mockCalibration = null
+    mockCalibrationStatus = 'ready'
   })
 
   it('shows fallback when no progress data', () => {

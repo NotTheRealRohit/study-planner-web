@@ -439,7 +439,7 @@ vars in Vitest.
 
 ### Phase 3: Resilient UI + Dexie stale cache (C + D)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 2
 **Estimated scope:** ~7 files, ~180 lines
 
@@ -545,7 +545,12 @@ Revert the 7 files. Schema v5 is additive — reverting the provider leaves the 
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented the persisted last-good calibration cache with Dexie v5 and the
+new `{ calibration, status }` hook contract. The UI now distinguishes loading,
+stale, and error states on Home/Week while downstream progress/prompt hooks
+still receive `CalibrationState | null`. Manual stale-cache browser verification
+was not run because this local environment does not include the service-side
+Supabase JWT signing secret needed for an authenticated app-to-service fetch.
 
 ---
 

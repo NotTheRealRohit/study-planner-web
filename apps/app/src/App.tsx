@@ -17,6 +17,7 @@ import { Roadmaps } from './pages/Roadmaps';
 import { Settings } from './pages/Settings';
 import { Session } from './pages/Session';
 import { AppShell } from './components/AppShell';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useEffect } from 'react';
 import { OnboardingGate } from './onboarding/OnboardingGate';
 import { RequireOnboarding } from './onboarding/RequireOnboarding';
@@ -191,7 +192,9 @@ function App() {
           {import.meta.env.DEV && <DevSeeder />}
           <SyncRouter>
             <div className="app">
-              <AppRoutes />
+              <ErrorBoundary>
+                <AppRoutes />
+              </ErrorBoundary>
             </div>
           </SyncRouter>
         </EventStoreRouter>

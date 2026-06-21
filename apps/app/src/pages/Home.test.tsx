@@ -30,7 +30,7 @@ vi.mock('../components/SyncIndicator', () => ({
 }))
 
 vi.mock('../progress', () => ({
-  useCalibrationState: () => null,
+  useCalibrationState: () => ({ calibration: null, status: 'ready' }),
   useProgressSnapshot: () => null,
   usePromptDetail: () => null,
 }))

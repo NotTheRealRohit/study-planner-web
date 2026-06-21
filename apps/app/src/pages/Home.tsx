@@ -18,6 +18,7 @@ import { PlannedEndBanner } from '../session/components';
 import { useCalibrationState, useProgressSnapshot, usePromptDetail } from '../progress';
 import { RecalibrationBanner } from '../components/RecalibrationBanner';
 import { RecalibrationModal } from '../components/RecalibrationModal';
+import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
 import { format, isToday, isTomorrow, differenceInCalendarDays } from 'date-fns';
 
 function formatMinutesToHoursAndMinutes(totalMinutes: number): string {
@@ -75,7 +76,7 @@ export function Home() {
   const [plannedEndBannerDismissed, setPlannedEndBannerDismissed] = useState(false);
   const [recalModalOpen, setRecalModalOpen] = useState(false);
 
-  const calibration = useCalibrationState();
+  const { calibration, status } = useCalibrationState();
   const progress = useProgressSnapshot(calibration);
   const promptDetail = usePromptDetail(calibration);
 
@@ -193,6 +194,24 @@ export function Home() {
       <p className="t-body" style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
         Here's how your study time adds up
       </p>
+
+      <ServiceStatusBanner status={status} />
+
+      {status === 'loading' && !calibration && (
+        <div
+          role="status"
+          className="t-body"
+          style={{
+            color: 'var(--text-secondary)',
+            padding: '0.75rem 0',
+            marginBottom: '1rem',
+            borderTop: '1px solid var(--border-subtle)',
+            borderBottom: '1px solid var(--border-subtle)',
+          }}
+        >
+          Calibrating your pace...
+        </div>
+      )}
 
       {isSessionPastPlannedEnd && !plannedEndBannerDismissed && (
         <PlannedEndBanner

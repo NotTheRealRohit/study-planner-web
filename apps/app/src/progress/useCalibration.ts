@@ -6,7 +6,20 @@ import { getUpNextSlot } from '../events/ProgressEngine'
 import { postCalibration } from '../lib/intelligenceClient'
 import { mapSessions, mapExceptionalTags, mapResolutions, findRoadmap } from './mapEvents'
 
-export function useCalibrationState(): CalibrationState | null {
+export type CalibrationStatus = 'loading' | 'ready' | 'stale' | 'error'
+
+export interface CalibrationResult {
+  calibration: CalibrationState | null
+  status: CalibrationStatus
+}
+
+interface CalibrationCacheRow {
+  key: string
+  state: CalibrationState
+  updatedAt: number
+}
+
+export function useCalibrationState(): CalibrationResult {
   const eventStore = useEventStore()
   const request = useLiveQuery(async () => {
     const events = await eventStore.getAll()
@@ -36,26 +49,56 @@ export function useCalibrationState(): CalibrationState | null {
     }
   }, [eventStore])
   const requestKey = useMemo(() => JSON.stringify(request ?? null), [request])
-  const [state, setState] = useState<CalibrationState | null>(null)
+  const [result, setResult] = useState<CalibrationResult>({
+    calibration: null,
+    status: 'loading',
+  })
 
   useEffect(() => {
-    if (!request) {
-      setState(null)
-      return
-    }
+    if (!request) return
     let cancelled = false
-    setState(null)
+    setResult((previous) => ({
+      calibration: previous.calibration,
+      status: 'loading',
+    }))
     postCalibration(request)
-      .then((result) => {
-        if (!cancelled) setState(result as CalibrationState)
+      .then(async (response) => {
+        if (cancelled) return
+        const state = response as CalibrationState
+        await eventStore.table('calibrationCache').put({
+          key: 'last',
+          state,
+          updatedAt: Date.now(),
+        } satisfies CalibrationCacheRow)
+        if (!cancelled) {
+          setResult({
+            calibration: state,
+            status: 'ready',
+          })
+        }
       })
-      .catch(() => {
-        if (!cancelled) setState(null)
+      .catch(async () => {
+        if (cancelled) return
+        const cached = (await eventStore.table('calibrationCache').get('last')) as
+          | CalibrationCacheRow
+          | undefined
+        if (cancelled) return
+        if (cached?.state) {
+          setResult({
+            calibration: cached.state,
+            status: 'stale',
+          })
+          return
+        }
+        setResult({
+          calibration: null,
+          status: 'error',
+        })
       })
     return () => {
       cancelled = true
     }
   }, [requestKey])
 
-  return state
+  return result
 }

@@ -5,12 +5,14 @@ import { useCalibrationState } from './useCalibration'
 
 const mocks = vi.hoisted(() => ({
   getAll: vi.fn(),
+  table: vi.fn(),
   postCalibration: vi.fn(),
 }))
 
 vi.mock('../events/useEventStore', () => ({
   useEventStore: () => ({
     getAll: mocks.getAll,
+    table: mocks.table,
   }),
 }))
 
@@ -91,12 +93,25 @@ const sessionEvent = {
 }
 
 describe('useCalibrationState', () => {
+  let cacheRows: Map<string, unknown>
+
   beforeEach(() => {
+    cacheRows = new Map()
     mocks.getAll.mockReset()
+    mocks.table.mockReset()
     mocks.postCalibration.mockReset()
+    mocks.table.mockImplementation((name: string) => {
+      if (name !== 'calibrationCache') throw new Error(`unexpected table ${name}`)
+      return {
+        put: vi.fn(async (row: { key: string }) => {
+          cacheRows.set(row.key, row)
+        }),
+        get: vi.fn(async (key: string) => cacheRows.get(key)),
+      }
+    })
   })
 
-  it('posts mapped events with planned horizon and returns calibration state', async () => {
+  it('posts mapped events with planned horizon, returns ready state, and writes cache', async () => {
     mocks.getAll.mockResolvedValue([roadmapEvent, sessionEvent])
     mocks.postCalibration.mockResolvedValue(calibrationState)
 
@@ -117,16 +132,50 @@ describe('useCalibrationState', () => {
         planned_total_sessions: 2,
       },
     })
-    await waitFor(() => expect(result.current).toEqual(calibrationState))
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        calibration: calibrationState,
+        status: 'ready',
+      }),
+    )
+    expect(cacheRows.get('last')).toMatchObject({
+      key: 'last',
+      state: calibrationState,
+    })
   })
 
-  it('returns null when the service rejects', async () => {
+  it('returns stale cached calibration when the service rejects after a prior success', async () => {
+    cacheRows.set('last', {
+      key: 'last',
+      state: calibrationState,
+      updatedAt: Date.now(),
+    })
     mocks.getAll.mockResolvedValue([sessionEvent])
     mocks.postCalibration.mockRejectedValue(new Error('offline'))
 
     const { result } = renderHook(() => useCalibrationState())
 
     await waitFor(() => expect(mocks.postCalibration).toHaveBeenCalledTimes(1))
-    expect(result.current).toBeNull()
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        calibration: calibrationState,
+        status: 'stale',
+      }),
+    )
+  })
+
+  it('returns an error state when the service rejects with no cache', async () => {
+    mocks.getAll.mockResolvedValue([sessionEvent])
+    mocks.postCalibration.mockRejectedValue(new Error('offline'))
+
+    const { result } = renderHook(() => useCalibrationState())
+
+    await waitFor(() => expect(mocks.postCalibration).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        calibration: null,
+        status: 'error',
+      }),
+    )
   })
 })

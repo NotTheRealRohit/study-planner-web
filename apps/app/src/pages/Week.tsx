@@ -9,6 +9,7 @@ import Card from '../components/Card';
 import Tag from '../components/Tag';
 import { BurnUpChart } from '../components/BurnUpChart';
 import { DailyMinutesChart } from '../components/DailyMinutesChart';
+import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
 import type { Verdict } from '@study-tracker/progress';
 
 function verdictDisplay(verdict: Verdict): { title: string; subtitle: string; color: string } {
@@ -24,7 +25,7 @@ function verdictDisplay(verdict: Verdict): { title: string; subtitle: string; co
 
 export function Week() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const calibration = useCalibrationState();
+  const { calibration, status } = useCalibrationState();
   const eventStore = useEventStore();
 
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore]) ?? [];
@@ -94,9 +95,21 @@ export function Week() {
     };
   }, [progress, isPastWeek, roadmapBounds, selectedWeekIndex]);
 
+  if (status === 'loading' && !calibration) {
+    return (
+      <div style={{ padding: '2rem 1rem', maxWidth: '640px', margin: '0 auto', textAlign: 'center' }}>
+        <h1 className="t-display-2">Week</h1>
+        <p className="t-body" role="status" style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+          Calibrating your pace...
+        </p>
+      </div>
+    );
+  }
+
   if (!progress) {
     return (
       <div style={{ padding: '2rem 1rem', maxWidth: '640px', margin: '0 auto', textAlign: 'center' }}>
+        <ServiceStatusBanner status={status} />
         <h1 className="t-display-2">Week</h1>
         <p className="t-body" style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
           Complete onboarding to see your weekly progress.
@@ -143,6 +156,8 @@ export function Week() {
       className={tintClass}
       style={{ padding: '2rem 1rem', maxWidth: '880px', margin: '0 auto', minHeight: '100vh' }}
     >
+      <ServiceStatusBanner status={status} />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <div className="mono-caps" style={{ color: 'var(--text-tertiary)' }}>
           Week {displayWeekNumber} · {weeklyStats.weekStartDate}

@@ -16,7 +16,7 @@ function dbNameForUser(userId: string): string {
   return `StudyTracker_${userId}`;
 }
 
-function createEventStore(userId: string): EventStore {
+export function createEventStore(userId: string): EventStore {
   const db = new Dexie(dbNameForUser(userId));
   db.version(1).stores({
     events: '++id, kind, createdAt'
@@ -38,6 +38,14 @@ function createEventStore(userId: string): EventStore {
     sync_meta: 'key',
     onboardingDraft: 'id',
     activeSession: 'id',
+  });
+  db.version(5).stores({
+    events: '++id, kind, createdAt',
+    sync_queue: '++id, kind, createdAt, retries',
+    sync_meta: 'key',
+    onboardingDraft: 'id',
+    activeSession: 'id',
+    calibrationCache: 'key',
   });
   return new EventStore(db);
 }
