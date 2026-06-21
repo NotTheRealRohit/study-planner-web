@@ -18,6 +18,7 @@ uv sync
 ## Run locally
 
 ```bash
+SUPABASE_URL=https://<project>.supabase.co \
 SUPABASE_JWT_SECRET=<project JWT secret> \
   uv run --package intelligence uvicorn app.main:app --reload --port 8000
 ```
@@ -26,14 +27,18 @@ From the repository root, `pnpm dev:intelligence` and `pnpm dev:full` also load
 `services/intelligence/.env` before starting uvicorn.
 
 `SUPABASE_JWT_SECRET` must be the Supabase project JWT secret from the dashboard,
-not the publishable/anon key or service role key. A wrong secret starts the
-service but causes authenticated `/v1/*` requests to return `401`.
+not the publishable/anon key or service role key. For Supabase projects using
+asymmetric signing keys (`ES256`/`RS256`), `SUPABASE_URL` is also required so the
+service can fetch the project's public JWKS verification keys. `pnpm
+dev:intelligence` will reuse `SUPABASE_URL` from `apps/app/.env.local` when the
+service env file does not set it.
 
 Set `CORS_ORIGINS` to a comma-separated list when the caller is not the default
 local Vite app:
 
 ```bash
 CORS_ORIGINS=http://localhost:5173,https://studytracker.app \
+SUPABASE_URL=https://<project>.supabase.co \
 SUPABASE_JWT_SECRET=<project JWT secret> \
   uv run --package intelligence uvicorn app.main:app --reload --port 8000
 ```
@@ -49,7 +54,9 @@ curl -s http://localhost:8000/health
 From the repository root:
 
 ```bash
-SUPABASE_JWT_SECRET=<project JWT secret> docker compose up --build -d
+SUPABASE_URL=https://<project>.supabase.co \
+SUPABASE_JWT_SECRET=<project JWT secret> \
+  docker compose up --build -d
 ```
 
 The service listens on `http://localhost:8000`. Stop it with:
@@ -77,8 +84,9 @@ The examples below use the golden fixtures under
 `tests/fixtures/pillar-a/`. Fixture request bodies include a `fn` field used by
 the parity tests; the API ignores that extra field.
 
-`/v1/*` endpoints require a Supabase access token signed by the configured
-`SUPABASE_JWT_SECRET`:
+`/v1/*` endpoints require a Supabase access token from the configured project.
+Legacy `HS256` tokens are verified with `SUPABASE_JWT_SECRET`; `ES256`/`RS256`
+tokens are verified with the public JWKS endpoint under `SUPABASE_URL`:
 
 ```bash
 AUTH_HEADER="Authorization: Bearer <supabase access token>"

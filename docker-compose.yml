@@ -10,6 +10,8 @@ services:
         - ca_bundle
     environment:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
     ports:
       - "${INTELLIGENCE_PORT:-8000}:8000"
     healthcheck:

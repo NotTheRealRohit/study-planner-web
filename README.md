@@ -16,9 +16,11 @@ pnpm dev:full
 Calibration requires the service to be running.
 
 The service verifies Supabase access JWTs on `/v1/*`. Set the JWT signing secret
-in the shell or in `services/intelligence/.env` before starting the full stack:
+and project URL in the shell or in `services/intelligence/.env` before starting
+the full stack:
 
 ```bash
+export SUPABASE_URL=https://<project>.supabase.co
 export SUPABASE_JWT_SECRET=<project JWT secret>
 pnpm dev:full
 ```
@@ -26,12 +28,14 @@ pnpm dev:full
 Or create `services/intelligence/.env`:
 
 ```bash
+SUPABASE_URL=https://<project>.supabase.co
 SUPABASE_JWT_SECRET=<project JWT secret>
 ```
 
 Use the Supabase project JWT secret from the dashboard, not the publishable/anon
-key or service role key. If the service starts with the wrong secret, the app
-will load but `/v1/calibration` will return `401 Unauthorized`.
+key or service role key. For projects using Supabase asymmetric signing keys
+(`ES256`/`RS256`), `SUPABASE_URL` is used to fetch the public JWKS verification
+keys from Supabase.
 
 The React app uses `VITE_INTELLIGENCE_URL` from `apps/app/.env.local` and
 defaults to `http://localhost:8000`.
@@ -53,5 +57,7 @@ pnpm dev:intelligence
 Run the service with Docker Compose:
 
 ```bash
-SUPABASE_JWT_SECRET=<project JWT secret> docker compose up --build
+SUPABASE_URL=https://<project>.supabase.co \
+SUPABASE_JWT_SECRET=<project JWT secret> \
+  docker compose up --build
 ```

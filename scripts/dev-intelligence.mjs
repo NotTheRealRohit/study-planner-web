@@ -1,7 +1,15 @@
 import { spawn } from 'node:child_process';
-import { config } from 'dotenv';
+import { existsSync, readFileSync } from 'node:fs';
+import { config, parse } from 'dotenv';
 
 config({ path: 'services/intelligence/.env', quiet: true });
+
+if (!process.env.SUPABASE_URL && existsSync('apps/app/.env.local')) {
+  const appEnv = parse(readFileSync('apps/app/.env.local'));
+  if (appEnv.SUPABASE_URL) {
+    process.env.SUPABASE_URL = appEnv.SUPABASE_URL;
+  }
+}
 
 if (!process.env.SUPABASE_JWT_SECRET) {
   console.error(
