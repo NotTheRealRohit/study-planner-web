@@ -18,14 +18,23 @@ uv sync
 ## Run locally
 
 ```bash
-uv run --package intelligence uvicorn app.main:app --reload --port 8000
+SUPABASE_JWT_SECRET=<project JWT secret> \
+  uv run --package intelligence uvicorn app.main:app --reload --port 8000
 ```
+
+From the repository root, `pnpm dev:intelligence` and `pnpm dev:full` also load
+`services/intelligence/.env` before starting uvicorn.
+
+`SUPABASE_JWT_SECRET` must be the Supabase project JWT secret from the dashboard,
+not the publishable/anon key or service role key. A wrong secret starts the
+service but causes authenticated `/v1/*` requests to return `401`.
 
 Set `CORS_ORIGINS` to a comma-separated list when the caller is not the default
 local Vite app:
 
 ```bash
 CORS_ORIGINS=http://localhost:5173,https://studytracker.app \
+SUPABASE_JWT_SECRET=<project JWT secret> \
   uv run --package intelligence uvicorn app.main:app --reload --port 8000
 ```
 
@@ -40,7 +49,7 @@ curl -s http://localhost:8000/health
 From the repository root:
 
 ```bash
-docker compose up --build -d
+SUPABASE_JWT_SECRET=<project JWT secret> docker compose up --build -d
 ```
 
 The service listens on `http://localhost:8000`. Stop it with:
@@ -68,6 +77,13 @@ The examples below use the golden fixtures under
 `tests/fixtures/pillar-a/`. Fixture request bodies include a `fn` field used by
 the parity tests; the API ignores that extra field.
 
+`/v1/*` endpoints require a Supabase access token signed by the configured
+`SUPABASE_JWT_SECRET`:
+
+```bash
+AUTH_HEADER="Authorization: Bearer <supabase access token>"
+```
+
 Health:
 
 ```bash
@@ -79,6 +95,7 @@ Calibration:
 ```bash
 curl -s -X POST http://localhost:8000/v1/calibration \
   -H 'Content-Type: application/json' \
+  -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/compute-calibration-empty.input.json
 ```
 
@@ -87,6 +104,7 @@ Calibration prompt detail:
 ```bash
 curl -s -X POST http://localhost:8000/v1/calibration/prompt-detail \
   -H 'Content-Type: application/json' \
+  -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/get-prompt-detail-empty.input.json
 ```
 
@@ -95,6 +113,7 @@ Progress:
 ```bash
 curl -s -X POST http://localhost:8000/v1/progress \
   -H 'Content-Type: application/json' \
+  -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/compute-progress-full-snapshot.input.json
 ```
 
@@ -103,6 +122,7 @@ Roadmap generation:
 ```bash
 curl -s -X POST http://localhost:8000/v1/roadmap/generate \
   -H 'Content-Type: application/json' \
+  -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/roadmap/generate-roadmap-ddia-600-min.input.json
 ```
 
@@ -111,6 +131,7 @@ Roadmap regeneration:
 ```bash
 curl -s -X POST http://localhost:8000/v1/roadmap/regenerate \
   -H 'Content-Type: application/json' \
+  -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/roadmap/regenerate-preserves-pins.input.json
 ```
 

@@ -13,10 +13,14 @@ const COPY = {
     label: 'Service',
     message: "Couldn't reach the calibration service.",
   },
+  'auth-error': {
+    label: 'Auth',
+    message: 'Calibration auth failed. Check the service SUPABASE_JWT_SECRET.',
+  },
 } as const
 
 export function ServiceStatusBanner({ status }: ServiceStatusBannerProps) {
-  if (status !== 'stale' && status !== 'error') return null
+  if (status !== 'stale' && status !== 'error' && status !== 'auth-error') return null
 
   const copy = COPY[status]
   const borderColor = status === 'stale' ? 'var(--moss)' : 'var(--rust)'

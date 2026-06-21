@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getAll: vi.fn(),
   table: vi.fn(),
   postCalibration: vi.fn(),
+  CalibrationAuthError: class CalibrationAuthError extends Error {},
 }))
 
 vi.mock('../events/useEventStore', () => ({
@@ -17,6 +18,7 @@ vi.mock('../events/useEventStore', () => ({
 }))
 
 vi.mock('../lib/intelligenceClient', () => ({
+  CalibrationAuthError: mocks.CalibrationAuthError,
   postCalibration: mocks.postCalibration,
 }))
 
@@ -175,6 +177,21 @@ describe('useCalibrationState', () => {
       expect(result.current).toEqual({
         calibration: null,
         status: 'error',
+      }),
+    )
+  })
+
+  it('returns an auth error state when the service rejects the token with no cache', async () => {
+    mocks.getAll.mockResolvedValue([sessionEvent])
+    mocks.postCalibration.mockRejectedValue(new mocks.CalibrationAuthError('unauthorized'))
+
+    const { result } = renderHook(() => useCalibrationState())
+
+    await waitFor(() => expect(mocks.postCalibration).toHaveBeenCalledTimes(1))
+    await waitFor(() =>
+      expect(result.current).toEqual({
+        calibration: null,
+        status: 'auth-error',
       }),
     )
   })

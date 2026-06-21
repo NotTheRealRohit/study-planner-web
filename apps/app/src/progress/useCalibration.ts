@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEventStore } from '../events/useEventStore'
 import type { CalibrationState } from '@study-tracker/progress'
 import { getUpNextSlot } from '../events/ProgressEngine'
-import { postCalibration } from '../lib/intelligenceClient'
+import { CalibrationAuthError, postCalibration } from '../lib/intelligenceClient'
 import { mapSessions, mapExceptionalTags, mapResolutions, findRoadmap } from './mapEvents'
 
-export type CalibrationStatus = 'loading' | 'ready' | 'stale' | 'error'
+export type CalibrationStatus = 'loading' | 'ready' | 'stale' | 'auth-error' | 'error'
 
 export interface CalibrationResult {
   calibration: CalibrationState | null
@@ -77,7 +77,7 @@ export function useCalibrationState(): CalibrationResult {
           })
         }
       })
-      .catch(async () => {
+      .catch(async (error) => {
         if (cancelled) return
         const cached = (await eventStore.table('calibrationCache').get('last')) as
           | CalibrationCacheRow
@@ -92,7 +92,7 @@ export function useCalibrationState(): CalibrationResult {
         }
         setResult({
           calibration: null,
-          status: 'error',
+          status: error instanceof CalibrationAuthError ? 'auth-error' : 'error',
         })
       })
     return () => {

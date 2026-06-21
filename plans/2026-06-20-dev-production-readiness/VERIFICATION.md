@@ -129,11 +129,11 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 - [ ] Manual: `pnpm dev:full` brings up :5173 and :8000; `/health` 200; Home shows live pace. (No automated test; script + docs only.)
 
 ### Implementer report (Codex/Sonnet fills)
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `package.json`, `pnpm-lock.yaml`, `README.md`, `services/intelligence/README.md`, `scripts/dev-intelligence.mjs`, `apps/app/src/progress/useCalibration.ts`, `apps/app/src/progress/useCalibration.test.ts`, `apps/app/src/components/ServiceStatusBanner.tsx`, `apps/app/src/components/ServiceStatusBanner.test.tsx`, `plans/2026-06-20-dev-production-readiness/PLAN.md`, `plans/2026-06-20-dev-production-readiness/VERIFICATION.md`.
+_Commit SHA:_ pending
+_What was done:_ Added one-command dev orchestration with `dev:intelligence` and `dev:full`, root devDeps `concurrently` and `wait-on`, a Node launcher that loads `services/intelligence/.env`, validates `SUPABASE_JWT_SECRET`, and starts uvicorn, plus root/service README setup notes. Changed `wait-on` to `http-get://localhost:8000/health` after FastAPI returned 405 to HEAD. Added an auth-specific calibration status/banner so a `/v1/calibration` 401 tells the user to check `SUPABASE_JWT_SECRET` instead of reporting a generic service outage.
+_Deviations + why:_ Added `scripts/dev-intelligence.mjs` rather than keeping all logic inside a package-script one-liner so `services/intelligence/.env` can be loaded and child-process signal handling stays readable. The app status enum now includes `auth-error`; this is a narrow response to live browser evidence that a wrong service JWT secret otherwise appears as "Couldn't reach the calibration service."
+_Self-check vs criteria:_ Script/docs criteria satisfied and automated checks pass. Verified `env CI=true pnpm install --frozen-lockfile --offline`, `pnpm --filter @study-tracker/app test -- useCalibration ServiceStatusBanner` (`35 files / 379 tests passed`), `pnpm --filter @study-tracker/app typecheck`, `pnpm dev:intelligence` fail-fast with no secret, and `pnpm dev:full` startup with a temporary test secret (`:8000` uvicorn, `:5173` Vite, `/health` 200, `/readiness` 200). Headless browser verification with a synthetic matching JWT got `POST /v1/calibration` 200 and rendered seeded Home progress content. Real-account browser verification is blocked until the real Supabase project JWT secret is configured; Rohit's browser correctly reproduced `401 Unauthorized` while the service was running with the temporary test secret.
 
 ### Reviewer findings (Cowork fills)
 _Per-criterion verdict:_

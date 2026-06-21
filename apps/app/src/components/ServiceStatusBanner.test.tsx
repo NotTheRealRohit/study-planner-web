@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { ServiceStatusBanner } from './ServiceStatusBanner'
 
 describe('ServiceStatusBanner', () => {
-  it('renders stale and error affordances', () => {
+  it('renders stale, service error, and auth error affordances', () => {
     const { rerender } = render(<ServiceStatusBanner status="stale" />)
 
     expect(screen.getByText('Offline')).toBeInTheDocument()
@@ -13,6 +13,11 @@ describe('ServiceStatusBanner', () => {
 
     expect(screen.getByText('Service')).toBeInTheDocument()
     expect(screen.getByText(/Couldn't reach/)).toBeInTheDocument()
+
+    rerender(<ServiceStatusBanner status="auth-error" />)
+
+    expect(screen.getByText('Auth')).toBeInTheDocument()
+    expect(screen.getByText(/SUPABASE_JWT_SECRET/)).toBeInTheDocument()
   })
 
   it('does not render for loading or ready states', () => {

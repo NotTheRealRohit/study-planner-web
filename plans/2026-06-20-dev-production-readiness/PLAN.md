@@ -619,7 +619,7 @@ D-06 and is configurable through `INTELLIGENCE_RATE_LIMIT_PER_MINUTE` for tests.
 
 ### Phase 5: One-command dev stack (F)
 
-**Status:** 🟡 In progress
+**Status:** 🛑 Blocked: waiting for real Supabase JWT secret for real-account browser verification
 **Depends on:** none — can start immediately (independent; do last so docs reflect the finished system)
 **Estimated scope:** 2–3 files, ~30 lines
 
@@ -666,7 +666,27 @@ Remove the script + devDeps.
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Added `dev:intelligence`/`dev:full`, root/service docs, and a
+`scripts/dev-intelligence.mjs` launcher that loads `services/intelligence/.env`,
+requires `SUPABASE_JWT_SECRET`, and then starts uvicorn. Installed
+`concurrently` and `wait-on`; normalized lockfile tarball URL churn after the VPN
+retry.
+
+`wait-on` originally used `http://localhost:8000/health`, which issued HEAD and
+stuck on FastAPI's 405 response. The script now uses
+`http-get://localhost:8000/health`, which gates on a real GET 200.
+
+Manual stack verification with a temporary test JWT secret proved the script and
+service path: `pnpm dev:full` started uvicorn on `:8000`, Vite on `:5173`,
+`/health` and `/readiness` returned 200, and a headless browser with a synthetic
+matching JWT received `POST /v1/calibration` 200 and rendered seeded Home
+progress content. Rohit's real browser session then returned 401 because the
+service was still running with the temporary test secret, while the browser token
+is signed by the actual Supabase project secret. There is no real
+`SUPABASE_JWT_SECRET` in the local env files, and it cannot be derived from the
+anon or service role key. Final real-account browser verification is blocked
+until the real project JWT secret is added to `services/intelligence/.env` or the
+shell and the stack is restarted.
 
 ---
 
