@@ -105,11 +105,11 @@ _Status:_ ☐ ✅ Verified / 🔁 Changes requested
 - [ ] `docker-compose.yml` has a `/health` healthcheck. `test_hardening.py` covers request-id, 422, `/readiness`, version, rate-limit; service suite passes.
 
 ### Implementer report (Codex/Sonnet fills)
-_Files changed:_
-_Commit SHA:_
-_What was done:_
-_Deviations + why:_
-_Self-check vs criteria:_
+_Files changed:_ `services/intelligence/app/middleware.py`, `services/intelligence/app/main.py`, `services/intelligence/app/security.py`, `services/intelligence/app/schemas/progress.py`, `services/intelligence/tests/test_hardening.py`, `docker-compose.yml`, `plans/2026-06-20-dev-production-readiness/PLAN.md`, `plans/2026-06-20-dev-production-readiness/VERIFICATION.md`.
+_Commit SHA:_ pending
+_What was done:_ Added request-id propagation/generation, `X-Model-Version` stamping, structured JSON request logging, an uncaught-exception JSON envelope, open `/readiness`, session max-length bounds, an in-memory per-user dev rate-limit dependency, and a compose `/health` healthcheck. Added hardening tests for request headers/logging, readiness, oversize 422 responses, 500 envelope, and rate-limit 429 behavior.
+_Deviations + why:_ The rate limit threshold is configurable with `INTELLIGENCE_RATE_LIMIT_PER_MINUTE` so tests can set a low limit while the dev default stays generous. `PromptDetailRequest.sessions` also gets the same max-length bound as calibration/progress because it shares the same session payload shape.
+_Self-check vs criteria:_ All Phase 4 criteria satisfied. Verified with `uv run --package intelligence pytest services/intelligence/tests -q` (`51 passed, 1 warning`), live `curl -s -D- http://127.0.0.1:8000/readiness` (`200`, `X-Model-Version: dual_prior`, ready body), and `docker compose config`.
 
 ### Reviewer findings (Cowork fills)
 _Per-criterion verdict:_

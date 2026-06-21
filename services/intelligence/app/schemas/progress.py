@@ -15,6 +15,7 @@ from py_progress.types import (
 
 MaterialRole = Literal["anchor", "foundation", "practice"]
 TimeOfDay = Literal["morning", "afternoon", "evening"]
+MAX_SESSIONS = 5000
 
 
 class ApiModel(BaseModel):
@@ -56,14 +57,14 @@ class NextContext(ApiModel):
 
 
 class CalibrationRequest(ApiModel):
-    sessions: list[SessionEvent] = Field(default_factory=list)
+    sessions: list[SessionEvent] = Field(default_factory=list, max_length=MAX_SESSIONS)
     exceptionalTags: list[ExceptionalTag] = Field(default_factory=list)
     resolutions: list[RecalibrationResolution] = Field(default_factory=list)
     nextContext: NextContext | None = None
 
 
 class PromptDetailRequest(ApiModel):
-    sessions: list[SessionEvent] = Field(default_factory=list)
+    sessions: list[SessionEvent] = Field(default_factory=list, max_length=MAX_SESSIONS)
     breakpoints: list[int] = Field(default_factory=list)
 
 
@@ -134,7 +135,7 @@ class CalibrationStatePayload(ApiModel):
 
 
 class ProgressRequest(ApiModel):
-    sessions: list[SessionEvent] = Field(default_factory=list)
+    sessions: list[SessionEvent] = Field(default_factory=list, max_length=MAX_SESSIONS)
     roadmap: ProgressRoadmapInput
     calibration: CalibrationStatePayload
     today: str

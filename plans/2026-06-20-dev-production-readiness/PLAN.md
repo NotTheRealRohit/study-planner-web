@@ -556,7 +556,7 @@ Supabase JWT signing secret needed for an authenticated app-to-service fetch.
 
 ### Phase 4: Service hardening (E + service-side I)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1
 **Estimated scope:** ~4 files, ~140 lines
 
@@ -609,7 +609,11 @@ Revert the four files. Middleware/handlers are additive; removing them restores 
 
 #### Notes (filled in during implementation)
 
-*(empty)*
+Implemented service request hardening with request-id/model-version headers,
+structured per-request logging, bounded session payloads, `/readiness`, a
+dev-labelled in-memory per-user rate-limit stub, an uncaught-error envelope, and
+the compose healthcheck. The rate limiter remains intentionally in-memory per
+D-06 and is configurable through `INTELLIGENCE_RATE_LIMIT_PER_MINUTE` for tests.
 
 ---
 
