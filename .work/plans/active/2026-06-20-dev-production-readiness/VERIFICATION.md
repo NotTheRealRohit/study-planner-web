@@ -81,6 +81,12 @@ _Status:_ 🔁 Changes requested
 
 ### Resolution (implementer fills on redo)
 
+_Files changed:_ `apps/app/src/lib/intelligenceClient.ts`, `apps/app/src/lib/intelligenceClient.test.ts`.
+_Commit SHA:_ `abbac65`
+_What was fixed:_ `normalizedError` now preserves only `CalibrationAuthError` and existing `CalibrationServiceError` instances. Timeout aborts (`name === 'AbortError'`) and exhausted fetch/network failures such as `TypeError('Failed to fetch')` are wrapped as `CalibrationServiceError`, so the typed contract no longer depends on browser/jsdom `instanceof Error` differences.
+_Self-check vs required changes:_ The timeout test now rejects with an `Error` subclass named `AbortError`, guarding the browser-like path that previously leaked raw abort errors. Added a network-`TypeError` exhaustion test that verifies three attempts, one final `console.warn`, and a `CalibrationServiceError` rejection. Existing 401 no-retry and 500 retry-then-success coverage remains unchanged.
+_Verification:_ `pnpm --filter @study-tracker/app test -- intelligenceClient` (`35 files / 380 tests passed`); `pnpm --filter @study-tracker/app typecheck` (clean).
+
 ---
 
 ## Phase 3 — Resilient UI + Dexie stale cache
