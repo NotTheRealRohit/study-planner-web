@@ -31,7 +31,13 @@ function shouldRetry(err: unknown): boolean {
 }
 
 function normalizedError(err: unknown): Error {
-  return err instanceof Error ? err : new CalibrationServiceError('calibration failed')
+  if (err instanceof CalibrationAuthError) return err
+  if (err instanceof CalibrationServiceError) return err
+  if (err instanceof Error) {
+    const message = err.name === 'AbortError' ? 'calibration timed out' : err.message
+    return new CalibrationServiceError(message || 'calibration failed')
+  }
+  return new CalibrationServiceError('calibration failed')
 }
 
 export async function postCalibration(body: unknown): Promise<unknown> {

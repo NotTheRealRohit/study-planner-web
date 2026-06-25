@@ -80,10 +80,14 @@ describe('postCalibration', () => {
 
   it('aborts timed out attempts and reports the final failure once', async () => {
     vi.useFakeTimers()
+    class BrowserAbortError extends Error {
+      name = 'AbortError'
+    }
+
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       return new Promise((_resolve, reject) => {
         init?.signal?.addEventListener('abort', () => {
-          reject(new DOMException('request aborted', 'AbortError'))
+          reject(new BrowserAbortError('request aborted'))
         })
       })
     })
@@ -97,6 +101,22 @@ describe('postCalibration', () => {
     await vi.advanceTimersByTimeAsync(8000)
     await vi.advanceTimersByTimeAsync(500)
     await vi.advanceTimersByTimeAsync(8000)
+
+    await result
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(console.warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('normalizes exhausted network TypeError failures', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockRejectedValue(new TypeError('Failed to fetch'))
+
+    const result = expect(postCalibration({ sessions: [] })).rejects.toBeInstanceOf(
+      CalibrationServiceError,
+    )
+
+    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(500)
 
     await result
     expect(fetchMock).toHaveBeenCalledTimes(3)
