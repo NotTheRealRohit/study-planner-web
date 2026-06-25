@@ -14,8 +14,8 @@ related:
 ---
 
 > **2026-06-14 reconciliation.** This tracker had drifted: Phases 3 and 7 shipped
-> (commit SHAs in [`plans/2026-06-13-research-tier-*.md`](../../plans/2026-06-13-research-tier.md);
-> status snapshot in [`handovers/2026-06-13-research-tier-status-and-blockers.md`](../../handovers/2026-06-13-research-tier-status-and-blockers.md))
+> (commit SHAs in [`plans/2026-06-13-research-tier-*.md`](../../.work/plans/active/2026-06-13-research-tier.md);
+> status snapshot in [`handovers/2026-06-13-research-tier-status-and-blockers.md`](../../.work/handovers/2026-06-13-research-tier-status-and-blockers.md))
 > but were still shown unstarted. Boxes below are now reconciled to that state. **Phase 4
 > now runs on real public data and its credibility audit is resolved for this pass:**
 > 9 pyKT cells are reportable (5 NIPS + 4 ACcoding), `sakt × accoding` and
@@ -143,7 +143,7 @@ models on both datasets; pyBKT used identical folds.
 >   **caveat:** no submit-time column → use the auto-increment `id` as chronological order.
 >
 > The integration/re-run is tracked in
-> [`plans/2026-06-14-kt-realdata-integration.md`](../../plans/2026-06-14-kt-realdata-integration.md).
+> [`plans/2026-06-14-kt-realdata-integration.md`](../../.work/plans/active/2026-06-14-kt-realdata-integration.md).
 
 - [x] P4.1 `kt-bench/` isolated venv: pinned torch + `pykt-toolkit` + wandb; `README` + `requirements.txt` (kept out of `uv.lock`).
 - [x] P4.2 pyKT preprocess: `nips2020` (Eedi) + `accoding`; **export fold indices** as the shared-split source of truth.

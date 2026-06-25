@@ -16,7 +16,7 @@ test-results/
 
 # transient agent worktrees
 .claude/worktrees/
-handovers/
+/handovers/
 
 # Python / uv
 .venv/

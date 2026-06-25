@@ -1,7 +1,7 @@
 # Change-Detection Literature Survey — covering CUSUM/CSD's weaknesses toward a principled hybrid
 
 **Date:** 2026-06-20 · **Author:** Cowork planning/review agent · **Status:** research artifact (not yet a plan)
-**Motivates:** Phase 6 of [`plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md`](../../plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md)
+**Motivates:** Phase 6 of [`plans/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md`](../../.work/plans/active/2026-06-18-pillar-a-custom-calibration-detection/PLAN.md)
 **Grounded in harness:** `research/comparison/src/research_comparison/baselines/detection.py`, `runners/detection.py`, `metrics/detection.py`
 
 ---

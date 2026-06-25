@@ -4,7 +4,7 @@
 > must use for Pillar A — established during the A0–A5 rigour work and its reviews. When you
 > wire the report (tracker Phase 6 / `research-tasklist.md`), the claims below are the agreed
 > language; do not overstate beyond them. Source of truth for every entry: the per-phase
-> **Reviewer findings** in [`plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`](../../plans/2026-06-14-pillar-a-rigour-VERIFICATION.md)
+> **Reviewer findings** in [`plans/2026-06-14-pillar-a-rigour-VERIFICATION.md`](../../.work/plans/active/2026-06-14-pillar-a-rigour-VERIFICATION.md)
 > and the stamped result JSONs under `research/results/`.
 >
 > Add a row as each phase closes. Keep claims tied to evidence (file/commit), not memory.
