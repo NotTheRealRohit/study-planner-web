@@ -229,7 +229,7 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test` + typecheck pass.
 
 ### Implementer report
-Status: ✅ Implemented, awaiting review. Commit: `0697895`.
+Status: ✅ Implemented, awaiting review. Commit: `3967553`.
 
 Files changed:
 - `apps/app/src/roadmap/CalendarCell.tsx`

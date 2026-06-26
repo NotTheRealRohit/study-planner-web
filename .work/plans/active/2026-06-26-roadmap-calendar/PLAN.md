@@ -516,7 +516,7 @@ Remove modal file; revert cell callbacks to no-ops.
 
 ### Phase 5: Mobile responsive — dots + day bottom-sheet + swipe
 
-**Status:** ✅ Complete — 0697895
+**Status:** ✅ Complete — 3967553
 **Depends on:** Phase 4
 **Estimated scope:** ~2 files, ~180 lines
 
