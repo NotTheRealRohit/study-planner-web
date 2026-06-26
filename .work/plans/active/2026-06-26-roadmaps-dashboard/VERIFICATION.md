@@ -133,11 +133,41 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/components/NavBar.tsx`
+- `apps/app/src/onboarding/OnboardingGate.tsx`
+- `apps/app/src/onboarding/OnboardingGate.test.tsx`
+- `apps/app/src/onboarding/steps/Step3Preview.tsx`
+- `apps/app/src/onboarding/steps/Step3Preview.test.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/roadmap.css`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `0fc02ce`
+
+What was done:
+- Changed the NavBar roadmap item to label `Roadmaps` and route to `/roadmaps`, keeping prefix matching for both `/roadmaps` and `/roadmap`.
+- Added `newRoadmapMode` detection in `OnboardingGate` from `?new=1` or router state `{ newRoadmap: true }`.
+- Updated `Step3Preview.handleCommit` to branch by existing events: first-run remains unchanged; completed-user new mode with active roadmap saves the draft and returns to `/roadmaps`; completed-user new mode with no active roadmap emits `RoadmapCreated`, avoids duplicate `OnboardingCompleted`, clears draft, and returns to `/roadmaps`.
+- Added a non-readOnly calendar back link to `/roadmaps`.
+- Added tests for gate query/state modes and the two new preview commit branches.
+
+Deviations + why:
+- No `App.tsx` structural route change was needed because `/onboarding`, `/roadmap`, and `/roadmaps` already existed.
+- The calendar back link uses `&larr;` in source so the rendered label matches the plan while keeping the file ASCII.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest suite.
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ NavBar item points at `/roadmaps`, label `Roadmaps`, with prefix `/roadmap`.
+- ✅ `OnboardingGate` bypasses the completed redirect in new-roadmap mode via query param or router state.
+- ✅ Completed-without-new-mode guard still hides the wizard.
+- ✅ `Step3Preview` active-new-mode path saves the draft, emits no `RoadmapCreated`, emits no duplicate `OnboardingCompleted`, and navigates to `/roadmaps`.
+- ✅ `Step3Preview` completed/no-active new-mode path emits `RoadmapCreated`, emits no duplicate `OnboardingCompleted`, clears the draft, and navigates to `/roadmaps`.
+- ✅ First-run behavior remains covered by the existing onboarding flow test: `MaterialAdded` events, then `RoadmapCreated`, then `OnboardingCompleted`.
+- ✅ `RoadmapCalendar` renders a non-readOnly back link to `/roadmaps`; no `/study` prefixes were introduced.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- Onboarding` passed: 39 test files, 418 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
 
 ### Reviewer findings (Cowork fills)
 
