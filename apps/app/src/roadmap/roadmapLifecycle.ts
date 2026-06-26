@@ -84,6 +84,8 @@ function roadmapIdentity(event: Event): string {
 
 function completedSlotCount(events: Event[], roadmap: RoadmapPayload): number {
   const usedSessionIndexes = new Set<number>()
+  const inWindow = (date: string | undefined): boolean =>
+    date !== undefined && date >= roadmap.startDate && date <= roadmap.deadline
   const sessions = events
     .filter((event) => event.kind === 'SessionLogged')
     .map((event, index) => ({
@@ -91,6 +93,8 @@ function completedSlotCount(events: Event[], roadmap: RoadmapPayload): number {
       date: event.payload.date as string | undefined,
       materialId: event.payload.materialId as string | undefined,
     }))
+    // D-06: roadmap progress ignores gap sessions; global stats still consume them.
+    .filter((session) => inWindow(session.date))
 
   let completed = 0
   for (const slot of roadmap.slots) {

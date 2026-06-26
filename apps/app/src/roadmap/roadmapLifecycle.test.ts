@@ -183,6 +183,101 @@ describe('roadmapLifecycle', () => {
     expect(groups.all.map((entry) => entry.status)).not.toContain('superseded')
   })
 
+  it('does not count sessions outside a roadmap window toward progress', () => {
+    const base = roadmapPayload()
+    const groups = deriveRoadmapLifecycle([
+      event(
+        'RoadmapCreated',
+        roadmapPayload({
+          startDate: '2026-01-01',
+          deadline: '2026-01-31',
+          slots: [{ ...base.slots[0], date: '2026-04-01' }],
+        }),
+        '2026-01-01T00:00:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 's1',
+          date: '2026-04-01',
+          materialId: 'mat-1',
+          duration: 60,
+        },
+        '2026-04-01T12:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.active[0].completedSlots).toBe(0)
+    expect(groups.active[0].percentComplete).toBe(0)
+  })
+
+  it('counts sessions only inside each roadmap window', () => {
+    const base = roadmapPayload()
+    const firstCreatedAt = '2026-06-01T00:00:00.000Z'
+    const secondCreatedAt = '2026-07-01T00:00:00.000Z'
+    const groups = deriveRoadmapLifecycle([
+      event(
+        'RoadmapCreated',
+        roadmapPayload({
+          purpose: 'First',
+          startDate: '2026-06-01',
+          deadline: '2026-06-30',
+          slots: [{ ...base.slots[0], date: '2026-06-03' }],
+        }),
+        firstCreatedAt,
+      ),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 'june-session',
+          date: '2026-06-03',
+          materialId: 'mat-1',
+          duration: 60,
+        },
+        '2026-06-03T12:00:00.000Z',
+      ),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: firstCreatedAt,
+          resolvedAt: '2026-06-30T00:00:00.000Z',
+        },
+        '2026-06-30T00:00:00.000Z',
+      ),
+      event(
+        'RoadmapCreated',
+        roadmapPayload({
+          purpose: 'Second',
+          startDate: '2026-07-01',
+          deadline: '2026-07-31',
+          slots: [{ ...base.slots[0], date: '2026-07-03' }],
+        }),
+        secondCreatedAt,
+      ),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 'july-session',
+          date: '2026-07-03',
+          materialId: 'mat-1',
+          duration: 60,
+        },
+        '2026-07-03T12:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.completed[0]).toMatchObject({
+      roadmapCreatedAt: firstCreatedAt,
+      completedSlots: 1,
+      percentComplete: 100,
+    })
+    expect(groups.active[0]).toMatchObject({
+      roadmapCreatedAt: secondCreatedAt,
+      completedSlots: 1,
+      percentComplete: 100,
+    })
+  })
+
   it('groups multiple historical roadmaps and computes slot completion percent', () => {
     const groups = deriveRoadmapLifecycle([
       event('RoadmapCreated', roadmapPayload({ purpose: 'First' }), '2026-06-01T00:00:00.000Z'),

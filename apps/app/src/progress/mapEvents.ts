@@ -8,6 +8,8 @@ import type {
 import type { RoadmapCreatedPayload } from '../sync/types'
 
 export function mapSessions(events: Event[]): SessionEvent[] {
+  // D-06: gap sessions remain available to global progress stats; roadmap progress
+  // scopes them by each roadmap's date window in deriveRoadmapLifecycle.
   return events
     .filter((e) => e.kind === 'SessionLogged')
     .map((e) => ({

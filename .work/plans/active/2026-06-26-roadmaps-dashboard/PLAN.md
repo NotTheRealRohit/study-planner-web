@@ -412,7 +412,7 @@ Revert the three files. No data migration (events are append-only; new payload f
 
 ### Phase 2: Session attribution by date window (frozen history, live active)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1 (`✅ Complete`)
 **Estimated scope:** ~2 files, ~80 lines
 
@@ -474,7 +474,11 @@ Revert `completedSlotCount` to the unscoped match. No data effects.
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Added a date-window filter to `completedSlotCount`: a `SessionLogged` date must be inside the roadmap's inclusive `[startDate, deadline]` before it can match a slot.
+- Added tests for an out-of-window matching slot/session pair and for two roadmap windows counting their own sessions.
+- Left `findRoadmap` semantics unchanged and documented that gap sessions remain available to global stats while roadmap progress scopes them by date window.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest suite.
+- The final Phase 2 code commit SHA is recorded in a follow-up doc state because amending a self-referential SHA changes the commit hash.
 
 ---
 
