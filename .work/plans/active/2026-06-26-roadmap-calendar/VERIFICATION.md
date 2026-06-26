@@ -229,6 +229,34 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test` + typecheck pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: `0697895`.
+
+Files changed:
+- `apps/app/src/roadmap/CalendarCell.tsx`
+- `apps/app/src/roadmap/DaySheet.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/roadmap.css`
+- `e2e/playwright.config.ts`
+- `e2e/roadmap.spec.ts`
+
+What was done:
+- Added compact mobile calendar cells: below the mobile threshold, roadmap bubbles render as status dots with a count badge when a day has multiple sessions.
+- Disabled the desktop hover/bubble interaction in compact mode by not rendering bubble buttons and using a single day tap target instead.
+- Added `DaySheet.tsx`, a normal-flow day-session sheet that lists the tapped day's sessions and opens the existing `SessionDetailModal` from each row.
+- Added mobile touch swipe handling in `RoadmapCalendar`; left/right swipes reuse the existing month clamp and slide behavior.
+- Added an `app-mobile` Playwright project scoped to `roadmap.spec.ts` and extended the write-only walkthrough with `11-mobile-dots`, `12-day-sheet`, `13-mobile-modal`, and `14-mobile-month-change`.
+
+Deviations:
+- The mobile sheet is a normal-flow `section[role="dialog"]` rendered below the calendar, rather than sharing the fixed modal shell. This is deliberate because Phase 5 explicitly says the bottom sheet must never be `position: fixed`.
+
+Self-check vs criteria:
+- Status dots plus multi-session count badge render in compact mode.
+- Desktop hover expansion is not part of compact rendering; desktop bubbles are omitted below the threshold.
+- Tapping a populated mobile day opens the normal-flow day sheet.
+- Sheet rows open the session-detail modal.
+- Swipe month navigation is wired to the existing clamp/slide behavior.
+- Walkthrough steps `11-mobile-dots` through `14-mobile-month-change` are authored only; E2E was not run per plan constraint.
+- Verification passed: `pnpm --filter app test` and `pnpm --filter app typecheck`.
 
 ### Reviewer findings
 

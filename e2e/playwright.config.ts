@@ -41,5 +41,14 @@ export default defineConfig({
         baseURL: 'http://localhost:5173',
       },
     },
+    {
+      name: 'app-mobile',
+      testMatch: /roadmap\.spec\.ts/,
+      use: {
+        ...devices['Pixel 5'],
+        viewport: { width: 390, height: 844 },
+        baseURL: 'http://localhost:5173',
+      },
+    },
   ],
 });

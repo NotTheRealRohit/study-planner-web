@@ -309,6 +309,32 @@
   font-size: 10px;
 }
 
+.roadmap-mobile-day-button {
+  display: none;
+}
+
+.roadmap-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.roadmap-mobile-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  border: var(--border-width-hair) solid var(--border-default);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+}
+
 .roadmap-chip-done {
   color: var(--text-on-inverted);
   background: var(--moss);
@@ -459,6 +485,74 @@
   font-size: 12px;
 }
 
+.roadmap-day-sheet {
+  max-width: 520px;
+  margin: var(--space-4) auto 0;
+  padding: var(--space-4);
+  border: var(--border-width-hair) solid var(--border-default);
+  border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-md);
+}
+
+.roadmap-day-sheet-handle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--border-default);
+}
+
+.roadmap-day-sheet-head {
+  position: relative;
+  padding-right: 44px;
+}
+
+.roadmap-day-sheet .roadmap-modal-close {
+  top: 0;
+  right: 0;
+}
+
+.roadmap-day-sheet-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.roadmap-day-sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.roadmap-day-sheet-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: var(--border-width-hair) solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.roadmap-day-sheet-row:hover {
+  background: var(--surface-recessed);
+}
+
+.roadmap-day-sheet-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .roadmap-empty {
   min-height: 60vh;
   display: flex;
@@ -529,6 +623,81 @@
 
   .roadmap-bubble-minutes {
     display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .roadmap-calendar-shell {
+    touch-action: pan-y;
+  }
+
+  .roadmap-weekday {
+    padding-inline: 2px;
+    font-size: 10px;
+  }
+
+  .roadmap-day {
+    min-height: 74px;
+    padding: 5px;
+  }
+
+  .roadmap-day-compact .roadmap-day-head {
+    margin-bottom: 0;
+  }
+
+  .roadmap-day-compact .roadmap-day-number {
+    font-size: 12px;
+  }
+
+  .roadmap-day-compact .roadmap-day-markers {
+    display: none;
+  }
+
+  .roadmap-day-compact .roadmap-bubble-stack {
+    display: none;
+  }
+
+  .roadmap-day-compact .roadmap-mobile-day-button {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 4px;
+    padding: 28px 4px 6px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .roadmap-day-compact .roadmap-mobile-day-button:disabled {
+    cursor: default;
+  }
+
+  .roadmap-day-compact .roadmap-mobile-day-button:focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: -3px;
+    border-radius: var(--radius-sm);
+  }
+
+  .roadmap-mobile-dot-stack {
+    min-height: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+    max-width: 38px;
+  }
+
+  .roadmap-day-tappable {
+    cursor: pointer;
+  }
+
+  .roadmap-day-sheet {
+    margin-top: var(--space-3);
+    border-radius: var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md);
   }
 }
 

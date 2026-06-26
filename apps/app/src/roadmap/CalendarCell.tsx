@@ -1,4 +1,5 @@
 import type { BoundCalendarDay, CalendarBubble } from './calendarModel'
+import { useMatchMedia } from '../lib/useMatchMedia'
 import { statusStyleFor, type StatusIconName } from './statusStyles'
 
 interface CalendarCellProps {
@@ -8,6 +9,7 @@ interface CalendarCellProps {
   isCurrentWeek: boolean
   onBubbleClick?: (bubble: CalendarBubble) => void
   onOverflowClick?: (day: BoundCalendarDay) => void
+  onDayClick?: (day: BoundCalendarDay) => void
 }
 
 function StatusIcon({ name }: { name: StatusIconName }) {
@@ -59,15 +61,21 @@ export function CalendarCell({
   isCurrentWeek,
   onBubbleClick = () => undefined,
   onOverflowClick = () => undefined,
+  onDayClick = () => undefined,
 }: CalendarCellProps) {
+  const isCompact = useMatchMedia('(max-width: 560px)')
   const visibleBubbles = day.bubbles.slice(0, 3)
   const hiddenCount = Math.max(0, day.bubbles.length - visibleBubbles.length)
+  const dotBubbles = day.bubbles.slice(0, 4)
+  const canOpenDay = isCompact && day.isInMonth && day.bubbles.length > 0
   const classes = [
     'roadmap-day',
     day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
     isCurrentWeek && 'roadmap-day-current-week',
     isToday && 'roadmap-day-today',
     isDeadline && 'roadmap-day-deadline',
+    isCompact && 'roadmap-day-compact',
+    canOpenDay && 'roadmap-day-tappable',
   ].filter(Boolean).join(' ')
 
   return (
@@ -89,38 +97,68 @@ export function CalendarCell({
         </span>
       </div>
 
-      <div className="roadmap-bubble-stack">
-        {visibleBubbles.map((bubble) => {
-          const style = statusStyleFor(bubble.status)
-          return (
-            <button
-              key={bubble.id}
-              type="button"
-              className={`roadmap-bubble ${style.chipClass}`}
-              data-status={bubble.status}
-              data-icon={style.icon}
-              disabled={!day.isInMonth}
-              onClick={() => onBubbleClick(bubble)}
-              aria-label={`${style.label}: ${bubble.label}, ${formatMinutes(bubble.minutes)}`}
-            >
-              <StatusIcon name={style.icon} />
-              <span className="roadmap-bubble-label">{bubble.label}</span>
-              <span className="roadmap-bubble-minutes">{formatMinutes(bubble.minutes)}</span>
-            </button>
-          )
-        })}
+      {isCompact ? (
+        <button
+          type="button"
+          className="roadmap-mobile-day-button"
+          disabled={!canOpenDay}
+          onClick={() => onDayClick(day)}
+          aria-label={`Open ${day.date} sessions`}
+        >
+          <span className="roadmap-mobile-dot-stack" aria-hidden="true">
+            {dotBubbles.map((bubble) => {
+              const style = statusStyleFor(bubble.status)
+              return (
+                <span
+                  key={bubble.id}
+                  className={`roadmap-status-dot ${style.chipClass}`}
+                  data-status={bubble.status}
+                  data-icon={style.icon}
+                />
+              )
+            })}
+          </span>
+          {day.bubbles.length > 1 && (
+            <span className="roadmap-mobile-count" aria-hidden="true">
+              {day.bubbles.length}
+            </span>
+          )}
+        </button>
+      ) : (
+        <div className="roadmap-bubble-stack">
+          {visibleBubbles.map((bubble) => {
+            const style = statusStyleFor(bubble.status)
+            return (
+              <button
+                key={bubble.id}
+                type="button"
+                className={`roadmap-bubble ${style.chipClass}`}
+                data-status={bubble.status}
+                data-icon={style.icon}
+                disabled={!day.isInMonth}
+                onClick={() => onBubbleClick(bubble)}
+                aria-label={`${style.label}: ${bubble.label}, ${formatMinutes(bubble.minutes)}`}
+              >
+                <StatusIcon name={style.icon} />
+                <span className="roadmap-bubble-label">{bubble.label}</span>
+                <span className="roadmap-bubble-minutes">{formatMinutes(bubble.minutes)}</span>
+              </button>
+            )
+          })}
 
-        {hiddenCount > 0 && (
-          <button
-            type="button"
-            className="roadmap-overflow"
-            disabled={!day.isInMonth}
-            onClick={() => onOverflowClick(day)}
-          >
-            +{hiddenCount} more
-          </button>
-        )}
-      </div>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              className="roadmap-overflow"
+              disabled={!day.isInMonth}
+              onClick={() => onOverflowClick(day)}
+            >
+              +{hiddenCount} more
+            </button>
+          )}
+        </div>
+      )}
+
     </div>
   )
 }

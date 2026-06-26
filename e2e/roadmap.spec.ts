@@ -112,6 +112,28 @@ async function insertOverflowSessionsForToday(page: Page): Promise<void> {
   await insertEventsIntoFirstStudyDb(page, events);
 }
 
+async function swipeCalendar(
+  page: Page,
+  direction: 'left' | 'right',
+): Promise<void> {
+  const calendar = page.getByTestId('roadmap-calendar');
+  const box = await calendar.boundingBox();
+  if (!box) throw new Error('Roadmap calendar is not visible');
+
+  const y = box.y + Math.min(220, box.height / 2);
+  const startX = direction === 'left' ? box.x + box.width - 40 : box.x + 40;
+  const endX = direction === 'left' ? box.x + 40 : box.x + box.width - 40;
+
+  await calendar.dispatchEvent('touchstart', {
+    touches: [{ clientX: startX, clientY: y }],
+    changedTouches: [{ clientX: startX, clientY: y }],
+  });
+  await calendar.dispatchEvent('touchend', {
+    touches: [],
+    changedTouches: [{ clientX: endX, clientY: y }],
+  });
+}
+
 test.describe('Roadmap calendar visual walkthrough', () => {
   test.use({ baseURL: APP_URL });
 
@@ -121,7 +143,9 @@ test.describe('Roadmap calendar visual walkthrough', () => {
     }
   });
 
-  test('Phases 2-4: calendar grid, month navigation, and session modals', async ({ page }) => {
+  test('Phases 2-4: calendar grid, month navigation, and session modals', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'app-mobile', 'Desktop walkthrough runs in the app project.');
+
     const email = generateTestEmail('roadmap-calendar');
     const password = 'TestPassword123!';
     let currentMonthLabel = '';
@@ -262,6 +286,60 @@ test.describe('Roadmap calendar visual walkthrough', () => {
       await expect(page.getByRole('dialog', { name: 'Roadmap day sessions' })).toBeVisible();
       expect(await page.locator('.roadmap-day-list-row').count()).toBeGreaterThanOrEqual(4);
       await screenshot(page, '10-day-modal');
+    });
+  });
+
+  test('Phase 5: mobile dots, day sheet, and swipe navigation', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'app-mobile', 'Mobile walkthrough runs in the app-mobile project.');
+
+    const email = generateTestEmail('roadmap-calendar-mobile');
+    const password = 'TestPassword123!';
+
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await waitForDevSeeder(page);
+
+    await page.evaluate(async () => {
+      await window.__wipe?.();
+      await window.__seed?.();
+    });
+    await insertOverflowSessionsForToday(page);
+    await page.goto(`${APP_URL}/study/roadmap`);
+
+    await test.step('11-mobile-dots', async () => {
+      const todayCell = page.getByTestId('roadmap-today-cell');
+      await expect(todayCell.locator('.roadmap-mobile-day-button')).toBeVisible();
+      await expect(todayCell.locator('.roadmap-status-dot')).toHaveCount(4);
+      await expect(todayCell.locator('.roadmap-mobile-count')).toHaveText(/\d+/);
+      await expect(page.locator('.roadmap-bubble')).toHaveCount(0);
+      await screenshot(page, '11-mobile-dots');
+    });
+
+    await test.step('12-day-sheet', async () => {
+      await page.getByTestId('roadmap-today-cell').click();
+      await expect(page.getByRole('dialog', { name: 'Roadmap day sheet' })).toBeVisible();
+      expect(await page.locator('.roadmap-day-sheet-row').count()).toBeGreaterThanOrEqual(4);
+      await screenshot(page, '12-day-sheet');
+    });
+
+    await test.step('13-mobile-modal', async () => {
+      await page.locator('.roadmap-day-sheet-row').first().click();
+      await expect(page.getByRole('dialog', { name: 'Roadmap session detail' })).toBeVisible();
+      await screenshot(page, '13-mobile-modal');
+      await page.getByLabel('Close modal').click();
+    });
+
+    await test.step('14-mobile-month-change', async () => {
+      const monthLabel = page.getByTestId('roadmap-month-label');
+      const previousLabel = await monthLabel.innerText();
+      const canGoNext = await page.getByRole('button', { name: 'Next month' }).isEnabled();
+      const canGoPrevious = await page.getByRole('button', { name: 'Previous month' }).isEnabled();
+
+      test.skip(!canGoNext && !canGoPrevious, 'Seed roadmap only spans one month.');
+
+      await swipeCalendar(page, canGoNext ? 'left' : 'right');
+      await expect(monthLabel).not.toHaveText(previousLabel);
+      await screenshot(page, '14-mobile-month-change');
     });
   });
 });

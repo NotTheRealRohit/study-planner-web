@@ -516,7 +516,7 @@ Remove modal file; revert cell callbacks to no-ops.
 
 ### Phase 5: Mobile responsive — dots + day bottom-sheet + swipe
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — 0697895
 **Depends on:** Phase 4
 **Estimated scope:** ~2 files, ~180 lines
 
@@ -555,6 +555,11 @@ pnpm --filter app test && pnpm --filter app typecheck
 Remove `DaySheet.tsx`; revert `CalendarCell` to bubbles-only.
 
 #### Notes (filled in during implementation)
+
+- Added compact mobile rendering in `CalendarCell`: below 560px, day cells render status dots plus a count badge, hide desktop bubbles, and use a single tappable day target that opens the mobile sheet.
+- Added `DaySheet.tsx` as the mobile day-session surface. It is a normal-flow `section[role="dialog"]` in the roadmap page, not a fixed-position modal, and its rows open the existing `SessionDetailModal`.
+- Added touch-swipe month navigation to `RoadmapCalendar`, reusing `shiftMonth`/clamp bounds and the existing Phase 3 slide direction.
+- Extended the write-only Playwright walkthrough with an `app-mobile` project and screenshots `11-mobile-dots` through `14-mobile-month-change`; E2E remains authored only per D-15.
 
 ### Phase 6: Mark complete / abandon events + `/roadmaps` history page
 

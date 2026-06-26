@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { type TouchEvent, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
@@ -9,6 +9,7 @@ import { useCalibrationState, useProgressSnapshot } from '../progress'
 import { findRoadmap, mapSessions } from '../progress/mapEvents'
 import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../sync/types'
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner'
+import { useMatchMedia } from '../lib/useMatchMedia'
 import {
   bindCells,
   buildMonthGrid,
@@ -16,11 +17,13 @@ import {
   clampMonth,
   monthKeyForDate,
   monthKeyToDate,
+  shiftMonth,
   type BoundCalendarDay,
   type CalendarBubble,
   type CalendarMaterial,
 } from './calendarModel'
 import { CalendarCell } from './CalendarCell'
+import { DaySheet } from './DaySheet'
 import { MonthNav } from './MonthNav'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { LEGEND_ITEMS } from './statusStyles'
@@ -84,6 +87,9 @@ export function RoadmapCalendar() {
   const [slideDirection, setSlideDirection] = useState<'prev' | 'next' | 'today'>('today')
   const [selectedBubble, setSelectedBubble] = useState<CalendarBubble | null>(null)
   const [selectedDay, setSelectedDay] = useState<BoundCalendarDay | null>(null)
+  const [selectedSheetDay, setSelectedSheetDay] = useState<BoundCalendarDay | null>(null)
+  const touchStartX = useRef<number | null>(null)
+  const isMobileCalendar = useMatchMedia('(max-width: 560px)')
   const { calibration, status } = useCalibrationState()
   const progress = useProgressSnapshot(calibration)
   const today = todayISO()
@@ -169,7 +175,43 @@ export function RoadmapCalendar() {
   }
   const handleDayBubbleSelect = (bubble: CalendarBubble) => {
     setSelectedDay(null)
+    setSelectedSheetDay(null)
     setSelectedBubble(bubble)
+  }
+  const handleOverflowSelect = (day: BoundCalendarDay) => {
+    if (isMobileCalendar) {
+      setSelectedDay(null)
+      setSelectedSheetDay(day)
+      return
+    }
+    setSelectedDay(day)
+  }
+  const handleMobileDaySelect = (day: BoundCalendarDay) => {
+    if (!isMobileCalendar) return
+    setSelectedDay(null)
+    setSelectedSheetDay(day)
+  }
+  const handleTouchStart = (event: TouchEvent<HTMLElement>) => {
+    if (!isMobileCalendar) return
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null
+  }
+  const handleTouchEnd = (event: TouchEvent<HTMLElement>) => {
+    if (!isMobileCalendar || !monthBounds || touchStartX.current === null) return
+
+    const endX = event.changedTouches[0]?.clientX
+    if (endX === undefined) return
+
+    const deltaX = endX - touchStartX.current
+    touchStartX.current = null
+
+    if (Math.abs(deltaX) < 48) return
+
+    const direction = deltaX < 0 ? 'next' : 'prev'
+    const nextMonth = shiftMonth(activeViewMonth, direction === 'next' ? 1 : -1, monthBounds)
+    if (nextMonth !== activeViewMonth) {
+      handleMonthChange(nextMonth, direction)
+      setSelectedSheetDay(null)
+    }
   }
 
   return (
@@ -226,6 +268,8 @@ export function RoadmapCalendar() {
         className="roadmap-calendar-shell"
         data-testid="roadmap-calendar"
         aria-label={`${calendar.monthLabel} roadmap calendar`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         <div className="roadmap-weekdays" role="row">
           {WEEKDAY_LABELS.map((label) => (
@@ -253,7 +297,8 @@ export function RoadmapCalendar() {
                     isDeadline={day.date === roadmap.deadline && day.isInMonth}
                     isCurrentWeek={isCurrentWeek}
                     onBubbleClick={setSelectedBubble}
-                    onOverflowClick={setSelectedDay}
+                    onOverflowClick={handleOverflowSelect}
+                    onDayClick={handleMobileDaySelect}
                   />
                 ))}
               </div>
@@ -280,6 +325,11 @@ export function RoadmapCalendar() {
       <DayDetailModal
         day={selectedDay}
         onClose={() => setSelectedDay(null)}
+        onSelectBubble={handleDayBubbleSelect}
+      />
+      <DaySheet
+        day={selectedSheetDay}
+        onClose={() => setSelectedSheetDay(null)}
         onSelectBubble={handleDayBubbleSelect}
       />
       <SessionDetailModal
