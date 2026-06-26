@@ -325,7 +325,7 @@ flowchart TD
 
 ### Phase 1: Typed replan/edit events + in-place lifecycle identity
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** none — can start immediately
 **Estimated scope:** ~3 files, ~150 lines
 
