@@ -20,7 +20,7 @@ Per phase: implementer fills **Implementer report**; reviewer fills **Reviewer f
 - [ ] `pnpm --filter progress test` and typecheck pass.
 
 ### Implementer report
-Status: ✅ Implemented, awaiting review. Commit: `ed546a7`.
+Status: ✅ Implemented, awaiting review. Commit: `c50ff53`.
 
 Files changed:
 - `packages/progress/src/deriveSlotStatuses.ts`

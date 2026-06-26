@@ -324,7 +324,7 @@ Replan seam (deferred build):  /replan UI → replanRoadmap(input, pins)
 
 ### Phase 1: Pure per-slot status derivation in `packages/progress`
 
-**Status:** ✅ Complete — ed546a7
+**Status:** ✅ Complete — c50ff53
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files + 1 test, ~150 lines
 
@@ -365,6 +365,7 @@ Delete the new file + test, revert the `index.ts` export line. No data or schema
 #### Notes (filled in during implementation)
 
 - Added `materialId?: string` to `SessionEvent`; app-level `SessionLogged` payloads already carry it, and D-02's date+material matching cannot be typed without it. `deriveSlotStatuses` stays pure: no clock reads, no `Date` construction, and all status decisions use the caller-provided ISO `today`.
+- The final Phase 1 code commit is `c50ff53`; its SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
 
 ### Phase 2: Read-only month calendar on `/roadmap` (current month, desktop)
 
