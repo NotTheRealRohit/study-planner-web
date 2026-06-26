@@ -75,6 +75,18 @@ export interface RoadmapCreatedPayload {
   slots: Slot[]
 }
 
+export interface RoadmapMarkedCompletePayload {
+  roadmapCreatedAt: string
+  resolvedAt: string
+  reason?: string
+}
+
+export interface RoadmapMarkedAbandonedPayload {
+  roadmapCreatedAt: string
+  resolvedAt: string
+  reason?: string
+}
+
 export interface SupabaseClientLike {
   from: (table: string) => {
     insert: (values: Record<string, unknown> | Record<string, unknown>[]) => {

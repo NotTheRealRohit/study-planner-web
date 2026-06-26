@@ -342,4 +342,80 @@ test.describe('Roadmap calendar visual walkthrough', () => {
       await screenshot(page, '14-mobile-month-change');
     });
   });
+
+  test('Phase 6: terminal events and roadmaps history', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'app-mobile', 'History walkthrough runs in the app project.');
+
+    const email = generateTestEmail('roadmap-calendar-history');
+    const password = 'TestPassword123!';
+
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await waitForDevSeeder(page);
+
+    await test.step('15-complete-confirm', async () => {
+      await page.evaluate(async () => {
+        await window.__wipe?.();
+        await window.__seed?.();
+      });
+      await page.goto(`${APP_URL}/study/roadmap`);
+      await page.getByRole('button', { name: 'Mark roadmap complete' }).click();
+      await page.waitForURL(/\/study\/roadmaps/);
+      await expect(page.getByRole('heading', { name: 'Past Roadmaps' })).toBeVisible();
+      await screenshot(page, '15-complete-confirm');
+    });
+
+    await test.step('16-history-completed', async () => {
+      const completed = page.getByLabel('Completed roadmaps');
+      await expect(completed.getByRole('button', { name: /Learn modern React/i })).toBeVisible();
+      await screenshot(page, '16-history-completed');
+    });
+
+    await test.step('17-history-abandoned', async () => {
+      await page.evaluate(async () => {
+        await window.__wipe?.();
+        await window.__seed?.();
+      });
+      await page.goto(`${APP_URL}/study/roadmap`);
+      page.once('dialog', async (dialog) => {
+        expect(dialog.message()).toContain('Abandon this roadmap');
+        await dialog.accept();
+      });
+      await page.getByRole('button', { name: 'Abandon roadmap' }).click();
+      await page.waitForURL(/\/study\/roadmaps/);
+      const abandoned = page.getByLabel('Abandoned roadmaps');
+      await expect(abandoned.getByRole('button', { name: /Learn modern React/i })).toBeVisible();
+      await screenshot(page, '17-history-abandoned');
+    });
+
+    await test.step('18-history-empty', async () => {
+      await page.evaluate(async () => {
+        await window.__wipe?.();
+      });
+      await insertEventsIntoFirstStudyDb(page, [
+        {
+          kind: 'OnboardingCompleted',
+          payload: {},
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      await page.goto(`${APP_URL}/study/roadmaps`);
+      await expect(page.getByTestId('roadmaps-empty')).toBeVisible();
+      await expect(page.getByText('Nothing here yet.')).toBeVisible();
+      await screenshot(page, '18-history-empty');
+    });
+
+    await test.step('19-history-readonly', async () => {
+      await page.evaluate(async () => {
+        await window.__wipe?.();
+        await window.__seed?.();
+      });
+      await page.goto(`${APP_URL}/study/roadmaps`);
+      await page.getByLabel('Active roadmaps').getByRole('button', { name: /Learn modern React/i }).click();
+      await expect(page.getByTestId('roadmaps-readonly-detail')).toBeVisible();
+      await expect(page.getByTestId('roadmap-readonly')).toBeVisible();
+      await expect(page.getByTestId('roadmap-calendar')).toBeVisible();
+      await screenshot(page, '19-history-readonly');
+    });
+  });
 });

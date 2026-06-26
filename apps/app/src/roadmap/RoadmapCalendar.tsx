@@ -1,13 +1,15 @@
 import { type TouchEvent, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
 import { deriveSlotStatuses } from '@study-tracker/progress'
+import type { RoadmapInput } from '@study-tracker/progress'
 import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
 import { useCalibrationState, useProgressSnapshot } from '../progress'
-import { findRoadmap, mapSessions } from '../progress/mapEvents'
+import { mapSessions } from '../progress/mapEvents'
 import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../sync/types'
+import { useSync } from '../sync/useSync'
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner'
 import { useMatchMedia } from '../lib/useMatchMedia'
 import {
@@ -25,6 +27,7 @@ import {
 import { CalendarCell } from './CalendarCell'
 import { DaySheet } from './DaySheet'
 import { MonthNav } from './MonthNav'
+import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { LEGEND_ITEMS } from './statusStyles'
 import './roadmap.css'
@@ -46,14 +49,6 @@ function formatMinutes(totalMinutes: number): string {
   if (hours === 0) return `${rest}m`
   if (rest === 0) return `${hours}h`
   return `${hours}h ${rest}m`
-}
-
-function latestRoadmapPayload(events: Event[]): RoadmapCreatedPayload | null {
-  const roadmapEvents = events.filter(
-    (event) => event.kind === 'RoadmapCreated' || event.kind === 'RoadmapReplanned',
-  )
-  const latest = roadmapEvents[roadmapEvents.length - 1]
-  return latest ? latest.payload as unknown as RoadmapCreatedPayload : null
 }
 
 function collectMaterialsById(events: Event[]): Map<string, CalendarMaterial> {
@@ -80,8 +75,36 @@ function fallbackProgress(
   }
 }
 
-export function RoadmapCalendar() {
+function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
+  return {
+    startDate: payload.startDate,
+    deadline: payload.deadline,
+    weeks: payload.weeks,
+    weeklyHours: payload.weeklyHours,
+    slots: payload.slots.map((slot) => ({
+      date: slot.date,
+      dayOfWeek: slot.dayOfWeek,
+      weekIndex: slot.weekIndex,
+      plannedMinutes: slot.plannedMinutes,
+      candidateMaterialIds: slot.candidateMaterialIds,
+      role: slot.role,
+      sessionTitle: slot.sessionTitle ?? null,
+    })),
+  }
+}
+
+interface RoadmapCalendarProps {
+  roadmapCreatedAt?: string | null
+  readOnly?: boolean
+}
+
+export function RoadmapCalendar({
+  roadmapCreatedAt = null,
+  readOnly = false,
+}: RoadmapCalendarProps = {}) {
   const eventStore = useEventStore()
+  const navigate = useNavigate()
+  const { logEvent } = useSync()
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore])
   const [viewMonth, setViewMonth] = useState<string | null>(null)
   const [slideDirection, setSlideDirection] = useState<'prev' | 'next' | 'today'>('today')
@@ -95,10 +118,20 @@ export function RoadmapCalendar() {
   const today = todayISO()
   const loadedEvents = events ?? []
 
-  const roadmap = useMemo(() => findRoadmap(loadedEvents), [loadedEvents])
-  const roadmapPayload = useMemo(
-    () => latestRoadmapPayload(loadedEvents),
+  const lifecycle = useMemo(
+    () => deriveRoadmapLifecycle(loadedEvents),
     [loadedEvents],
+  )
+  const selectedRoadmap = useMemo(() => {
+    if (roadmapCreatedAt) {
+      return lifecycle.all.find((entry) => entry.roadmapCreatedAt === roadmapCreatedAt) ?? null
+    }
+    return lifecycle.active[0] ?? null
+  }, [lifecycle, roadmapCreatedAt])
+  const roadmapPayload = selectedRoadmap?.payload ?? null
+  const roadmap = useMemo(
+    () => roadmapPayload ? roadmapInputFromPayload(roadmapPayload) : null,
+    [roadmapPayload],
   )
   const materialsById = useMemo(
     () => collectMaterialsById(loadedEvents),
@@ -213,6 +246,22 @@ export function RoadmapCalendar() {
       setSelectedSheetDay(null)
     }
   }
+  const resolveRoadmap = async (kind: 'RoadmapMarkedComplete' | 'RoadmapMarkedAbandoned') => {
+    if (!selectedRoadmap || readOnly) return
+
+    if (
+      kind === 'RoadmapMarkedAbandoned' &&
+      !window.confirm('Abandon this roadmap? It will move to your roadmap history.')
+    ) {
+      return
+    }
+
+    await logEvent(kind, {
+      roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
+      resolvedAt: new Date().toISOString(),
+    })
+    navigate('/roadmaps')
+  }
 
   return (
     <div className="roadmap-page">
@@ -221,7 +270,7 @@ export function RoadmapCalendar() {
       <header className="roadmap-header">
         <div>
           <div className="mono-caps">
-            Active roadmap · {materialsById.size} materials · {roadmap.weeks} weeks
+            {readOnly ? 'Roadmap history' : 'Active roadmap'} · {materialsById.size} materials · {roadmap.weeks} weeks
           </div>
           <h1 className="roadmap-title">{title}</h1>
           <p className="roadmap-subtitle">{dateRange}</p>
@@ -308,12 +357,28 @@ export function RoadmapCalendar() {
       </section>
 
       <footer className="roadmap-footer">
-        <button className="btn btn-secondary" type="button" disabled>
-          Mark roadmap complete
-        </button>
-        <button className="btn btn-secondary" type="button" disabled>
-          Abandon roadmap
-        </button>
+        {readOnly ? (
+          <span className="roadmap-readonly-note" data-testid="roadmap-readonly">
+            Read-only history view
+          </span>
+        ) : (
+          <>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => void resolveRoadmap('RoadmapMarkedComplete')}
+            >
+              Mark roadmap complete
+            </button>
+            <button
+              className="btn btn-secondary"
+              type="button"
+              onClick={() => void resolveRoadmap('RoadmapMarkedAbandoned')}
+            >
+              Abandon roadmap
+            </button>
+          </>
+        )}
         <button className="btn btn-ghost" type="button" disabled>
           Edit roadmap
         </button>

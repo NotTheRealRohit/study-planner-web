@@ -277,6 +277,37 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: `pending`.
+
+Files changed:
+- `apps/app/src/sync/types.ts`
+- `apps/app/src/roadmap/roadmapLifecycle.ts`
+- `apps/app/src/roadmap/roadmapLifecycle.test.ts`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/pages/Roadmaps.tsx`
+- `apps/app/src/roadmap/roadmap.css`
+- `e2e/roadmap.spec.ts`
+
+What was done:
+- Added `RoadmapMarkedCompletePayload` and `RoadmapMarkedAbandonedPayload` with `{ roadmapCreatedAt, resolvedAt, reason? }`.
+- Added pure `deriveRoadmapLifecycle(events)` to classify roadmap snapshots into Active / Completed / Abandoned, with superseded replans separated out of active history groups.
+- Enabled `RoadmapCalendar` footer actions: Mark complete emits `RoadmapMarkedComplete`; Abandon confirms then emits `RoadmapMarkedAbandoned`; both route to `/roadmaps`.
+- Updated active roadmap selection so `/roadmap` shows only lifecycle-active roadmaps, not a latest roadmap already resolved by a terminal event.
+- Replaced the `/roadmaps` stub with Active / Completed / Abandoned sections, italic empty state, onboarding CTA, and read-only calendar selection for history entries.
+- Extended the write-only Playwright walkthrough with `15-complete-confirm`, `16-history-completed`, `17-history-abandoned`, `18-history-empty`, and `19-history-readonly`.
+
+Deviations:
+- Phase 6 prereq `grep -n "logEvent" apps/app/src/sync/useSync.ts` failed because `useSync.ts` only returns `useSyncContext`; the real `logEvent` implementation is in `apps/app/src/sync/SyncProvider.tsx`. I confirmed `useSync().logEvent` exists through the context and continued.
+- `deriveRoadmapLifecycle` exposes a `superseded` bucket internally so replanned snapshots do not appear as active without inventing a terminal event. The rendered history still shows the three required groups only.
+
+Self-check vs criteria:
+- Terminal payload types are present in `sync/types.ts`.
+- Detail footer emits terminal events through `logEvent`; abandon is guarded by `window.confirm`; both navigate to `/roadmaps`.
+- `roadmapLifecycle.ts` is pure and unit-tested for active, completed, abandoned, replan-supersede, and multi-roadmap grouping.
+- `/study/roadmaps` renders Active / Completed / Abandoned groups, empty state, and onboarding CTA.
+- Clicking an entry renders a read-only `RoadmapCalendar`.
+- Walkthrough steps `15` through `19` are authored only; E2E was not run per plan constraint.
+- Verification passed: `pnpm --filter app test`, `pnpm --filter app typecheck`, and `pnpm lint` (lint passes with 6 pre-existing warnings).
 
 ### Reviewer findings
 

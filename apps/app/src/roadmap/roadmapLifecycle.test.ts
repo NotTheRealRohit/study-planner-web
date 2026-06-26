@@ -1,0 +1,155 @@
+import { describe, expect, it } from 'vitest'
+import type { Event } from '../events/EventStore'
+import type { RoadmapCreatedPayload } from '../sync/types'
+import { deriveRoadmapLifecycle } from './roadmapLifecycle'
+
+function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): RoadmapCreatedPayload {
+  return {
+    startDate: '2026-06-01',
+    deadline: '2026-07-01',
+    weeks: 4,
+    purpose: 'Distributed systems',
+    selectedStudyDays: ['Mon', 'Wed'],
+    weekdayHours: 1,
+    weekendHours: 2,
+    weeklyHours: 4,
+    slots: [
+      {
+        date: '2026-06-03',
+        dayOfWeek: 'Wed',
+        weekIndex: 0,
+        plannedMinutes: 60,
+        capacityMinutes: 60,
+        candidateMaterialIds: ['mat-1'],
+        role: 'anchor',
+        sessionTitle: 'Read chapter 1',
+      },
+      {
+        date: '2026-06-05',
+        dayOfWeek: 'Fri',
+        weekIndex: 0,
+        plannedMinutes: 45,
+        capacityMinutes: 45,
+        candidateMaterialIds: ['mat-2'],
+        role: 'practice',
+        sessionTitle: 'Problem set',
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function event(
+  kind: string,
+  payload: unknown,
+  createdAt: string,
+): Event {
+  return { kind, payload: payload as Record<string, unknown>, createdAt }
+}
+
+describe('roadmapLifecycle', () => {
+  it('classifies the latest roadmap as active when no terminal event exists', () => {
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload(), '2026-06-01T00:00:00.000Z'),
+    ])
+
+    expect(groups.active).toHaveLength(1)
+    expect(groups.active[0]).toMatchObject({
+      roadmapCreatedAt: '2026-06-01T00:00:00.000Z',
+      status: 'active',
+      title: 'Distributed systems',
+      weeks: 4,
+      percentComplete: 0,
+    })
+  })
+
+  it('classifies a roadmap as completed by its matching terminal event', () => {
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload(), '2026-06-01T00:00:00.000Z'),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: '2026-06-01T00:00:00.000Z',
+          resolvedAt: '2026-06-20T00:00:00.000Z',
+        },
+        '2026-06-20T00:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.active).toHaveLength(0)
+    expect(groups.completed).toHaveLength(1)
+    expect(groups.completed[0].resolvedAt).toBe('2026-06-20T00:00:00.000Z')
+  })
+
+  it('classifies a roadmap as abandoned by its matching terminal event', () => {
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload(), '2026-06-01T00:00:00.000Z'),
+      event(
+        'RoadmapMarkedAbandoned',
+        {
+          roadmapCreatedAt: '2026-06-01T00:00:00.000Z',
+          resolvedAt: '2026-06-15T00:00:00.000Z',
+          reason: 'Changed exam plan',
+        },
+        '2026-06-15T00:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.abandoned).toHaveLength(1)
+    expect(groups.abandoned[0]).toMatchObject({
+      status: 'abandoned',
+      reason: 'Changed exam plan',
+    })
+  })
+
+  it('treats a later replan as superseding the previous active roadmap', () => {
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload({ purpose: 'Original' }), '2026-06-01T00:00:00.000Z'),
+      event('RoadmapReplanned', roadmapPayload({ purpose: 'Replanned' }), '2026-06-10T00:00:00.000Z'),
+    ])
+
+    expect(groups.active).toHaveLength(1)
+    expect(groups.active[0].title).toBe('Replanned')
+    expect(groups.superseded).toHaveLength(1)
+    expect(groups.superseded[0].title).toBe('Original')
+  })
+
+  it('groups multiple historical roadmaps and computes slot completion percent', () => {
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload({ purpose: 'First' }), '2026-06-01T00:00:00.000Z'),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 's1',
+          date: '2026-06-03',
+          materialId: 'mat-1',
+          duration: 60,
+        },
+        '2026-06-03T12:00:00.000Z',
+      ),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: '2026-06-01T00:00:00.000Z',
+          resolvedAt: '2026-06-20T00:00:00.000Z',
+        },
+        '2026-06-20T00:00:00.000Z',
+      ),
+      event('RoadmapCreated', roadmapPayload({ purpose: 'Second' }), '2026-07-01T00:00:00.000Z'),
+      event(
+        'RoadmapMarkedAbandoned',
+        {
+          roadmapCreatedAt: '2026-07-01T00:00:00.000Z',
+          resolvedAt: '2026-07-04T00:00:00.000Z',
+        },
+        '2026-07-04T00:00:00.000Z',
+      ),
+      event('RoadmapReplanned', roadmapPayload({ purpose: 'Current' }), '2026-07-10T00:00:00.000Z'),
+    ])
+
+    expect(groups.completed.map((entry) => entry.title)).toEqual(['First'])
+    expect(groups.completed[0].percentComplete).toBe(50)
+    expect(groups.abandoned.map((entry) => entry.title)).toEqual(['Second'])
+    expect(groups.active.map((entry) => entry.title)).toEqual(['Current'])
+  })
+})

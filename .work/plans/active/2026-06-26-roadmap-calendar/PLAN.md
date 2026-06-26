@@ -563,7 +563,7 @@ Remove `DaySheet.tsx`; revert `CalendarCell` to bubbles-only.
 
 ### Phase 6: Mark complete / abandon events + `/roadmaps` history page
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 2
 **Estimated scope:** ~4 files, ~300 lines
 
@@ -604,6 +604,12 @@ pnpm --filter app test && pnpm --filter app typecheck && pnpm lint
 Revert `Roadmaps.tsx` stub; remove `roadmapLifecycle.ts`; revert the two type additions and footer wiring. Note: any `RoadmapMarkedComplete/Abandoned` events emitted during testing persist in the local Dexie DB — clear via the app's data reset or a fresh user.
 
 #### Notes (filled in during implementation)
+
+- Added additive terminal event payload types for `RoadmapMarkedComplete` and `RoadmapMarkedAbandoned`.
+- Added pure `deriveRoadmapLifecycle(events)` to group Active / Completed / Abandoned roadmaps, keep superseded replans out of active history groups, and compute slot completion percentage from stored roadmap slots plus matching sessions.
+- Updated `RoadmapCalendar` to select the lifecycle-active roadmap by default, emit terminal events through `useSync().logEvent`, route to `/roadmaps`, and render selected history entries in read-only mode.
+- Replaced the `/roadmaps` stub with lifecycle-derived Active / Completed / Abandoned groups, an italic empty state, onboarding CTA, and inline read-only calendar selection.
+- Phase 6 prereq `grep -n "logEvent" apps/app/src/sync/useSync.ts` was stale: `useSync.ts` re-exports `useSyncContext`, while the actual `logEvent` implementation lives in `SyncProvider.tsx`. Capability was confirmed there before continuing.
 
 ### Phase 7: Replan interface seam routed to the Python backend (stubbed UI)
 
