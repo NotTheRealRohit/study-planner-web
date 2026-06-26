@@ -145,6 +145,7 @@ function mockBoundaryRoadmap() {
 describe('Step3Preview', () => {
   let testDb: Dexie
   let logEventMock: ReturnType<typeof vi.fn>
+  let getAllMock: ReturnType<typeof vi.fn>
 
   beforeEach(async () => {
     vi.clearAllMocks()
@@ -153,8 +154,10 @@ describe('Step3Preview', () => {
 
     logEventMock = vi.fn().mockResolvedValue(1)
 
+    getAllMock = vi.fn().mockResolvedValue([])
+
     const mockEventStore = {
-      getAll: vi.fn().mockResolvedValue([]),
+      getAll: getAllMock,
       append: vi.fn(),
       table: (name: string) => testDb.table(name),
     } as unknown as EventStore
@@ -167,15 +170,16 @@ describe('Step3Preview', () => {
     mockUseSync.mockReturnValue({ logEvent: logEventMock, syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null }, forceSyncNow: vi.fn() } as never)
   })
 
-  function renderPreview() {
+  function renderPreview(initialEntry = '/onboarding/3/preview') {
     return render(
-      <MemoryRouter initialEntries={['/onboarding/3/preview']}>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <Routes>
           <Route path="/onboarding/3/preview" element={
             <OnboardingProvider>
               <Step3Preview />
             </OnboardingProvider>
           } />
+          <Route path="/roadmaps" element={<div data-testid="roadmaps-route">Roadmaps</div>} />
         </Routes>
       </MemoryRouter>,
     )
@@ -269,6 +273,74 @@ describe('Step3Preview', () => {
       const button = screen.getByRole('button', { name: /Looks good/ })
       expect(button).toBeEnabled()
     })
+  })
+
+  it('finishing a new roadmap while one is active saves a draft without creating another roadmap', async () => {
+    await seedOnboardingState(testDb)
+    getAllMock.mockResolvedValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2026-05-01T00:00:00.000Z' },
+      {
+        kind: 'RoadmapCreated',
+        payload: {
+          startDate: '2026-05-01',
+          deadline: '2026-06-01',
+          weeks: 4,
+          selectedStudyDays: ['Mon'],
+          weekdayHours: 1,
+          weekendHours: 0,
+          weeklyHours: 1,
+          slots: [],
+        },
+        createdAt: '2026-05-01T00:00:00.000Z',
+      },
+    ])
+    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
+    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
+
+    renderPreview('/onboarding/3/preview?new=1')
+
+    await waitFor(() => {
+      expect(screen.getByText('Designing Data-Intensive Applications')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Looks good/ }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roadmaps-route')).toBeInTheDocument()
+    })
+
+    const kinds = logEventMock.mock.calls.map((call: unknown[]) => call[0] as string)
+    expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(1)
+    expect(kinds).not.toContain('RoadmapCreated')
+    expect(kinds).not.toContain('OnboardingCompleted')
+    await expect(testDb.table('onboardingDraft').get(1)).resolves.toBeDefined()
+  })
+
+  it('finishing a new roadmap with no active plan creates it without duplicating onboarding completion', async () => {
+    await seedOnboardingState(testDb)
+    getAllMock.mockResolvedValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2026-05-01T00:00:00.000Z' },
+    ])
+    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
+    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
+
+    renderPreview('/onboarding/3/preview?new=1')
+
+    await waitFor(() => {
+      expect(screen.getByText('Designing Data-Intensive Applications')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Looks good/ }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('roadmaps-route')).toBeInTheDocument()
+    })
+
+    const kinds = logEventMock.mock.calls.map((call: unknown[]) => call[0] as string)
+    expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(1)
+    expect(kinds.filter((kind) => kind === 'RoadmapCreated')).toHaveLength(1)
+    expect(kinds).not.toContain('OnboardingCompleted')
+    await expect(testDb.table('onboardingDraft').get(1)).resolves.toBeUndefined()
   })
 
   it('resolving a boundary tie sets session title and planned minutes', async () => {

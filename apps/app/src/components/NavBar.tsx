@@ -52,7 +52,7 @@ const NAV_ITEMS = [
   { to: '/home', label: 'Home', icon: HomeIcon, prefix: '/home' },
   { to: '/session', label: 'Session', icon: SessionIcon, prefix: '/session' },
   { to: '/week', label: 'Week', icon: WeekIcon, prefix: '/week' },
-  { to: '/roadmap', label: 'Roadmap', icon: RoadmapIcon, prefix: '/roadmap' },
+  { to: '/roadmaps', label: 'Roadmaps', icon: RoadmapIcon, prefix: '/roadmap' },
   { to: '/settings', label: 'Settings', icon: SettingsIcon, prefix: '/settings' },
 ] as const;
 

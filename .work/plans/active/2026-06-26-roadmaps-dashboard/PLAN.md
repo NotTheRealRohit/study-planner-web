@@ -484,7 +484,7 @@ Revert `completedSlotCount` to the unscoped match. No data effects.
 
 ### Phase 3: Re-entrant onboarding + nav/routing reshape
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1 (`✅ Complete`)
 **Estimated scope:** ~5 files, ~140 lines
 
@@ -572,7 +572,12 @@ Revert the five files. Onboarding returns to one-shot; nav points at `/roadmap` 
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Changed the NavBar roadmap item to label `Roadmaps` and route to `/roadmaps`, while keeping `prefix: '/roadmap'` so `/roadmaps` and `/roadmap` both highlight it.
+- Added `newRoadmapMode` handling to `OnboardingGate` and `Step3Preview` using `?new=1` or router state `{ newRoadmap: true }`.
+- `Step3Preview` now branches on existing events: first-run emits `RoadmapCreated` + `OnboardingCompleted` and goes to `/onboarding/4`; completed-user new mode with an active plan saves the wizard draft and returns to `/roadmaps`; completed-user new mode with no active plan emits `RoadmapCreated`, avoids duplicate `OnboardingCompleted`, clears the draft, and returns to `/roadmaps`.
+- Added a live calendar back link to `/roadmaps` and kept source text ASCII by rendering the arrow via `&larr;`.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest suite.
+- The final Phase 3 code commit SHA is recorded in a follow-up doc state because amending a self-referential SHA changes the commit hash.
 
 ---
 

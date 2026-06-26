@@ -267,6 +267,12 @@ export function RoadmapCalendar({
     <div className="roadmap-page">
       <ServiceStatusBanner status={status} />
 
+      {!readOnly && (
+        <Link className="roadmap-back-link" to="/roadmaps">
+          &larr; Roadmaps
+        </Link>
+      )}
+
       <header className="roadmap-header">
         <div>
           <div className="mono-caps">

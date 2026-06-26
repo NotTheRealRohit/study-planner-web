@@ -5,6 +5,19 @@
   margin: 0 auto;
 }
 
+.roadmap-back-link {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: var(--space-4);
+  color: var(--text-secondary);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.roadmap-back-link:hover {
+  color: var(--text-primary);
+}
+
 .roadmap-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { generateRoadmap, type RoadmapInput, type RoadmapOutput } from '@study-tracker/roadmap-engine'
 import { differenceInCalendarDays } from 'date-fns'
 import { useOnboarding, type OnboardingSlotEdit } from '../OnboardingProvider'
@@ -12,6 +12,7 @@ import { useSwapStateMachine, type SlotKey } from '../components/useSwapStateMac
 import { computeSwapEdits } from '../components/computeSwapEdits'
 import { useMatchMedia } from '../../lib/useMatchMedia'
 import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../../sync/types'
+import { deriveRoadmapLifecycle } from '../../roadmap/roadmapLifecycle'
 
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -26,8 +27,12 @@ export function Step3Preview() {
   const { state, dispatch, expandedMaterials } = useOnboarding()
   const { logEvent } = useSync()
   const eventStore = useEventStore()
+  const location = useLocation()
   const navigate = useNavigate()
   const [committing, setCommitting] = useState(false)
+  const newRoadmapMode =
+    new URLSearchParams(location.search).get('new') === '1' ||
+    (location.state as { newRoadmap?: boolean } | null)?.newRoadmap === true
 
   const previewEdits = useMemo(() => {
     const edits = new Map<string, { materialId: string | null; sessionTitle: string | null; plannedMinutes: number }>()
@@ -205,16 +210,27 @@ export function Step3Preview() {
         weeklyHours: state.weeklyHours,
         slots: allSlots,
       }
-      await logEvent('RoadmapCreated', roadmapPayload as unknown as Record<string, unknown>)
+      const existingEvents = await eventStore.getAll()
+      const hasCompletedOnboarding = existingEvents.some((event) => event.kind === 'OnboardingCompleted')
+      const hasActiveRoadmap = deriveRoadmapLifecycle(existingEvents).active.length > 0
 
-      await logEvent('OnboardingCompleted', {})
+      if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) {
+        // D-04: keep this wizard state as the single next-roadmap draft.
+        navigate('/roadmaps')
+        return
+      }
+
+      await logEvent('RoadmapCreated', roadmapPayload as unknown as Record<string, unknown>)
+      if (!hasCompletedOnboarding) {
+        await logEvent('OnboardingCompleted', {})
+      }
       await eventStore.table('onboardingDraft').clear()
 
-      navigate('/onboarding/4')
+      navigate(hasCompletedOnboarding ? '/roadmaps' : '/onboarding/4')
     } finally {
       setCommitting(false)
     }
-  }, [displayRoadmap, state, expandedMaterials, committing, unresolvedTieCount, logEvent, eventStore, navigate, roadmapInput])
+  }, [displayRoadmap, state, expandedMaterials, committing, unresolvedTieCount, logEvent, eventStore, navigate, roadmapInput, newRoadmapMode])
 
   if (!roadmapInput) {
     return (

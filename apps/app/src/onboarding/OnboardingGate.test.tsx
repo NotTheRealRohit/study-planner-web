@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { useEventStore } from '../events/useEventStore'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { OnboardingGate } from './OnboardingGate'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, MemoryRouter } from 'react-router-dom'
 
 vi.mock('../events/useEventStore')
 vi.mock('dexie-react-hooks')
@@ -62,5 +62,78 @@ describe('OnboardingGate', () => {
     )
 
     expect(container.firstChild).toBeNull()
+  })
+
+  it('renders nothing after onboarding was completed outside new-roadmap mode', async () => {
+    const mockEventStore = {
+      getAll: vi.fn().mockResolvedValue([
+        { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+      ]),
+      table: vi.fn(),
+    }
+    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseLiveQuery.mockReturnValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+    ])
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/onboarding']}>
+        <OnboardingGate>
+          <ChildComponent />
+        </OnboardingGate>
+      </MemoryRouter>
+    )
+
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('renders children in new-roadmap mode even after onboarding was completed', async () => {
+    const mockEventStore = {
+      getAll: vi.fn().mockResolvedValue([
+        { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+      ]),
+      table: vi.fn(),
+    }
+    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseLiveQuery.mockReturnValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+    ])
+
+    render(
+      <MemoryRouter initialEntries={['/onboarding?new=1']}>
+        <OnboardingGate>
+          <ChildComponent />
+        </OnboardingGate>
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('child')).toBeInTheDocument()
+    })
+  })
+
+  it('renders children when new-roadmap mode is passed in router state', async () => {
+    const mockEventStore = {
+      getAll: vi.fn().mockResolvedValue([
+        { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+      ]),
+      table: vi.fn(),
+    }
+    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseLiveQuery.mockReturnValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+    ])
+
+    render(
+      <MemoryRouter initialEntries={[{ pathname: '/onboarding', state: { newRoadmap: true } }]}>
+        <OnboardingGate>
+          <ChildComponent />
+        </OnboardingGate>
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('child')).toBeInTheDocument()
+    })
   })
 })
