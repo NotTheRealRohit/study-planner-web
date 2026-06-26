@@ -4,7 +4,7 @@ Round-trips between agents. **Planner** pre-fills acceptance criteria. **Develop
 
 - Plan: [`PLAN.md`](./PLAN.md)
 - Slug: `2026-06-26-roadmaps-dashboard`
-- Step 0 baseline commit (planning docs): `4bf960d` (native side fills after `docs(plan): add roadmaps-dashboard plan + verification`)
+- Step 0 baseline commit (planning docs): `4d3bca9` (native side fills after `docs(plan): add roadmaps-dashboard plan + verification`)
 
 Status legend: `☐` pending · `✅` met · `❌` failed · `➖` n/a.
 
