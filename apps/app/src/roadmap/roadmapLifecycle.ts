@@ -3,15 +3,18 @@ import type {
   RoadmapCreatedPayload,
   RoadmapMarkedAbandonedPayload,
   RoadmapMarkedCompletePayload,
+  RoadmapReplannedPayload,
 } from '../sync/types'
 
-export type RoadmapLifecycleStatus = 'active' | 'completed' | 'abandoned' | 'superseded'
+type RoadmapPayload = RoadmapCreatedPayload | RoadmapReplannedPayload
+
+export type RoadmapLifecycleStatus = 'active' | 'completed' | 'abandoned'
 
 export interface RoadmapLifecycleEntry {
   roadmapCreatedAt: string
   eventKind: 'RoadmapCreated' | 'RoadmapReplanned'
   status: RoadmapLifecycleStatus
-  payload: RoadmapCreatedPayload
+  payload: RoadmapPayload
   title: string
   startDate: string
   deadline: string
@@ -27,7 +30,6 @@ export interface RoadmapLifecycleGroups {
   active: RoadmapLifecycleEntry[]
   completed: RoadmapLifecycleEntry[]
   abandoned: RoadmapLifecycleEntry[]
-  superseded: RoadmapLifecycleEntry[]
   all: RoadmapLifecycleEntry[]
 }
 
@@ -35,6 +37,12 @@ interface TerminalEvent {
   kind: 'RoadmapMarkedComplete' | 'RoadmapMarkedAbandoned'
   createdAt: string
   payload: RoadmapMarkedCompletePayload | RoadmapMarkedAbandonedPayload
+}
+
+interface RoadmapSnapshot {
+  roadmapCreatedAt: string
+  latestEvent: Event
+  payload: RoadmapPayload
 }
 
 function isRoadmapEvent(event: Event): boolean {
@@ -55,10 +63,9 @@ function terminalTime(event: TerminalEvent): number {
 
 function latestTerminalFor(
   roadmapCreatedAt: string,
-  roadmapEventCreatedAt: string,
   terminals: TerminalEvent[],
 ): TerminalEvent | null {
-  const roadmapTime = new Date(roadmapEventCreatedAt).getTime()
+  const roadmapTime = new Date(roadmapCreatedAt).getTime()
 
   return terminals
     .filter((event) =>
@@ -68,7 +75,14 @@ function latestTerminalFor(
     .sort((a, b) => terminalTime(b) - terminalTime(a))[0] ?? null
 }
 
-function completedSlotCount(events: Event[], roadmap: RoadmapCreatedPayload): number {
+function roadmapIdentity(event: Event): string {
+  if (event.kind !== 'RoadmapReplanned') return event.createdAt
+
+  const originalCreatedAt = event.payload.roadmapCreatedAt
+  return typeof originalCreatedAt === 'string' ? originalCreatedAt : event.createdAt
+}
+
+function completedSlotCount(events: Event[], roadmap: RoadmapPayload): number {
   const usedSessionIndexes = new Set<number>()
   const sessions = events
     .filter((event) => event.kind === 'SessionLogged')
@@ -107,50 +121,81 @@ export function deriveRoadmapLifecycle(events: Event[]): RoadmapLifecycleGroups 
   const terminals = events
     .filter(isTerminalEvent)
     .sort((a, b) => eventTime(a) - eventTime(b))
-  const latestRoadmap = roadmapEvents[roadmapEvents.length - 1] ?? null
-
-  const all = roadmapEvents.map((event) => {
-    const payload = event.payload as unknown as RoadmapCreatedPayload
-    const terminal = latestTerminalFor(event.createdAt, event.createdAt, terminals)
-    const totalSlots = payload.slots.length
-    const completedSlots = completedSlotCount(events, payload)
-    const percentComplete = totalSlots === 0
-      ? 0
-      : Math.round((completedSlots / totalSlots) * 100)
-
-    let status: RoadmapLifecycleStatus = 'active'
-    if (terminal?.kind === 'RoadmapMarkedComplete') {
-      status = 'completed'
-    } else if (terminal?.kind === 'RoadmapMarkedAbandoned') {
-      status = 'abandoned'
-    } else if (latestRoadmap && event.createdAt !== latestRoadmap.createdAt) {
-      status = 'superseded'
+  const snapshotsByIdentity = new Map<string, RoadmapSnapshot>()
+  for (const event of roadmapEvents) {
+    const identity = roadmapIdentity(event)
+    const existing = snapshotsByIdentity.get(identity)
+    if (existing && eventTime(existing.latestEvent) > eventTime(event)) {
+      continue
     }
 
-    return {
-      roadmapCreatedAt: event.createdAt,
-      eventKind: event.kind as 'RoadmapCreated' | 'RoadmapReplanned',
-      status,
-      payload,
-      title: entryTitle(payload),
-      startDate: payload.startDate,
-      deadline: payload.deadline,
-      weeks: payload.weeks,
-      totalSlots,
-      completedSlots,
-      percentComplete,
-      resolvedAt: terminal?.payload.resolvedAt,
-      reason: terminal?.payload.reason,
-    }
-  }).sort((a, b) =>
-    new Date(b.roadmapCreatedAt).getTime() - new Date(a.roadmapCreatedAt).getTime()
-  )
+    snapshotsByIdentity.set(identity, {
+      roadmapCreatedAt: identity,
+      latestEvent: event,
+      payload: event.payload as unknown as RoadmapPayload,
+    })
+  }
+
+  const snapshots = [...snapshotsByIdentity.values()]
+  const activeIdentity = snapshots
+    .filter((snapshot) => latestTerminalFor(snapshot.roadmapCreatedAt, terminals) === null)
+    .sort((a, b) =>
+      new Date(b.roadmapCreatedAt).getTime() - new Date(a.roadmapCreatedAt).getTime()
+    )[0]?.roadmapCreatedAt ?? null
+
+  const all = snapshots
+    .map((snapshot) => {
+      const payload = snapshot.payload
+      const terminal = latestTerminalFor(snapshot.roadmapCreatedAt, terminals)
+      const totalSlots = payload.slots.length
+      const completedSlots = completedSlotCount(events, payload)
+      const percentComplete = totalSlots === 0
+        ? 0
+        : Math.round((completedSlots / totalSlots) * 100)
+
+      let status: RoadmapLifecycleStatus | null = null
+      if (terminal?.kind === 'RoadmapMarkedComplete') {
+        status = 'completed'
+      } else if (terminal?.kind === 'RoadmapMarkedAbandoned') {
+        status = 'abandoned'
+      } else if (snapshot.roadmapCreatedAt === activeIdentity) {
+        status = 'active'
+      }
+
+      if (status === null) return null
+
+      const entry: RoadmapLifecycleEntry = {
+        roadmapCreatedAt: snapshot.roadmapCreatedAt,
+        eventKind: snapshot.latestEvent.kind as 'RoadmapCreated' | 'RoadmapReplanned',
+        status,
+        payload,
+        title: entryTitle(payload),
+        startDate: payload.startDate,
+        deadline: payload.deadline,
+        weeks: payload.weeks,
+        totalSlots,
+        completedSlots,
+        percentComplete,
+      }
+
+      if (terminal?.payload.resolvedAt !== undefined) {
+        entry.resolvedAt = terminal.payload.resolvedAt
+      }
+      if (terminal?.payload.reason !== undefined) {
+        entry.reason = terminal.payload.reason
+      }
+
+      return entry
+    })
+    .filter((entry): entry is RoadmapLifecycleEntry => entry !== null)
+    .sort((a, b) =>
+      new Date(b.roadmapCreatedAt).getTime() - new Date(a.roadmapCreatedAt).getTime()
+    )
 
   return {
     active: all.filter((entry) => entry.status === 'active'),
     completed: all.filter((entry) => entry.status === 'completed'),
     abandoned: all.filter((entry) => entry.status === 'abandoned'),
-    superseded: all.filter((entry) => entry.status === 'superseded'),
     all,
   }
 }

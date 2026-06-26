@@ -87,6 +87,24 @@ export interface RoadmapMarkedAbandonedPayload {
   reason?: string
 }
 
+export interface RoadmapReplannedPayload extends RoadmapCreatedPayload {
+  // identity of the original RoadmapCreated this revises; collapses to one entry (D-07)
+  roadmapCreatedAt: string
+  // which entry path produced this replan, for analytics/history (optional)
+  option?: 'extend-deadline' | 'increase-hours' | 'trim-scope' | 'edit'
+}
+
+export interface RoadmapEditedPayload {
+  // identity of the roadmap being edited in place (D-07/D-10)
+  roadmapCreatedAt: string
+  weekIndex: number
+  dayOfWeek: DayOfWeek
+  // null materialId means "rest day" / cleared
+  materialId: string | null
+  sessionTitle: string | null
+  plannedMinutes: number
+}
+
 export interface SupabaseClientLike {
   from: (table: string) => {
     insert: (values: Record<string, unknown> | Record<string, unknown>[]) => {

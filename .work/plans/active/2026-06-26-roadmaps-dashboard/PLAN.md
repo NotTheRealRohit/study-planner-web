@@ -325,7 +325,7 @@ flowchart TD
 
 ### Phase 1: Typed replan/edit events + in-place lifecycle identity
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~3 files, ~150 lines
 
@@ -403,7 +403,10 @@ Revert the three files. No data migration (events are append-only; new payload f
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Added typed `RoadmapReplannedPayload` / `RoadmapEditedPayload`, then refactored `deriveRoadmapLifecycle` to collapse replan chains by original `RoadmapCreated.createdAt`.
+- Removed `superseded` from `RoadmapLifecycleStatus` and `RoadmapLifecycleGroups`; no current app code outside the lifecycle module consumed it.
+- Test note: default shell Node `v18.19.0` cannot run the app Vitest suite because jsdom/html-encoding-sniffer loads an ESM dependency through `require()`. Phase 1 verification was rerun successfully with Node `v22.17.1` via `/Users/rsaji/.nvm/versions/node/v22.17.1/bin`.
+- The final Phase 1 code commit SHA is recorded in a follow-up doc state because amending a self-referential SHA changes the commit hash.
 
 ---
 

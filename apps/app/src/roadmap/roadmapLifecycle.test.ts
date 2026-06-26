@@ -102,16 +102,85 @@ describe('roadmapLifecycle', () => {
     })
   })
 
-  it('treats a later replan as superseding the previous active roadmap', () => {
+  it('collapses a replan chain into one active entry', () => {
+    const originalCreatedAt = '2026-06-01T00:00:00.000Z'
     const groups = deriveRoadmapLifecycle([
-      event('RoadmapCreated', roadmapPayload({ purpose: 'Original' }), '2026-06-01T00:00:00.000Z'),
-      event('RoadmapReplanned', roadmapPayload({ purpose: 'Replanned' }), '2026-06-10T00:00:00.000Z'),
+      event('RoadmapCreated', roadmapPayload({ purpose: 'Original' }), originalCreatedAt),
+      event(
+        'RoadmapReplanned',
+        { ...roadmapPayload({ purpose: 'Replanned once' }), roadmapCreatedAt: originalCreatedAt },
+        '2026-06-10T00:00:00.000Z',
+      ),
+      event(
+        'RoadmapReplanned',
+        { ...roadmapPayload({ purpose: 'Replanned latest' }), roadmapCreatedAt: originalCreatedAt },
+        '2026-06-15T00:00:00.000Z',
+      ),
     ])
 
     expect(groups.active).toHaveLength(1)
-    expect(groups.active[0].title).toBe('Replanned')
-    expect(groups.superseded).toHaveLength(1)
-    expect(groups.superseded[0].title).toBe('Original')
+    expect(groups.active[0].roadmapCreatedAt).toBe(originalCreatedAt)
+    expect(groups.active[0].title).toBe('Replanned latest')
+    expect(groups.active[0].payload.purpose).toBe('Replanned latest')
+    expect(groups.all).toHaveLength(1)
+  })
+
+  it('marks a collapsed replan chain completed by the original identity', () => {
+    const originalCreatedAt = '2026-06-01T00:00:00.000Z'
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload({ purpose: 'Original' }), originalCreatedAt),
+      event(
+        'RoadmapReplanned',
+        { ...roadmapPayload({ purpose: 'Replanned latest' }), roadmapCreatedAt: originalCreatedAt },
+        '2026-06-15T00:00:00.000Z',
+      ),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: originalCreatedAt,
+          resolvedAt: '2026-06-20T00:00:00.000Z',
+        },
+        '2026-06-20T00:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.active).toHaveLength(0)
+    expect(groups.completed).toHaveLength(1)
+    expect(groups.completed[0]).toMatchObject({
+      roadmapCreatedAt: originalCreatedAt,
+      status: 'completed',
+      title: 'Replanned latest',
+      resolvedAt: '2026-06-20T00:00:00.000Z',
+    })
+  })
+
+  it('keeps two distinct original roadmaps with the older completed', () => {
+    const firstCreatedAt = '2026-06-01T00:00:00.000Z'
+    const secondCreatedAt = '2026-07-01T00:00:00.000Z'
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', roadmapPayload({ purpose: 'First' }), firstCreatedAt),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: firstCreatedAt,
+          resolvedAt: '2026-06-20T00:00:00.000Z',
+        },
+        '2026-06-20T00:00:00.000Z',
+      ),
+      event(
+        'RoadmapCreated',
+        roadmapPayload({
+          purpose: 'Second',
+          startDate: '2026-07-01',
+          deadline: '2026-08-01',
+        }),
+        secondCreatedAt,
+      ),
+    ])
+
+    expect(groups.active.map((entry) => entry.roadmapCreatedAt)).toEqual([secondCreatedAt])
+    expect(groups.completed.map((entry) => entry.roadmapCreatedAt)).toEqual([firstCreatedAt])
+    expect(groups.all.map((entry) => entry.status)).not.toContain('superseded')
   })
 
   it('groups multiple historical roadmaps and computes slot completion percent', () => {
