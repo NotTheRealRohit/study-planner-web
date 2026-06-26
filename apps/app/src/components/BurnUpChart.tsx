@@ -105,7 +105,6 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
         ],
         range: [0, xMax],
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [xMax, planned, gpCurve],
   );
 
@@ -116,7 +115,6 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
         range: [yMax, 0],
         nice: true,
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [yMax, planned, gpCurve],
   );
 

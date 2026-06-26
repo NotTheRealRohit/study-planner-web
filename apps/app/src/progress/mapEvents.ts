@@ -16,6 +16,7 @@ export function mapSessions(events: Event[]): SessionEvent[] {
       plannedMinutes: e.payload.plannedMinutes as number | undefined,
       activeMinutes: e.payload.activeMinutes as number | undefined,
       duration: (e.payload.duration as number) ?? 0,
+      materialId: e.payload.materialId as string | undefined,
       materialRole: e.payload.role as SessionEvent['materialRole'],
       startedAt: e.payload.startedAt as string | undefined,
       sessionId: e.payload.sessionId as string | undefined,

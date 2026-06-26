@@ -369,7 +369,7 @@ Delete the new file + test, revert the `index.ts` export line. No data or schema
 
 ### Phase 2: Read-only month calendar on `/roadmap` (current month, desktop)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 1
 **Estimated scope:** ~5 files, ~400 lines
 
@@ -418,6 +418,10 @@ pnpm lint                         # clean
 Restore `Roadmap.tsx` stub; delete `apps/app/src/roadmap/*` and the new tests. No schema impact.
 
 #### Notes (filled in during implementation)
+
+- Added `apps/app/src/roadmap/roadmap.css` for the grid, status chips, hover expansion, current-week band, and responsive sizing; keeping the media-query styles out of inline React made the D-14 visual contract easier to audit.
+- Forwarded `materialId` through `apps/app/src/progress/mapEvents.ts` so Phase 1's date+material status derivation works with real `SessionLogged` events.
+- `pnpm lint` had pre-existing gate failures (`packages/progress` missing an ESLint config, stale `react-hooks/exhaustive-deps` disable comments without the plugin installed, and one unused Deno-test type import). Fixed those narrowly so the required Phase 2 lint gate can pass.
 
 ### Phase 3: Month navigation (prev/next/today, clamp, slide)
 

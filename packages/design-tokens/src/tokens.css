@@ -36,6 +36,8 @@
   --surface-recessed:    var(--paper-deep);
   --surface-card:        var(--card);
   --surface-inverted:    var(--ink);
+  --cal-today-fill:      color-mix(in srgb, var(--terracotta) 12%, var(--surface-card));
+  --cal-week-band:       var(--surface-recessed);
 
   --text-primary:        var(--ink);
   --text-secondary:      var(--ink-soft);

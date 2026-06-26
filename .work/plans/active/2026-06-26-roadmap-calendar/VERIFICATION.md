@@ -72,6 +72,48 @@ _(implementer fills on redo — loop until ✅ Verified)_
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: pending.
+
+Files changed:
+- `apps/app/src/roadmap/calendarModel.ts`
+- `apps/app/src/roadmap/calendarModel.test.ts`
+- `apps/app/src/roadmap/statusStyles.ts`
+- `apps/app/src/roadmap/CalendarCell.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/roadmap.css`
+- `apps/app/src/pages/Roadmap.tsx`
+- `apps/app/src/progress/mapEvents.ts`
+- `packages/design-tokens/src/tokens.css`
+- `e2e/roadmap.spec.ts`
+- `packages/progress/eslint.config.js`
+- `apps/app/src/components/BurnUpChart.tsx`
+- `apps/app/supabase/functions/materials-metadata/handler.test.ts`
+
+What was done:
+- Replaced `/roadmap` stub with a read-only current-month calendar fed by the event log.
+- Added pure `calendarModel` helpers for Monday-start month grids and binding derived slots/unplanned sessions to day cells.
+- Added D-14 calendar tokens `--cal-today-fill` and `--cal-week-band`.
+- Added status style mapping and icon-paired chips for done/planned/skipped/unplanned; rust is only used by skipped chips in the new roadmap UI.
+- Added current-week band, filled today cell + Today pill, dimmed out-of-month cells, per-cell cap of 3 bubbles, `+N more`, legend, progress card, empty state, and disabled footer placeholders for Mark complete / Abandon / Edit / Replan.
+- Added the Phase 2 Playwright visual walkthrough steps `01-grid`, `02-status-colors`, and `03-empty`; authored only, not executed.
+
+Deviations:
+- Added `apps/app/src/roadmap/roadmap.css` even though the file index did not list a CSS file; this keeps hover/media-query styling auditable and avoids inline CSS bloat.
+- Updated `mapSessions` to include `materialId`; without this, real app sessions could not satisfy Phase 1's match rule.
+- Fixed narrow pre-existing lint-gate blockers so `pnpm lint` can pass: added `packages/progress/eslint.config.js`, removed two stale disables for an uninstalled React-hooks rule, and removed one unused Deno-test type import.
+
+Self-check vs criteria:
+- `/study/roadmap` renders a month calendar instead of the stub.
+- D-14 tokens and status chip classes are in place; source audit found no raw color literals in new roadmap UI files.
+- Current-week, today, and out-of-month states are styled through tokens/classes.
+- Status chips and legend pair color with `ti-*` icon metadata and inline SVG icons.
+- Bubbles cap at 3 per cell with `+N more`.
+- Progress card calls `useProgressSnapshot`; it falls back to event-derived totals while calibration is unavailable.
+- Empty state renders for post-onboarding/no-roadmap state with an onboarding CTA.
+- Footer placeholders render disabled.
+- `calendarModel.ts` is pure and unit-tested.
+- `e2e/roadmap.spec.ts` contains the required write-only walkthrough screenshots.
+- Verification passed under Node `v22.17.1`: `pnpm --filter app test`, `pnpm --filter app typecheck`, `pnpm --filter progress test`, `pnpm --filter progress typecheck`, and `pnpm lint`. Running the app tests under the default Node `v18.19.0` failed before tests due jsdom/html-encoding-sniffer ESM compatibility, matching the repo's `node >=20` engine requirement.
 
 ### Reviewer findings
 

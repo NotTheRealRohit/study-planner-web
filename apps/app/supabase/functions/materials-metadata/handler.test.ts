@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts'
-import { handleMetadataRequest, type HandlerDeps } from './handler.ts'
+import { handleMetadataRequest } from './handler.ts'
 import type { YouTubeClient, VideoDetails, PlaylistItem } from './youtube-client.ts'
 import type { ArticleExtractor, ArticleData } from './article-extractor.ts'
 
