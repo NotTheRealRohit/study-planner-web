@@ -224,7 +224,7 @@ export function Week() {
 
           {!isPastWeek && verdict === 'slipping' && (
             <div style={{ display: 'flex', gap: 8, marginBottom: '1rem' }}>
-              <Link to="/roadmap" className="btn btn-accent" style={{ flex: 1 }}>
+              <Link to="/replan" className="btn btn-accent" style={{ flex: 1 }}>
                 Replan the rest
               </Link>
               <button className="btn btn-ghost" style={{ flex: 1 }}>

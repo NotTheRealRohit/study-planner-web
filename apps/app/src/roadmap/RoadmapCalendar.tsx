@@ -382,9 +382,15 @@ export function RoadmapCalendar({
         <button className="btn btn-ghost" type="button" disabled>
           Edit roadmap
         </button>
-        <button className="btn btn-ghost" type="button" disabled>
-          Replan
-        </button>
+        {readOnly ? (
+          <button className="btn btn-ghost" type="button" disabled>
+            Replan
+          </button>
+        ) : (
+          <Link className="btn btn-ghost" to="/replan">
+            Replan
+          </Link>
+        )}
       </footer>
 
       <DayDetailModal

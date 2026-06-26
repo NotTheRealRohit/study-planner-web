@@ -418,4 +418,28 @@ test.describe('Roadmap calendar visual walkthrough', () => {
       await screenshot(page, '19-history-readonly');
     });
   });
+
+  test('Phase 7: replan route stub', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'app-mobile', 'Replan route walkthrough runs in the app project.');
+
+    const email = generateTestEmail('roadmap-calendar-replan');
+    const password = 'TestPassword123!';
+
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await waitForDevSeeder(page);
+
+    await test.step('20-replan-stub', async () => {
+      await page.evaluate(async () => {
+        await window.__wipe?.();
+        await window.__seed?.();
+      });
+      await page.goto(`${APP_URL}/study/roadmap`);
+      await page.getByRole('link', { name: 'Replan' }).click();
+      await page.waitForURL(/\/study\/replan$/);
+      await expect(page.getByRole('heading', { name: 'Replan' })).toBeVisible();
+      expect(page.url()).not.toContain('/study/study/');
+      await screenshot(page, '20-replan-stub');
+    });
+  });
 });

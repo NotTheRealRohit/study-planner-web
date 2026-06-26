@@ -613,7 +613,7 @@ Revert `Roadmaps.tsx` stub; remove `roadmapLifecycle.ts`; revert the two type ad
 
 ### Phase 7: Replan interface seam routed to the Python backend (stubbed UI)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — pending
 **Depends on:** Phase 2
 **Estimated scope:** ~4 files, ~250 lines
 
@@ -664,6 +664,12 @@ grep -n '"/replan"' apps/app/src/App.tsx                                  # rout
 Remove the three new replan files and the `intelligenceClient` addition; remove the `/replan` route. No schema impact; the Python endpoint is unchanged.
 
 #### Notes (filled in during implementation)
+
+- Added `postRoadmapRegenerate` to `intelligenceClient.ts`, targeting `POST /v1/roadmap/regenerate` with the same auth headers, timeout, retry/backoff, and typed-error normalization contract as calibration.
+- Added the pure `mapToRegenerateRequest(events, today)` bridge from app events to the Python request shape, including material `additionOrder`, capacity fields from the latest active roadmap payload, completed/today pins, and a reserved `RoadmapEdited` user-edited pin path.
+- Added `replanRoadmap(events, opts)` as the interface boundary. Its default transport calls the Python endpoint; the TS `regenerateRoadmap` fallback stays behind the same signature and is opt-in via `offlineFallback`.
+- Reserved `/replan` under the protected/onboarded app shell and pointed the Roadmap footer and Week "Replan the rest" affordance at it without adding `/study`.
+- Extended the write-only Playwright walkthrough with `20-replan-stub`.
 
 ## Open questions
 

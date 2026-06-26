@@ -328,6 +328,37 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: `pending`.
+
+Files changed:
+- `apps/app/src/lib/intelligenceClient.ts`
+- `apps/app/src/lib/intelligenceClient.test.ts`
+- `apps/app/src/roadmap/replan/mapToRegenerateRequest.ts`
+- `apps/app/src/roadmap/replan/mapToRegenerateRequest.test.ts`
+- `apps/app/src/roadmap/replan/replanRoadmap.ts`
+- `apps/app/src/App.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/pages/Week.tsx`
+- `e2e/roadmap.spec.ts`
+
+What was done:
+- Added `postRoadmapRegenerate(body)` to the intelligence client, posting to `/v1/roadmap/regenerate` with the same auth header, timeout, retry/backoff, and typed-error normalization behavior as `postCalibration`.
+- Added `RoadmapServiceError` and unit coverage for auth failures, transient 5xx retry, real `Error`-subclass `AbortError` timeout normalization, and exhausted network `TypeError` normalization.
+- Added pure `mapToRegenerateRequest(events, today)` to map app event state to the Python regenerate request shape: materials, capacity fields, completed pins, today pins, and reserved `RoadmapEdited` user-edited pins.
+- Added `replanRoadmap(events, opts)` as the typed boundary; it defaults to the Python transport and keeps TS `regenerateRoadmap` as an opt-in fallback behind the same signature.
+- Reserved `/replan` under the protected/onboarded app shell, linked Roadmap and Week replan affordances to it, and added walkthrough screenshot `20-replan-stub`.
+
+Deviations:
+- `mapToRegenerateRequest` takes `today` as an explicit argument to keep the mapper pure and deterministic. `replanRoadmap` supplies the current ISO date by default at the boundary.
+- The offline TS fallback is opt-in through `offlineFallback`; it is intentionally not wired to UI in this round.
+
+Self-check vs criteria:
+- `postRoadmapRegenerate` exists and mirrors calibration auth/timeout/retry/typed-error behavior.
+- Mapper tests cover material ordering, capacity fields, completed/today pins, absence of user-edited pins when no `RoadmapEdited` events exist, and exact Python material field names.
+- `/replan` route is reserved without a `/study` path literal.
+- Roadmap and Week Replan affordances route to `/replan`.
+- Walkthrough step `20-replan-stub` is authored only; E2E was not run per plan constraint.
+- Verification passed: `pnpm --filter app test`, `pnpm --filter app typecheck`, `pnpm lint`, `grep -n "postRoadmapRegenerate" apps/app/src/lib/intelligenceClient.ts`, and `grep -n "/replan" apps/app/src/App.tsx`.
 
 ### Reviewer findings
 
