@@ -583,7 +583,7 @@ Revert the five files. Onboarding returns to one-shot; nav points at `/roadmap` 
 
 ### Phase 4: Roadmaps dashboard (active hero + draft + history + close/start)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1, Phase 3 (`✅ Complete`)
 **Estimated scope:** ~3 files, ~260 lines
 
