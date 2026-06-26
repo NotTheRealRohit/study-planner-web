@@ -324,7 +324,7 @@ Replan seam (deferred build):  /replan UI → replanRoadmap(input, pins)
 
 ### Phase 1: Pure per-slot status derivation in `packages/progress`
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files + 1 test, ~150 lines
 
