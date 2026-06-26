@@ -563,7 +563,7 @@ Remove `DaySheet.tsx`; revert `CalendarCell` to bubbles-only.
 
 ### Phase 6: Mark complete / abandon events + `/roadmaps` history page
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 192cbef
 **Depends on:** Phase 2
 **Estimated scope:** ~4 files, ~300 lines
 

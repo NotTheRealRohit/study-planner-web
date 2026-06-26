@@ -277,7 +277,7 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
-Status: ✅ Implemented, awaiting review. Commit: `pending`.
+Status: ✅ Implemented, awaiting review. Commit: `192cbef`.
 
 Files changed:
 - `apps/app/src/sync/types.ts`
