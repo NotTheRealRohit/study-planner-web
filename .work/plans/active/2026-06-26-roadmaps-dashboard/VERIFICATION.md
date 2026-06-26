@@ -79,11 +79,33 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/roadmap/roadmapLifecycle.ts`
+- `apps/app/src/roadmap/roadmapLifecycle.test.ts`
+- `apps/app/src/progress/mapEvents.ts`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `37a0361`
+
+What was done:
+- Added inclusive `[startDate, deadline]` filtering inside `completedSlotCount` before sessions can match roadmap slots.
+- Added a D-06 comment in `mapEvents.ts` documenting that gap sessions remain available to global stats while roadmap progress scopes by date window.
+- Added tests proving an out-of-window matching slot/session pair does not count and separate roadmap windows each count their own sessions.
+
+Deviations + why:
+- The out-of-window exclusion test uses a deliberately inconsistent roadmap slot date to make the window filter observable; normal generated slots should already live inside their roadmap window, but the contract is about session attribution and the filter should be explicit.
+- `findRoadmap` behavior was left unchanged per plan. No behavior change was needed outside `completedSlotCount`.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest suite.
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ `completedSlotCount` filters sessions to the roadmap's inclusive date window before matching slots.
+- ✅ A session outside the roadmap window does not count toward `completedSlots` or `percentComplete`.
+- ✅ Two roadmap windows each count their own dated sessions.
+- ✅ Active roadmap progress still updates from live sessions; `findRoadmap` semantics were not changed.
+- ✅ Gap-session/global-stats-only behavior is documented in `mapEvents.ts`.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- roadmapLifecycle` passed: 39 test files, 413 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
 
 ### Reviewer findings (Cowork fills)
 
