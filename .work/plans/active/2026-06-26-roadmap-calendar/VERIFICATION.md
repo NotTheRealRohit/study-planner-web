@@ -20,7 +20,31 @@ Per phase: implementer fills **Implementer report**; reviewer fills **Reviewer f
 - [ ] `pnpm --filter progress test` and typecheck pass.
 
 ### Implementer report
-_(files changed · commit SHA · what was done · deviations + why · self-check vs criteria)_
+Status: ✅ Implemented, awaiting review. Commit: `ed546a7`.
+
+Files changed:
+- `packages/progress/src/deriveSlotStatuses.ts`
+- `packages/progress/src/index.ts`
+- `packages/progress/src/types.ts`
+- `packages/progress/test/deriveSlotStatuses.test.ts`
+
+What was done:
+- Added pure `deriveSlotStatuses(roadmap, sessions, today)` with `done` / `pending` / `skipped` slot derivation and `unplanned` return for unattributed sessions.
+- Implemented the date + material match rule, first available matching slot attribution, and one-time accounting for every session.
+- Exported the helper and public types from `@study-tracker/progress`.
+- Added unit coverage for single match, duplicate overflow to unplanned, skipped, pending, off-plan material, empty roadmap, all-done week, and a fast-check accounting property.
+
+Deviation:
+- Added `materialId?: string` to `SessionEvent`; existing app `SessionLogged` payloads already include `materialId`, but the progress package type did not expose it. The Phase 1 match rule requires this field.
+
+Self-check vs criteria:
+- `deriveSlotStatuses` exists and is exported.
+- Match rule is date + candidate material id; sessions are assigned to at most one slot.
+- Done / pending / skipped are derived from attribution and caller-provided ISO `today`.
+- Unattributed sessions return as `unplanned`.
+- No `new Date()` usage in the helper.
+- Required examples and fast-check property are covered.
+- `pnpm --filter progress test` and `pnpm --filter progress typecheck` pass. Both emitted the existing Node engine warning (`wanted >=20`, current `v18.19.0`) but completed successfully.
 
 ### Reviewer findings
 _(per-criterion verdict · issues · required changes · status: ✅ Verified / 🔁 Changes requested)_

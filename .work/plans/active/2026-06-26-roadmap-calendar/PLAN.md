@@ -324,7 +324,7 @@ Replan seam (deferred build):  /replan UI → replanRoadmap(input, pins)
 
 ### Phase 1: Pure per-slot status derivation in `packages/progress`
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — ed546a7
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files + 1 test, ~150 lines
 
@@ -363,6 +363,8 @@ pnpm --filter progress typecheck  # or: pnpm typecheck
 Delete the new file + test, revert the `index.ts` export line. No data or schema impact (pure addition).
 
 #### Notes (filled in during implementation)
+
+- Added `materialId?: string` to `SessionEvent`; app-level `SessionLogged` payloads already carry it, and D-02's date+material matching cannot be typed without it. `deriveSlotStatuses` stays pure: no clock reads, no `Date` construction, and all status decisions use the caller-provided ISO `today`.
 
 ### Phase 2: Read-only month calendar on `/roadmap` (current month, desktop)
 

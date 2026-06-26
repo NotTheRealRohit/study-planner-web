@@ -10,6 +10,7 @@ export interface SessionEvent {
   plannedMinutes?: number
   activeMinutes?: number
   duration: number
+  materialId?: string
   materialRole?: MaterialRole
   startedAt?: string
   sessionId?: string

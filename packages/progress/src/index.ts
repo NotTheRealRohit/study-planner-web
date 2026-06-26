@@ -40,3 +40,10 @@ export {
 
 export { computeCalibration, getPromptDetail } from './calibration'
 export { computeProgress } from './progress'
+export {
+  deriveSlotStatuses,
+  type DerivedSlot,
+  type SlotStatus,
+  type SlotStatusDerivation,
+  type UnplannedSession,
+} from './deriveSlotStatuses'
