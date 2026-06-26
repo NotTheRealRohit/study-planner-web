@@ -369,7 +369,7 @@ Delete the new file + test, revert the `index.ts` export line. No data or schema
 
 ### Phase 2: Read-only month calendar on `/roadmap` (current month, desktop)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1
 **Estimated scope:** ~5 files, ~400 lines
 
