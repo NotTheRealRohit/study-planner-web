@@ -47,6 +47,7 @@ update_protocol: >
 
 ## Done
 
+- **[INFRA] Agent rules/skills refresh** — added project-local `work-journal` skill mirrors, fetch typed-error normalization rule mirrors, and architecture PNG artifact (`944ce56`). → [`../.agents/skills/work-journal/SKILL.md`](../.agents/skills/work-journal/SKILL.md) · [`../.agents/rules/fetch-typed-error-normalization.agents.md`](../.agents/rules/fetch-typed-error-normalization.agents.md)
 - **[APP] Dev production-readiness** ✅ — auth (Supabase JWT, HS256 + ES256/JWKS) on all `/v1`, resilient calibration client (timeout/retry/typed errors), Dexie-persisted stale cache + ErrorBoundary, service hardening (request-id, logging, bounds, `/readiness`, rate-limit stub, healthcheck), one-command `pnpm dev:full`. All 5 phases Cowork-verified 2026-06-25 (Phase 2 fixed in `abbac65`). → [`plans/archive/2026-06-20-dev-production-readiness/`](plans/archive/2026-06-20-dev-production-readiness/PLAN.md)
 - **[APP] Web app v1 core** — slices 1a–12, 14–16 shipped (auth, session log + per-user isolation, cloud sync/restore, 4-step onboarding, active sessions, URL/YouTube materials, ProgressEngine + pace calibration, replan flow, Google OAuth, marketing site, settings, password reset). → [`specs/issues/`](specs/issues/README.md)
 - **[PILLAR-A] A-series rigour A0–A5** ✅ verified (`e1c6455`…`68f4a12`). Pace calibration was an honest null under rigour. → [`plans/active/2026-06-14-pillar-a-rigour.md`](plans/active/2026-06-14-pillar-a-rigour.md)
