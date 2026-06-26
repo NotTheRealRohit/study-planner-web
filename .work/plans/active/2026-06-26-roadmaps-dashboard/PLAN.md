@@ -484,7 +484,7 @@ Revert `completedSlotCount` to the unscoped match. No data effects.
 
 ### Phase 3: Re-entrant onboarding + nav/routing reshape
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1 (`✅ Complete`)
 **Estimated scope:** ~5 files, ~140 lines
 
