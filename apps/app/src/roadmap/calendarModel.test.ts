@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import type { DerivedSlot, RoadmapSlot, UnplannedSession } from '@study-tracker/progress'
-import { bindCells, buildMonthGrid } from './calendarModel'
+import {
+  bindCells,
+  buildMonthGrid,
+  calendarMonthBounds,
+  clampMonth,
+  shiftMonth,
+} from './calendarModel'
 
 function makeSlot(overrides: Partial<RoadmapSlot> = {}): RoadmapSlot {
   return {
@@ -132,5 +138,28 @@ describe('calendarModel', () => {
       minutes: 35,
       sessionId: 'session-unplanned',
     })
+  })
+
+  it('derives inclusive roadmap month bounds from start and deadline dates', () => {
+    expect(calendarMonthBounds('2026-03-10', '2026-05-02')).toEqual({
+      startMonth: '2026-03',
+      endMonth: '2026-05',
+    })
+  })
+
+  it('clamps view months before start and after deadline', () => {
+    const bounds = calendarMonthBounds('2026-03-10', '2026-05-02')
+
+    expect(clampMonth('2026-02-01', bounds)).toBe('2026-03')
+    expect(clampMonth('2026-04-15', bounds)).toBe('2026-04')
+    expect(clampMonth('2026-06-01', bounds)).toBe('2026-05')
+  })
+
+  it('shifts month navigation without paging past roadmap bounds', () => {
+    const bounds = calendarMonthBounds('2026-03-10', '2026-05-02')
+
+    expect(shiftMonth('2026-03', -1, bounds)).toBe('2026-03')
+    expect(shiftMonth('2026-03', 1, bounds)).toBe('2026-04')
+    expect(shiftMonth('2026-05', 1, bounds)).toBe('2026-05')
   })
 })

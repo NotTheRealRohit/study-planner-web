@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
@@ -9,8 +9,20 @@ import { useCalibrationState, useProgressSnapshot } from '../progress'
 import { findRoadmap, mapSessions } from '../progress/mapEvents'
 import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../sync/types'
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner'
-import { bindCells, buildMonthGrid } from './calendarModel'
+import {
+  bindCells,
+  buildMonthGrid,
+  calendarMonthBounds,
+  clampMonth,
+  monthKeyForDate,
+  monthKeyToDate,
+  type BoundCalendarDay,
+  type CalendarBubble,
+  type CalendarMaterial,
+} from './calendarModel'
 import { CalendarCell } from './CalendarCell'
+import { MonthNav } from './MonthNav'
+import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { LEGEND_ITEMS } from './statusStyles'
 import './roadmap.css'
 
@@ -41,12 +53,15 @@ function latestRoadmapPayload(events: Event[]): RoadmapCreatedPayload | null {
   return latest ? latest.payload as unknown as RoadmapCreatedPayload : null
 }
 
-function materialTitlesById(events: Event[]): Map<string, string> {
-  const materials = new Map<string, string>()
+function collectMaterialsById(events: Event[]): Map<string, CalendarMaterial> {
+  const materials = new Map<string, CalendarMaterial>()
   for (const event of events) {
     if (event.kind !== 'MaterialAdded') continue
     const payload = event.payload as unknown as MaterialAddedPayload
-    materials.set(payload.materialId, payload.title)
+    materials.set(payload.materialId, {
+      title: payload.title,
+      url: payload.url,
+    })
   }
   return materials
 }
@@ -65,6 +80,10 @@ function fallbackProgress(
 export function RoadmapCalendar() {
   const eventStore = useEventStore()
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore])
+  const [viewMonth, setViewMonth] = useState<string | null>(null)
+  const [slideDirection, setSlideDirection] = useState<'prev' | 'next' | 'today'>('today')
+  const [selectedBubble, setSelectedBubble] = useState<CalendarBubble | null>(null)
+  const [selectedDay, setSelectedDay] = useState<BoundCalendarDay | null>(null)
   const { calibration, status } = useCalibrationState()
   const progress = useProgressSnapshot(calibration)
   const today = todayISO()
@@ -76,17 +95,25 @@ export function RoadmapCalendar() {
     [loadedEvents],
   )
   const materialsById = useMemo(
-    () => materialTitlesById(loadedEvents),
+    () => collectMaterialsById(loadedEvents),
     [loadedEvents],
   )
+  const monthBounds = useMemo(
+    () => roadmap ? calendarMonthBounds(roadmap.startDate, roadmap.deadline) : null,
+    [roadmap],
+  )
+  const activeViewMonth = useMemo(() => {
+    if (!monthBounds) return monthKeyForDate(today)
+    return clampMonth(monthKeyToDate(viewMonth ?? monthKeyForDate(today)), monthBounds)
+  }, [monthBounds, today, viewMonth])
 
   const calendar = useMemo(() => {
     if (!roadmap) return null
     const sessions = mapSessions(loadedEvents)
     const derived = deriveSlotStatuses(roadmap, sessions, today)
-    const grid = buildMonthGrid(today)
+    const grid = buildMonthGrid(monthKeyToDate(activeViewMonth))
     return bindCells(grid, derived.slots, derived.unplanned, materialsById)
-  }, [loadedEvents, materialsById, roadmap, today])
+  }, [activeViewMonth, loadedEvents, materialsById, roadmap, today])
 
   const localLoggedMinutes = useMemo(
     () => mapSessions(loadedEvents).reduce((total, session) => total + session.duration, 0),
@@ -113,7 +140,7 @@ export function RoadmapCalendar() {
     )
   }
 
-  if (!roadmap || !calendar) {
+  if (!roadmap || !calendar || !monthBounds) {
     return (
       <div className="roadmap-page roadmap-empty" data-testid="roadmap-empty">
         <div className="roadmap-empty-inner">
@@ -133,6 +160,17 @@ export function RoadmapCalendar() {
   const purpose = roadmapPayload?.purpose
   const title = purpose ? purpose : 'Active roadmap'
   const dateRange = formatDateRange(roadmap.startDate, roadmap.deadline)
+  const handleMonthChange = (
+    nextMonth: string,
+    direction: 'prev' | 'next' | 'today',
+  ) => {
+    setSlideDirection(direction)
+    setViewMonth(nextMonth)
+  }
+  const handleDayBubbleSelect = (bubble: CalendarBubble) => {
+    setSelectedDay(null)
+    setSelectedBubble(bubble)
+  }
 
   return (
     <div className="roadmap-page">
@@ -163,9 +201,12 @@ export function RoadmapCalendar() {
       </header>
 
       <div className="roadmap-toolbar">
-        <div>
-          <div className="mono-caps">{calendar.monthLabel}</div>
-        </div>
+        <MonthNav
+          viewMonth={activeViewMonth}
+          bounds={monthBounds}
+          todayMonth={monthKeyForDate(today)}
+          onChange={handleMonthChange}
+        />
         <div className="roadmap-legend" aria-label="Roadmap status legend">
           {LEGEND_ITEMS.map((item) => (
             <span key={item.status} className="roadmap-legend-item">
@@ -194,7 +235,12 @@ export function RoadmapCalendar() {
           ))}
         </div>
 
-        <div role="grid">
+        <div
+          key={calendar.monthKey}
+          className="roadmap-calendar-slide"
+          data-direction={slideDirection}
+          role="grid"
+        >
           {calendar.weeks.map((week) => {
             const isCurrentWeek = week.some((day) => day.date === today)
             return (
@@ -204,7 +250,10 @@ export function RoadmapCalendar() {
                     key={day.date}
                     day={day}
                     isToday={day.date === today}
+                    isDeadline={day.date === roadmap.deadline && day.isInMonth}
                     isCurrentWeek={isCurrentWeek}
+                    onBubbleClick={setSelectedBubble}
+                    onOverflowClick={setSelectedDay}
                   />
                 ))}
               </div>
@@ -227,6 +276,16 @@ export function RoadmapCalendar() {
           Replan
         </button>
       </footer>
+
+      <DayDetailModal
+        day={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        onSelectBubble={handleDayBubbleSelect}
+      />
+      <SessionDetailModal
+        bubble={selectedBubble}
+        onClose={() => setSelectedBubble(null)}
+      />
     </div>
   )
 }

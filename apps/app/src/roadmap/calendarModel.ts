@@ -1,5 +1,6 @@
 import {
   addDays,
+  addMonths,
   endOfMonth,
   endOfISOWeek,
   format,
@@ -27,7 +28,17 @@ export interface MonthGrid {
   weeks: CalendarDay[][]
 }
 
+export interface MonthBounds {
+  startMonth: string
+  endMonth: string
+}
+
 export type CalendarBubbleStatus = SlotStatus | 'unplanned'
+
+export interface CalendarMaterial {
+  title: string
+  url?: string
+}
 
 export interface CalendarBubble {
   id: string
@@ -35,6 +46,7 @@ export interface CalendarBubble {
   status: CalendarBubbleStatus
   label: string
   materialTitle?: string
+  materialUrl?: string
   materialId?: string
   sessionTitle?: string | null
   minutes: number
@@ -61,6 +73,36 @@ function toDate(monthDate: string | Date): Date {
 
 function toISODate(date: Date): string {
   return format(date, 'yyyy-MM-dd')
+}
+
+export function monthKeyForDate(monthDate: string | Date): string {
+  return format(startOfMonth(toDate(monthDate)), 'yyyy-MM')
+}
+
+export function monthKeyToDate(monthKey: string): Date {
+  return parseISO(`${monthKey}-01`)
+}
+
+export function calendarMonthBounds(startDate: string, deadline: string): MonthBounds {
+  const startMonth = monthKeyForDate(startDate)
+  const endMonth = monthKeyForDate(deadline)
+
+  if (startMonth > endMonth) {
+    return { startMonth: endMonth, endMonth: startMonth }
+  }
+
+  return { startMonth, endMonth }
+}
+
+export function clampMonth(monthDate: string | Date, bounds: MonthBounds): string {
+  const monthKey = monthKeyForDate(monthDate)
+  if (monthKey < bounds.startMonth) return bounds.startMonth
+  if (monthKey > bounds.endMonth) return bounds.endMonth
+  return monthKey
+}
+
+export function shiftMonth(monthKey: string, offset: number, bounds: MonthBounds): string {
+  return clampMonth(addMonths(monthKeyToDate(monthKey), offset), bounds)
 }
 
 export function buildMonthGrid(monthDate: string | Date): MonthGrid {
@@ -92,20 +134,31 @@ export function buildMonthGrid(monthDate: string | Date): MonthGrid {
   }
 }
 
+function materialInfoById(
+  materialId: string | undefined,
+  materialsById: Map<string, string | CalendarMaterial>,
+): CalendarMaterial | undefined {
+  if (!materialId) return undefined
+  const material = materialsById.get(materialId)
+  if (!material) return undefined
+  if (typeof material === 'string') return { title: material }
+  return material
+}
+
 function firstMaterialTitle(
   slot: RoadmapSlot,
-  materialsById: Map<string, string>,
+  materialsById: Map<string, string | CalendarMaterial>,
 ): string | undefined {
   const materialId = slot.candidateMaterialIds[0]
-  if (!materialId) return undefined
-  return materialsById.get(materialId)
+  return materialInfoById(materialId, materialsById)?.title
 }
 
 function bubbleForSlot(
   derived: DerivedSlot,
-  materialsById: Map<string, string>,
+  materialsById: Map<string, string | CalendarMaterial>,
 ): CalendarBubble {
   const materialId = derived.slot.candidateMaterialIds[0]
+  const materialInfo = materialInfoById(materialId, materialsById)
   const materialTitle = firstMaterialTitle(derived.slot, materialsById)
   const label =
     derived.slot.sessionTitle?.trim() ||
@@ -118,6 +171,7 @@ function bubbleForSlot(
     status: derived.status,
     label,
     materialTitle,
+    materialUrl: materialInfo?.url,
     materialId,
     sessionTitle: derived.slot.sessionTitle ?? null,
     minutes: derived.loggedMinutes > 0 ? derived.loggedMinutes : derived.slot.plannedMinutes,
@@ -130,12 +184,11 @@ function bubbleForSlot(
 
 function bubbleForUnplanned(
   session: UnplannedSession,
-  materialsById: Map<string, string>,
+  materialsById: Map<string, string | CalendarMaterial>,
   index: number,
 ): CalendarBubble {
-  const materialTitle = session.materialId
-    ? materialsById.get(session.materialId)
-    : undefined
+  const materialInfo = materialInfoById(session.materialId, materialsById)
+  const materialTitle = materialInfo?.title
 
   return {
     id: `unplanned:${session.sessionId ?? index}:${session.date}`,
@@ -143,6 +196,7 @@ function bubbleForUnplanned(
     status: 'unplanned',
     label: materialTitle ?? 'Unplanned session',
     materialTitle,
+    materialUrl: materialInfo?.url,
     materialId: session.materialId,
     minutes: session.minutes,
     sessionIds: session.sessionId ? [session.sessionId] : [],
@@ -154,7 +208,7 @@ export function bindCells(
   grid: MonthGrid,
   derivedSlots: DerivedSlot[],
   unplanned: UnplannedSession[],
-  materialsById: Map<string, string>,
+  materialsById: Map<string, string | CalendarMaterial>,
 ): BoundMonthGrid {
   const bubblesByDate = new Map<string, CalendarBubble[]>()
 

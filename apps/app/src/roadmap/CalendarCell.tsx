@@ -4,6 +4,7 @@ import { statusStyleFor, type StatusIconName } from './statusStyles'
 interface CalendarCellProps {
   day: BoundCalendarDay
   isToday: boolean
+  isDeadline: boolean
   isCurrentWeek: boolean
   onBubbleClick?: (bubble: CalendarBubble) => void
   onOverflowClick?: (day: BoundCalendarDay) => void
@@ -54,6 +55,7 @@ function formatMinutes(minutes: number): string {
 export function CalendarCell({
   day,
   isToday,
+  isDeadline,
   isCurrentWeek,
   onBubbleClick = () => undefined,
   onOverflowClick = () => undefined,
@@ -65,6 +67,7 @@ export function CalendarCell({
     day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
     isCurrentWeek && 'roadmap-day-current-week',
     isToday && 'roadmap-day-today',
+    isDeadline && 'roadmap-day-deadline',
   ].filter(Boolean).join(' ')
 
   return (
@@ -76,7 +79,14 @@ export function CalendarCell({
     >
       <div className="roadmap-day-head">
         <span className="roadmap-day-number">{day.dayOfMonth}</span>
-        {isToday && <span className="roadmap-today-pill">Today</span>}
+        <span className="roadmap-day-markers">
+          {isToday && <span className="roadmap-today-pill">Today</span>}
+          {isDeadline && (
+            <span className="roadmap-deadline-pill" data-testid="roadmap-deadline-marker">
+              Deadline
+            </span>
+          )}
+        </span>
       </div>
 
       <div className="roadmap-bubble-stack">
