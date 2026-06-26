@@ -24,11 +24,36 @@ Status legend: `☐` pending · `✅` met · `❌` failed · `➖` n/a.
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/sync/types.ts`
+- `apps/app/src/roadmap/roadmapLifecycle.ts`
+- `apps/app/src/roadmap/roadmapLifecycle.test.ts`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `4631152`
+
+What was done:
+- Added typed `RoadmapReplannedPayload` with `roadmapCreatedAt` stable identity and optional replan `option`.
+- Added typed `RoadmapEditedPayload` for future in-place slot edits.
+- Refactored `deriveRoadmapLifecycle` to collapse `RoadmapCreated`/`RoadmapReplanned` events by original `RoadmapCreated.createdAt`, surfacing the latest snapshot for that identity.
+- Removed `superseded` from `RoadmapLifecycleStatus` and `RoadmapLifecycleGroups`; current app code did not consume it outside the lifecycle module.
+- Added/updated tests for replan-chain collapse, terminal events on the original identity, and two distinct original roadmaps with the older completed.
+
+Deviations + why:
+- The plan allowed keeping `superseded` only if other code imported it. Search showed no external consumers, so it was removed from the public lifecycle groups instead of kept unused.
+- Default shell Node `v18.19.0` cannot run the app Vitest suite in this checkout because jsdom/html-encoding-sniffer loads an ESM dependency through `require()`. The same commands were rerun with Node `v22.17.1`, which is the working local Node path for this repo.
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ `RoadmapReplannedPayload` and `RoadmapEditedPayload` are present in `sync/types.ts`.
+- ✅ `deriveRoadmapLifecycle` groups by stable identity: `RoadmapCreated.createdAt` for originals, `RoadmapReplanned.payload.roadmapCreatedAt` for replans, with fallback to the event's own `createdAt`.
+- ✅ Replan chain test proves one `active` entry with `roadmapCreatedAt === originalCreatedAt` and the latest payload.
+- ✅ Terminal-on-original test proves `RoadmapMarkedComplete(roadmapCreatedAt=A)` moves the collapsed latest snapshot to `completed`.
+- ✅ Distinct-roadmaps test proves older completed and newer active identities remain separate, with no `superseded` status.
+- ✅ No `SessionLogged` payload change and no Dexie schema change.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- roadmapLifecycle` passed: 39 test files, 411 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ `grep -n "superseded" src/roadmap/roadmapLifecycle.ts` returned no matches, as expected.
 
 ### Reviewer findings (Cowork fills)
 
