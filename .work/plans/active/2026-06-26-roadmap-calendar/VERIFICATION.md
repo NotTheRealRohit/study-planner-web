@@ -328,7 +328,7 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
-Status: ✅ Implemented, awaiting review. Commit: `pending`.
+Status: ✅ Implemented, awaiting review. Commit: `84abbd2`.
 
 Files changed:
 - `apps/app/src/lib/intelligenceClient.ts`

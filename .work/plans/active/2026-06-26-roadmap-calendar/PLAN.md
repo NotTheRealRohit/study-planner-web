@@ -613,7 +613,7 @@ Revert `Roadmaps.tsx` stub; remove `roadmapLifecycle.ts`; revert the two type ad
 
 ### Phase 7: Replan interface seam routed to the Python backend (stubbed UI)
 
-**Status:** ✅ Complete — pending
+**Status:** ✅ Complete — 84abbd2
 **Depends on:** Phase 2
 **Estimated scope:** ~4 files, ~250 lines
 
