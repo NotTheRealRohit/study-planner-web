@@ -117,6 +117,7 @@ See [`.agents/rules/`](.agents/rules/):
 | [`flow-diagram-tikz-gen.agents.md`](.agents/rules/flow-diagram-tikz-gen.agents.md) | Inconsistent generated TikZ flow diagrams |
 | [`form-design-spacing.agents.md`](.agents/rules/form-design-spacing.agents.md) | Collapsed form field groups |
 | [`latex-report-build.agents.md`](.agents/rules/latex-report-build.agents.md) | Report build and LaTeX workflow regressions |
+| [`fetch-typed-error-normalization.agents.md`](.agents/rules/fetch-typed-error-normalization.agents.md) | Typed fetch errors leaking as raw `AbortError`/`TypeError`; jsdom `DOMException` masking the bug in tests |
 | [`onboarding-architecture.agents.md`](.agents/rules/onboarding-architecture.agents.md) | Onboarding flow architecture drift |
 | [`playwright-config.agents.md`](.agents/rules/playwright-config.agents.md) | E2E tests failing due to config issues |
 | [`pnpm-build-registry.agents.md`](.agents/rules/pnpm-build-registry.agents.md) | Corepack/pnpm build failures on this machine |

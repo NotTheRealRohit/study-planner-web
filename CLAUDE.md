@@ -80,6 +80,7 @@ Deep-dive docs live in `.cursor/rules/` (Cursor project rules):
 | [`dexie-schema-migration.mdc`](.cursor/rules/dexie-schema-migration.mdc) | Data loss on schema changes |
 | [`sync-provider-testing.mdc`](.cursor/rules/sync-provider-testing.mdc) | Lifecycle hook test failures |
 | [`latex-report-build.mdc`](.cursor/rules/latex-report-build.mdc) | "latexmk not found"; broken dissertation builds |
+| [`fetch-typed-error-normalization.md`](.claude/rules/fetch-typed-error-normalization.md) | Typed fetch errors leaking as raw `AbortError`/`TypeError`; jsdom `DOMException` masking the bug in tests |
 
 ## Environment Variables
 
