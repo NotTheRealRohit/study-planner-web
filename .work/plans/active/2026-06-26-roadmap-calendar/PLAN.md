@@ -426,7 +426,7 @@ Restore `Roadmap.tsx` stub; delete `apps/app/src/roadmap/*` and the new tests. N
 
 ### Phase 3: Month navigation (prev/next/today, clamp, slide)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — 3cb0df6
 **Depends on:** Phase 2
 **Estimated scope:** ~2 files, ~150 lines
 
@@ -464,9 +464,13 @@ Remove `MonthNav.tsx`; revert `RoadmapCalendar` to static current month.
 
 #### Notes (filled in during implementation)
 
+- Added `MonthNav.tsx` and pure month-key helpers in `calendarModel.ts` for inclusive roadmap month bounds, clamped shifting, and Today reset.
+- `RoadmapCalendar` now keeps `viewMonth` state, animates month changes through `roadmap-calendar-slide`, respects `prefers-reduced-motion`, and marks the roadmap deadline day.
+- The final batched Phase 3/4 code commit is `3cb0df6`; Phase 4 was implemented in the same commit because the human explicitly asked to start both phases together.
+
 ### Phase 4: Session-detail modal + day modal + wire bubble/overflow clicks (desktop)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — 3cb0df6
 **Depends on:** Phase 2
 **Estimated scope:** ~2 files, ~200 lines
 
@@ -504,6 +508,11 @@ pnpm --filter app test && pnpm --filter app typecheck
 Remove modal file; revert cell callbacks to no-ops.
 
 #### Notes (filled in during implementation)
+
+- Added `SessionDetailModal.tsx` using the existing `.modal-overlay` / `.modal-card` app modal structure, plus a day-list modal in the same file for overflow days.
+- Bubble clicks now open a session detail modal; `+N more` opens the day list, and selecting a row opens the detail modal.
+- Material URLs from `MaterialAdded` payloads now flow into calendar bubbles so the modal can render a material link when present.
+- The final batched Phase 3/4 code commit is `3cb0df6`.
 
 ### Phase 5: Mobile responsive — dots + day bottom-sheet + swipe
 

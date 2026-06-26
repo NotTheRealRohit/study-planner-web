@@ -132,6 +132,36 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test` + typecheck pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: `3cb0df6`.
+
+Files changed:
+- `apps/app/src/roadmap/MonthNav.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/CalendarCell.tsx`
+- `apps/app/src/roadmap/calendarModel.ts`
+- `apps/app/src/roadmap/calendarModel.test.ts`
+- `apps/app/src/roadmap/roadmap.css`
+- `e2e/roadmap.spec.ts`
+
+What was done:
+- Added prev/next/Today month navigation with inclusive clamp bounds from roadmap `startDate` through `deadline`.
+- Defaulted the visible month to today's month, clamped into the roadmap range if needed.
+- Added a horizontal slide animation for month changes with `prefers-reduced-motion` disabling animation.
+- Marked the deadline day with a dedicated deadline pill and bottom accent, separate from today's filled-cell treatment.
+- Extended `calendarModel` with pure month-key/bounds/clamp/shift helpers and unit coverage.
+- Extended the write-only Playwright walkthrough with `04-next-month`, `05-prev-month`, and `06-today-reset`, including start/end disabled-state checks and a deadline marker assertion.
+
+Deviations:
+- Phase 3 and Phase 4 were committed together in `3cb0df6` because the human explicitly asked to start both phases in this run. The implementation still keeps Phase 3 and Phase 4 acceptance evidence separated in this log.
+
+Self-check vs criteria:
+- Prev/next/Today controls are rendered by `MonthNav` and update the visible month.
+- Prev/next are clamped using `calendarMonthBounds`, `clampMonth`, and `shiftMonth`.
+- Month changes animate via `roadmap-calendar-slide` at 180ms and reduced-motion disables animation.
+- Deadline day marker is rendered through `CalendarCell`.
+- Clamp bounds are unit-tested in `calendarModel.test.ts`.
+- Walkthrough steps `04-next-month`, `05-prev-month`, and `06-today-reset` are authored only; E2E was not run per plan constraint.
+- Verification passed: `pnpm --filter app test`, `pnpm --filter app typecheck`, and `pnpm lint` (lint passes with 6 pre-existing warnings).
 
 ### Reviewer findings
 
@@ -150,6 +180,37 @@ Self-check vs criteria:
 - [ ] `pnpm --filter app test` + typecheck pass.
 
 ### Implementer report
+Status: ✅ Implemented, awaiting review. Commit: `3cb0df6`.
+
+Files changed:
+- `apps/app/src/roadmap/SessionDetailModal.tsx`
+- `apps/app/src/roadmap/SessionDetailModal.test.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/CalendarCell.tsx`
+- `apps/app/src/roadmap/calendarModel.ts`
+- `apps/app/src/roadmap/roadmap.css`
+- `e2e/roadmap.spec.ts`
+
+What was done:
+- Added `SessionDetailModal` using the app's existing modal shell classes (`modal-overlay`, `modal-card`, `modal-eyebrow`, `modal-title`, `modal-body`).
+- Added status-copy mapping for `done` / `pending` / `skipped` / `unplanned` pills and action labels.
+- Rendered the detail modal eyebrow date, title, status pill, logged-vs-planned body, and material link when a `MaterialAdded.url` exists.
+- Added a day-list modal in the same file for `+N more`; selecting a row opens the session detail modal.
+- Wired `CalendarCell` bubble clicks and overflow clicks through `RoadmapCalendar` state.
+- Added unit coverage for status pill/action mapping, material link rendering, close behavior, and null rendering.
+- Extended the write-only Playwright walkthrough with `07-hover-expand`, `08-modal-done`, `09-modal-pending`, and `10-day-modal`.
+
+Deviations:
+- The day modal lives in `SessionDetailModal.tsx` instead of a separate file. This keeps the Phase 4 desktop overflow modal on the same shell and leaves `DaySheet.tsx` reserved for the distinct Phase 5 mobile bottom sheet.
+- The status action buttons are disabled stubs. This matches the plan's allowance because the app does not yet have a session-detail route and start/log flows remain outside this phase.
+
+Self-check vs criteria:
+- `SessionDetailModal` reuses the existing app modal structure.
+- Modal renders date eyebrow, title, status pill, logged/planned body, material link when present, and the required status-dependent action labels.
+- Bubble clicks open the session detail modal; `+N more` opens a day list; day-list rows open the detail modal.
+- Modal close is unit-tested; status mapping is unit-tested for all four statuses.
+- Walkthrough steps `07-hover-expand`, `08-modal-done`, `09-modal-pending`, and `10-day-modal` are authored only; E2E was not run per plan constraint.
+- Verification passed: `pnpm --filter app test`, `pnpm --filter app typecheck`, and `pnpm lint` (lint passes with 6 pre-existing warnings).
 
 ### Reviewer findings
 
