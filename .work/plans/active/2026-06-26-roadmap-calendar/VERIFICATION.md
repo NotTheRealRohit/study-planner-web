@@ -72,7 +72,7 @@ _(implementer fills on redo — loop until ✅ Verified)_
 - [ ] `pnpm --filter app test`, typecheck, lint pass.
 
 ### Implementer report
-Status: ✅ Implemented, awaiting review. Commit: pending.
+Status: ✅ Implemented, awaiting review. Commit: `8019007`.
 
 Files changed:
 - `apps/app/src/roadmap/calendarModel.ts`
