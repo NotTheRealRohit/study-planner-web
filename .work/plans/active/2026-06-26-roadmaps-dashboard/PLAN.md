@@ -412,7 +412,7 @@ Revert the three files. No data migration (events are append-only; new payload f
 
 ### Phase 2: Session attribution by date window (frozen history, live active)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1 (`✅ Complete`)
 **Estimated scope:** ~2 files, ~80 lines
 
