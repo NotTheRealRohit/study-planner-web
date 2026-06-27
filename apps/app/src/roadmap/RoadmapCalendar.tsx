@@ -6,7 +6,7 @@ import { deriveSlotStatuses } from '@study-tracker/progress'
 import type { RoadmapInput } from '@study-tracker/progress'
 import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
-import { useCalibrationState, useProgressSnapshot } from '../progress'
+import { useCalibrationState } from '../progress'
 import { mapSessions } from '../progress/mapEvents'
 import type {
   MaterialAddedPayload,
@@ -34,6 +34,7 @@ import { MonthNav } from './MonthNav'
 import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { RoadmapEndedBanner } from './RoadmapEndedBanner'
+import { summarizeRoadmapProgress } from './roadmapProgress'
 import { logRoadmapEdit } from './edit/logRoadmapEdit'
 import { resolveRoadmap as resolveRoadmapEvent, type RoadmapResolutionKind } from './resolveRoadmap'
 import { deriveRoadmapEndedState } from './useRoadmapEndedState'
@@ -89,17 +90,6 @@ function collectMaterialsById(events: Event[]): Map<string, CalendarMaterial> {
   return materials
 }
 
-function fallbackProgress(
-  plannedMinutes: number,
-  loggedMinutes: number,
-): { percent: number; toGo: number } {
-  if (plannedMinutes <= 0) return { percent: 0, toGo: 0 }
-  return {
-    percent: Math.min(100, Math.round((loggedMinutes / plannedMinutes) * 100)),
-    toGo: Math.max(0, plannedMinutes - loggedMinutes),
-  }
-}
-
 function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
   return {
     startDate: payload.startDate,
@@ -146,8 +136,7 @@ export function RoadmapCalendar({
   const [selectedSheetDay, setSelectedSheetDay] = useState<BoundCalendarDay | null>(null)
   const touchStartX = useRef<number | null>(null)
   const isMobileCalendar = useMatchMedia('(max-width: 560px)')
-  const { calibration, status } = useCalibrationState()
-  const progress = useProgressSnapshot(calibration)
+  const { status } = useCalibrationState()
   const today = todayISO()
   const loadedEvents = events ?? []
 
@@ -194,20 +183,12 @@ export function RoadmapCalendar({
     return bindCells(grid, derived.slots, derived.unplanned, materialsById)
   }, [activeViewMonth, loadedEvents, materialsById, roadmap, today])
 
-  const localLoggedMinutes = useMemo(
-    () => mapSessions(loadedEvents).reduce((total, session) => total + session.duration, 0),
-    [loadedEvents],
-  )
-  const plannedMinutes = roadmap?.slots.reduce(
-    (total, slot) => total + slot.plannedMinutes,
-    0,
-  ) ?? 0
-  const progressFallback = fallbackProgress(plannedMinutes, localLoggedMinutes)
-  const loggedMinutes = progress?.totalMinutes ?? localLoggedMinutes
-  const toGoMinutes = progress?.totalPlannedMinutes !== undefined && progress.totalMinutes !== undefined
-    ? Math.max(0, progress.totalPlannedMinutes - progress.totalMinutes)
-    : progressFallback.toGo
-  const percent = progress?.completionPercentage ?? progressFallback.percent
+  const progressSummary = selectedRoadmap
+    ? summarizeRoadmapProgress(selectedRoadmap, loadedEvents)
+    : null
+  const loggedMinutes = progressSummary?.loggedMinutes ?? 0
+  const toGoMinutes = progressSummary?.toGoMinutes ?? 0
+  const percent = progressSummary?.percentComplete ?? 0
 
   if (!events) {
     return (

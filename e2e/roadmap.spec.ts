@@ -51,7 +51,7 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.goto(`${APP_URL}/study/sign-in`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL(/\/study\/(home|onboarding)/);
 }
 
@@ -441,5 +441,98 @@ test.describe('Roadmap calendar visual walkthrough', () => {
       expect(page.url()).not.toContain('/study/study/');
       await screenshot(page, '20-replan-stub');
     });
+  });
+
+  test('progress ignores historical and gap sessions for the active roadmap', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'app', 'Progress regression runs in the desktop app project.');
+
+    const email = generateTestEmail('roadmap-progress-scope');
+    const password = 'TestPassword123!';
+    const roadmapCreatedAt = '2099-06-27T00:00:00.000Z';
+
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await waitForDevSeeder(page);
+    await page.evaluate(async () => {
+      await window.__wipe?.();
+    });
+    await insertEventsIntoFirstStudyDb(page, [
+      {
+        kind: 'OnboardingCompleted',
+        payload: {},
+        createdAt: '2099-06-26T00:00:00.000Z',
+      },
+      {
+        kind: 'MaterialAdded',
+        payload: {
+          materialId: 'mat-current',
+          title: 'Current material',
+          estimatedDuration: 60,
+          kind: 'article',
+          role: 'anchor',
+        },
+        createdAt: '2099-06-26T01:00:00.000Z',
+      },
+      {
+        kind: 'RoadmapCreated',
+        payload: {
+          startDate: '2099-06-27',
+          deadline: '2099-07-11',
+          weeks: 2,
+          purpose: 'Tests',
+          selectedStudyDays: ['Tue'],
+          weekdayHours: 1,
+          weekendHours: 0,
+          weeklyHours: 1,
+          slots: [
+            {
+              date: '2099-06-30',
+              dayOfWeek: 'Tue',
+              weekIndex: 0,
+              plannedMinutes: 60,
+              capacityMinutes: 60,
+              candidateMaterialIds: ['mat-current'],
+              role: 'anchor',
+              sessionTitle: 'Current roadmap session',
+            },
+          ],
+        },
+        createdAt: roadmapCreatedAt,
+      },
+      {
+        kind: 'SessionLogged',
+        payload: {
+          sessionId: 'old-before-window',
+          date: '2099-06-26',
+          materialId: 'mat-current',
+          duration: 62,
+          source: 'manual',
+        },
+        createdAt: '2099-06-26T12:00:00.000Z',
+      },
+      {
+        kind: 'SessionLogged',
+        payload: {
+          sessionId: 'gap-inside-window',
+          date: '2099-06-30',
+          materialId: 'other-material',
+          duration: 30,
+          source: 'manual',
+        },
+        createdAt: '2099-06-30T12:00:00.000Z',
+      },
+    ]);
+
+    await page.goto(`${APP_URL}/study/roadmap`);
+    await expect(page.getByLabel('Roadmap progress')).toContainText('0%');
+    await expect(page.getByLabel('Roadmap progress')).toContainText('0m logged');
+    await expect(page.getByLabel('Roadmap progress')).toContainText('1h to go');
+    await expect(page.getByLabel('Roadmap progress')).not.toContainText('1h 32m logged');
+
+    await page.goto(`${APP_URL}/study/roadmaps`);
+    await expect(page.getByTestId('roadmaps-active-hero')).toBeVisible();
+    await expect(page.getByLabel('Active roadmap stats')).toContainText('0 sessions');
+    await expect(page.getByLabel('Active roadmap stats')).toContainText('0m logged');
+    await expect(page.getByLabel('Active roadmap stats')).toContainText('0% complete');
   });
 });

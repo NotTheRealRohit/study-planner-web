@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
-import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
 import { deriveRoadmapDraft, type RoadmapDraftSummary } from '../roadmap/roadmapDraft'
 import {
@@ -11,6 +10,7 @@ import {
 } from '../roadmap/roadmapLifecycle'
 import { resolveRoadmap, type RoadmapResolutionKind } from '../roadmap/resolveRoadmap'
 import { RoadmapEndedBanner } from '../roadmap/RoadmapEndedBanner'
+import { summarizeRoadmapProgress } from '../roadmap/roadmapProgress'
 import { deriveRoadmapEndedState } from '../roadmap/useRoadmapEndedState'
 import { useSync } from '../sync/useSync'
 import '../roadmap/roadmap.css'
@@ -30,20 +30,6 @@ function formatMinutes(totalMinutes: number): string {
 
 function onboardingPath(draft: RoadmapDraftSummary): string {
   return `/onboarding/${draft.stepReached}?new=1`
-}
-
-function sessionStats(entry: RoadmapLifecycleEntry, events: Event[]) {
-  const sessions = events.filter((event) => {
-    if (event.kind !== 'SessionLogged') return false
-    const date = event.payload.date
-    return typeof date === 'string' && date >= entry.startDate && date <= entry.deadline
-  })
-  const minutes = sessions.reduce((total, event) => {
-    const duration = event.payload.duration
-    return total + (typeof duration === 'number' ? duration : 0)
-  }, 0)
-
-  return { count: sessions.length, minutes }
 }
 
 function HistoryRows({
@@ -104,7 +90,7 @@ export function Roadmaps() {
   const activeEnded = roadmapEnded.ended &&
     roadmapEnded.entry?.roadmapCreatedAt === activeEntry?.roadmapCreatedAt
   const historyEntries = lifecycle.all.filter((entry) => entry.status !== 'active')
-  const activeStats = activeEntry ? sessionStats(activeEntry, loadedEvents) : null
+  const activeStats = activeEntry ? summarizeRoadmapProgress(activeEntry, loadedEvents) : null
 
   const handleResolve = async (kind: RoadmapResolutionKind) => {
     if (!activeEntry) return
@@ -171,15 +157,15 @@ export function Roadmaps() {
               <h2 className="rmd-hero-title">{activeEntry.title}</h2>
               <div className="rmd-progress-row">
                 <span className="mono-caps">Progress</span>
-                <span className="rmd-progress-number">{activeEntry.percentComplete}%</span>
+                <span className="rmd-progress-number">{activeStats.percentComplete}%</span>
               </div>
-              <div className="progress" aria-label={`${activeEntry.percentComplete}% complete`}>
-                <div className="progress-fill" style={{ width: `${activeEntry.percentComplete}%` }} />
+              <div className="progress" aria-label={`${activeStats.percentComplete}% complete`}>
+                <div className="progress-fill" style={{ width: `${activeStats.percentComplete}%` }} />
               </div>
               <div className="rmd-stat-strip" aria-label="Active roadmap stats">
-                <span><strong>{activeStats.count}</strong> sessions</span>
-                <span><strong>{formatMinutes(activeStats.minutes)}</strong> logged</span>
-                <span><strong>{activeEntry.percentComplete}%</strong> complete</span>
+                <span><strong>{activeStats.sessionsCount}</strong> sessions</span>
+                <span><strong>{formatMinutes(activeStats.loggedMinutes)}</strong> logged</span>
+                <span><strong>{activeStats.percentComplete}%</strong> complete</span>
               </div>
             </div>
             <div className="rmd-actions">

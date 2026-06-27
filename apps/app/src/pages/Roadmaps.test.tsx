@@ -137,6 +137,25 @@ describe('Roadmaps dashboard', () => {
     expect(screen.getAllByText('50%')).not.toHaveLength(0)
   })
 
+  it('does not count date-window gap sessions as active roadmap progress', () => {
+    mockState.events = [
+      event('OnboardingCompleted', {}, '2026-05-01T00:00:00.000Z'),
+      event('RoadmapCreated', roadmapPayload(), '2026-06-01T00:00:00.000Z'),
+      event(
+        'SessionLogged',
+        { sessionId: 'gap', date: '2026-06-03', materialId: 'other-material', duration: 30 },
+        '2026-06-03T12:00:00.000Z',
+      ),
+    ]
+
+    renderRoadmaps()
+
+    const stats = screen.getByLabelText('Active roadmap stats')
+    expect(stats).toHaveTextContent('0 sessions')
+    expect(stats).toHaveTextContent('0m logged')
+    expect(stats).toHaveTextContent('0% complete')
+  })
+
   it('disables Start plan while an active roadmap exists', () => {
     mockState.events = [
       event('OnboardingCompleted', {}, '2026-05-01T00:00:00.000Z'),

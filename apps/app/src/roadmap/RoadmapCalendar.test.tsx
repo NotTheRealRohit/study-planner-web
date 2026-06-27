@@ -162,4 +162,64 @@ describe('RoadmapCalendar quick actions', () => {
 
     expect(screen.getByRole('link', { name: /Roadmaps/ })).toHaveAttribute('href', '/roadmaps')
   })
+
+  it('does not count historical sessions in the active roadmap progress card', () => {
+    mockState.events = [
+      event(
+        'MaterialAdded',
+        {
+          materialId: 'mat-1',
+          title: 'Distributed Systems',
+          estimatedDuration: 120,
+          kind: 'article',
+          role: 'anchor',
+        },
+        '2026-05-01T08:00:00.000Z',
+      ),
+      event(
+        'RoadmapCreated',
+        roadmapPayload({
+          startDate: '2026-06-27',
+          deadline: '2026-07-11',
+          weeks: 2,
+          purpose: 'Tests',
+          slots: [
+            {
+              date: '2026-06-30',
+              dayOfWeek: 'Tue',
+              weekIndex: 0,
+              plannedMinutes: 60,
+              capacityMinutes: 60,
+              candidateMaterialIds: ['mat-1'],
+              role: 'anchor',
+              sessionTitle: 'Current roadmap session',
+            },
+          ],
+        }),
+        '2026-06-27T00:00:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        { sessionId: 'old-1', date: '2026-06-26', materialId: 'mat-1', duration: 1 },
+        '2026-06-26T12:00:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        { sessionId: 'old-2', date: '2026-06-07', materialId: 'mat-1', duration: 60 },
+        '2026-06-07T12:00:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        { sessionId: 'old-3', date: '2026-05-09', materialId: 'mat-1', duration: 1 },
+        '2026-05-09T12:00:00.000Z',
+      ),
+    ]
+
+    renderCalendar()
+
+    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('0%')
+    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('0m logged')
+    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('1h to go')
+    expect(screen.getByLabelText('Roadmap progress')).not.toHaveTextContent('1h 2m logged')
+  })
 })
