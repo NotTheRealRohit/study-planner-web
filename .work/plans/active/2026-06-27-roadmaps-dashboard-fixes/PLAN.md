@@ -284,7 +284,7 @@ navigation listed in the phase while leaving exit routes on plain `useNavigate()
 
 ### Phase B: Historical roadmap opens as a closable route view (`/roadmap?roadmap=...`)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** none (independent of Phase A; can be done in parallel)
 **Estimated scope:** ~3 files, ~60 lines
 
