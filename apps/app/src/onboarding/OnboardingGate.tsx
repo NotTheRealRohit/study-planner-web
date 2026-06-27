@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useEventStore } from '../events/useEventStore'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -14,9 +14,12 @@ export function OnboardingGate({ children }: OnboardingGateProps) {
 
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore])
   const hasCompletedOnboarding = events?.some(e => e.kind === 'OnboardingCompleted') ?? false
-  const newRoadmapMode =
+  const urlNewRoadmapMode =
     new URLSearchParams(location.search).get('new') === '1' ||
     (location.state as { newRoadmap?: boolean } | null)?.newRoadmap === true
+  const latchedNewRoadmap = useRef(false)
+  if (urlNewRoadmapMode) latchedNewRoadmap.current = true
+  const newRoadmapMode = urlNewRoadmapMode || latchedNewRoadmap.current
 
   useEffect(() => {
     if (hasCompletedOnboarding && !newRoadmapMode) {

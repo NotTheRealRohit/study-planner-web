@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useEventStore } from '../events/useEventStore'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { OnboardingGate } from './OnboardingGate'
-import { BrowserRouter, MemoryRouter } from 'react-router-dom'
+import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom'
+import { useOnboardingNavigate } from './useOnboardingNavigate'
 
 vi.mock('../events/useEventStore')
 vi.mock('dexie-react-hooks')
@@ -13,6 +14,21 @@ const mockUseLiveQuery = vi.mocked(useLiveQuery)
 
 function ChildComponent() {
   return <div data-testid="child">Onboarding Content</div>
+}
+
+function NavigatingChild() {
+  const navigate = useOnboardingNavigate()
+  const location = useLocation()
+
+  return (
+    <>
+      <div data-testid="child">Onboarding Content</div>
+      <div data-testid="path">{location.pathname}{location.search}</div>
+      <button type="button" onClick={() => navigate('/onboarding/2')}>
+        Next step
+      </button>
+    </>
+  )
 }
 
 describe('OnboardingGate', () => {
@@ -134,6 +150,34 @@ describe('OnboardingGate', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('child')).toBeInTheDocument()
+    })
+  })
+
+  it('keeps returning users in new-roadmap mode after step navigation', async () => {
+    const mockEventStore = {
+      getAll: vi.fn().mockResolvedValue([
+        { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+      ]),
+      table: vi.fn(),
+    }
+    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseLiveQuery.mockReturnValue([
+      { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
+    ])
+
+    render(
+      <MemoryRouter initialEntries={['/onboarding/1?new=1']}>
+        <OnboardingGate>
+          <NavigatingChild />
+        </OnboardingGate>
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next step' }))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('child')).toBeInTheDocument()
+      expect(screen.getByTestId('path')).toHaveTextContent('/onboarding/2?new=1')
     })
   })
 })

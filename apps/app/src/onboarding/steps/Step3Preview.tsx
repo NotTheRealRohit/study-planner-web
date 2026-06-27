@@ -13,6 +13,7 @@ import { computeSwapEdits } from '../components/computeSwapEdits'
 import { useMatchMedia } from '../../lib/useMatchMedia'
 import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../../sync/types'
 import { deriveRoadmapLifecycle } from '../../roadmap/roadmapLifecycle'
+import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
 function useDebouncedValue<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value)
@@ -29,6 +30,7 @@ export function Step3Preview() {
   const eventStore = useEventStore()
   const location = useLocation()
   const navigate = useNavigate()
+  const stepNavigate = useOnboardingNavigate()
   const [committing, setCommitting] = useState(false)
   const newRoadmapMode =
     new URLSearchParams(location.search).get('new') === '1' ||
@@ -316,7 +318,7 @@ export function Step3Preview() {
       <div className="onboarding-actions onboarding-preview-actions">
         <button
           className="btn btn-secondary onboarding-back-btn onboarding-preview-back-btn"
-          onClick={() => navigate('/onboarding/3')}
+          onClick={() => stepNavigate('/onboarding/3')}
           aria-label="Back"
         >
           <svg className="icon" viewBox="0 0 24 24"><polyline points="15 6 9 12 15 18"/></svg>

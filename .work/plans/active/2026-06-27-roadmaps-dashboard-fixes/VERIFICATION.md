@@ -25,10 +25,28 @@ fills findings. A phase is done only at `✅ Verified`.
 ### Implementer report (Codex/Sonnet fills)
 
 - Files changed:
-- Commit SHA:
+  - `apps/app/src/onboarding/useOnboardingNavigate.ts`
+  - `apps/app/src/onboarding/useOnboardingNavigate.test.tsx`
+  - `apps/app/src/onboarding/OnboardingGate.tsx`
+  - `apps/app/src/onboarding/OnboardingGate.test.tsx`
+  - `apps/app/src/onboarding/CheckpointGate.tsx`
+  - `apps/app/src/onboarding/components/CapacityPrompt.tsx`
+  - `apps/app/src/onboarding/steps/Step1Deadline.tsx`
+  - `apps/app/src/onboarding/steps/Step2Hours.tsx`
+  - `apps/app/src/onboarding/steps/Step3Materials.tsx`
+  - `apps/app/src/onboarding/steps/Step3Preview.tsx`
+- Commit SHA: `1d1fe1b02f856ae472d628cbb8ad4d97ba256eaa`
 - What was done:
+  - Added `useOnboardingNavigate()` to preserve `location.search` and `location.state` while navigating between onboarding steps.
+  - Converted the Phase A intra-onboarding navigations to the helper, while leaving `/roadmaps`, `/onboarding/4`, and `/home` exits on plain `useNavigate()`.
+  - Latched new-roadmap mode in `OnboardingGate` and preserved search/state in `CheckpointGate` redirects.
+  - Added Vitest coverage for helper preservation and a returning user staying inside new-roadmap mode after step navigation.
 - Deviations + why:
+  - None.
 - Self-check vs criteria:
+  - `pnpm --filter app test -- onboarding OnboardingGate useOnboardingNavigate` passed under Node v22.17.1 (49 files, 452 tests).
+  - `pnpm --filter app typecheck` passed under Node v22.17.1.
+  - Grep confirmed `Step1Deadline` imports/uses `useOnboardingNavigate`, and exit navigations remain unconverted.
 
 ### Reviewer findings (Cowork fills)
 

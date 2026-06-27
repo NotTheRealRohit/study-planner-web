@@ -1,15 +1,15 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { DayOfWeek } from '@study-tracker/roadmap-engine'
 import { useOnboarding } from '../OnboardingProvider'
 import { CheckpointGate } from '../CheckpointGate'
+import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
 const DAYS_OF_WEEK: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const HOUR_CHIPS = [2, 4, 6, 8, 10, 15, 20]
 
 export function Step2Hours() {
   const { state, dispatch } = useOnboarding()
-  const navigate = useNavigate()
+  const navigate = useOnboardingNavigate()
   const [weeklyHours, setWeeklyHours] = useState(state.weeklyHours || 0)
   const [weekdayHours, setWeekdayHours] = useState(state.weekdayHours || 0)
   const [weekendHours, setWeekendHours] = useState(state.weekendHours || 0)

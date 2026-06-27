@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { useOnboardingNavigate } from '../useOnboardingNavigate'
 import type { CapacityCheck, Warning } from '@study-tracker/roadmap-engine'
 
 interface CapacityPromptProps {
@@ -10,7 +10,7 @@ interface CapacityPromptProps {
 }
 
 export function OverCapacityModal({ capacityCheck, warnings: _warnings, onCompress: _onCompress, onKeepBuffer: _onKeepBuffer, onDismiss }: CapacityPromptProps) {
-  const navigate = useNavigate()
+  const navigate = useOnboardingNavigate()
 
   if (capacityCheck.status !== 'over-capacity') return null
   const overflowMins = capacityCheck.totalMaterialMinutes - capacityCheck.totalCapacityMinutes

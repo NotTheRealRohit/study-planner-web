@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback } from 'react'
-import { useNavigate, Outlet, useLocation } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useOnboarding, type OnboardingMaterial, type PlaylistEntry } from '../OnboardingProvider'
 import { CheckpointGate } from '../CheckpointGate'
 import { MaterialRow } from '../components/MaterialRow'
@@ -10,10 +10,11 @@ import { classifyUrl, extractYouTubeVideoId, extractYouTubePlaylistId } from '..
 import { PlaylistCard } from '../components/PlaylistCard'
 import { YouTubePopup } from '../components/YouTubePopup'
 import { PasteAnimation } from '../components/PasteAnimation'
+import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
 export function Step3Materials() {
   const { state, dispatch, expandedMaterials } = useOnboarding()
-  const navigate = useNavigate()
+  const navigate = useOnboardingNavigate()
   const location = useLocation()
   const isDesktop = useMatchMedia('(min-width: 1024px)')
   const isPreviewRoute = location.pathname.includes('/preview')

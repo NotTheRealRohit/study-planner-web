@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useOnboarding } from './OnboardingProvider'
 
 interface CheckpointGateProps {
@@ -17,6 +17,7 @@ const STEP_PREREQS: Record<number, (state: ReturnType<typeof useOnboarding>['sta
 
 export function CheckpointGate({ step, children }: CheckpointGateProps) {
   const { state, ready } = useOnboarding()
+  const location = useLocation()
 
   if (!ready) return null
 
@@ -29,7 +30,13 @@ export function CheckpointGate({ step, children }: CheckpointGateProps) {
   })()
 
   if (earliestIncomplete > 0) {
-    return <Navigate to={`/onboarding/${earliestIncomplete}`} replace />
+    return (
+      <Navigate
+        to={{ pathname: `/onboarding/${earliestIncomplete}`, search: location.search }}
+        state={location.state}
+        replace
+      />
+    )
   }
 
   return <>{children}</>

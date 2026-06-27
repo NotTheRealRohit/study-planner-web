@@ -149,7 +149,7 @@ answered (or after a design critique the user approves).
 
 ### Phase A: New-roadmap mode survives the whole wizard (UNBLOCKS onboarding) — DO FIRST
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — 1d1fe1b02f856ae472d628cbb8ad4d97ba256eaa
 **Depends on:** none
 **Estimated scope:** ~8 files, ~120 lines
 
@@ -274,7 +274,11 @@ Revert the listed files; delete `useOnboardingNavigate.ts`. Onboarding returns t
 
 #### Notes (filled in during implementation)
 
-<empty>
+Implemented 2026-06-27. Added `useOnboardingNavigate()` and converted every intra-wizard
+navigation listed in the phase while leaving exit routes on plain `useNavigate()`. Added the
+`OnboardingGate` ref latch and search/state-preserving `CheckpointGate` redirect. Verification:
+`pnpm --filter app test -- onboarding OnboardingGate useOnboardingNavigate` and
+`pnpm --filter app typecheck` both passed under Node v22.17.1.
 
 ---
 

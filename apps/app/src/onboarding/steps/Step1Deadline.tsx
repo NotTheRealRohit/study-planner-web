@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { startOfToday, addWeeks, addMonths, format, isBefore } from 'date-fns'
 import { useOnboarding } from '../OnboardingProvider'
 import { CheckpointGate } from '../CheckpointGate'
+import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
 const TODAY = startOfToday()
 const TODAY_ISO = format(TODAY, 'yyyy-MM-dd')
@@ -17,7 +17,7 @@ const CHIPS = [
 
 export function Step1Deadline() {
   const { state, dispatch } = useOnboarding()
-  const navigate = useNavigate()
+  const navigate = useOnboardingNavigate()
   const [deadline, setDeadline] = useState(state.deadline ?? '')
   const [purpose, setPurpose] = useState(state.purpose ?? '')
   const [selectedChip, setSelectedChip] = useState<string | null>(null)
