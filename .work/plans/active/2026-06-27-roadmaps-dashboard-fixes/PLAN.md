@@ -149,7 +149,7 @@ answered (or after a design critique the user approves).
 
 ### Phase A: New-roadmap mode survives the whole wizard (UNBLOCKS onboarding) — DO FIRST
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** none
 **Estimated scope:** ~8 files, ~120 lines
 
