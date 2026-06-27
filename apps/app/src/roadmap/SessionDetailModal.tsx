@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { format, parseISO } from 'date-fns'
 import type { BoundCalendarDay, CalendarBubble, CalendarBubbleStatus } from './calendarModel'
 import { statusStyleFor } from './statusStyles'
@@ -6,6 +6,12 @@ import { statusStyleFor } from './statusStyles'
 interface SessionDetailModalProps {
   bubble: CalendarBubble | null
   onClose: () => void
+  canEdit?: boolean
+  onLogSession?: (bubble: CalendarBubble) => void
+  onRename?: (bubble: CalendarBubble, title: string) => void
+  onNudgeMinutes?: (bubble: CalendarBubble, deltaMinutes: number) => void
+  onMoveNextDay?: (bubble: CalendarBubble) => void
+  onMarkDone?: (bubble: CalendarBubble) => void
 }
 
 interface DayDetailModalProps {
@@ -101,11 +107,27 @@ function ModalFrame({
   )
 }
 
-export function SessionDetailModal({ bubble, onClose }: SessionDetailModalProps) {
+export function SessionDetailModal({
+  bubble,
+  onClose,
+  canEdit = false,
+  onLogSession = () => undefined,
+  onRename = () => undefined,
+  onNudgeMinutes = () => undefined,
+  onMoveNextDay = () => undefined,
+  onMarkDone = () => undefined,
+}: SessionDetailModalProps) {
+  const [draftTitle, setDraftTitle] = useState('')
+
+  useEffect(() => {
+    setDraftTitle(bubble?.sessionTitle?.trim() || bubble?.label || '')
+  }, [bubble])
+
   if (!bubble) return null
 
   const style = statusStyleFor(bubble.status)
   const copy = statusCopyFor(bubble.status)
+  const trimmedTitle = draftTitle.trim()
 
   return (
     <ModalFrame ariaLabel="Roadmap session detail" onClose={onClose}>
@@ -131,9 +153,57 @@ export function SessionDetailModal({ bubble, onClose }: SessionDetailModalProps)
           </p>
         )}
       </div>
-      <button className="btn btn-accent btn-block" type="button" disabled>
-        {copy.actionLabel}
-      </button>
+      {canEdit ? (
+        <div className="roadmap-edit-panel" aria-label="Roadmap quick actions">
+          <button
+            className="btn btn-accent btn-block"
+            type="button"
+            onClick={() => onLogSession(bubble)}
+          >
+            Log session
+          </button>
+
+          <label className="roadmap-edit-field">
+            <span className="modal-eyebrow">Session title</span>
+            <input
+              className="field-input"
+              value={draftTitle}
+              onChange={(event) => setDraftTitle(event.target.value)}
+              aria-label="Session title"
+            />
+          </label>
+          <button
+            className="btn btn-secondary btn-block"
+            type="button"
+            disabled={trimmedTitle.length === 0}
+            onClick={() => onRename(bubble, trimmedTitle)}
+          >
+            Save title
+          </button>
+
+          <div className="roadmap-edit-row">
+            <button className="btn btn-ghost" type="button" onClick={() => onNudgeMinutes(bubble, -15)}>
+              -15 min
+            </button>
+            <button className="btn btn-ghost" type="button" onClick={() => onNudgeMinutes(bubble, 15)}>
+              +15 min
+            </button>
+          </div>
+
+          <div className="roadmap-edit-row">
+            <button className="btn btn-secondary" type="button" onClick={() => onMoveNextDay(bubble)}>
+              Move to next day
+            </button>
+            <button className="btn btn-secondary" type="button" onClick={() => onMarkDone(bubble)}>
+              {bubble.status === 'done' ? 'Mark undone' : 'Mark done'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-accent btn-block" type="button" disabled>
+          {copy.actionLabel}
+        </button>
+      )}
     </ModalFrame>
   )
 }

@@ -8,7 +8,11 @@ import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
 import { useCalibrationState, useProgressSnapshot } from '../progress'
 import { mapSessions } from '../progress/mapEvents'
-import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../sync/types'
+import type {
+  MaterialAddedPayload,
+  RoadmapCreatedPayload,
+  RoadmapEditedPayload,
+} from '../sync/types'
 import { useSync } from '../sync/useSync'
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner'
 import { useMatchMedia } from '../lib/useMatchMedia'
@@ -30,15 +34,33 @@ import { MonthNav } from './MonthNav'
 import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { RoadmapEndedBanner } from './RoadmapEndedBanner'
+import { logRoadmapEdit } from './edit/logRoadmapEdit'
 import { resolveRoadmap as resolveRoadmapEvent, type RoadmapResolutionKind } from './resolveRoadmap'
 import { deriveRoadmapEndedState } from './useRoadmapEndedState'
 import { LEGEND_ITEMS } from './statusStyles'
 import './roadmap.css'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAY_SEQUENCE = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
+}
+
+function nextDayOfWeek(
+  dayOfWeek: string,
+  weekIndex: number,
+): Pick<RoadmapEditedPayload, 'dayOfWeek' | 'weekIndex'> {
+  const index = DAY_SEQUENCE.findIndex((day) => day === dayOfWeek)
+  if (index === -1) {
+    return { dayOfWeek: 'Mon', weekIndex }
+  }
+
+  const nextIndex = (index + 1) % DAY_SEQUENCE.length
+  return {
+    dayOfWeek: DAY_SEQUENCE[nextIndex],
+    weekIndex: weekIndex + (nextIndex === 0 ? 1 : 0),
+  }
 }
 
 function formatDateRange(startDate: string, deadline: string): string {
@@ -94,6 +116,14 @@ function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
       sessionTitle: slot.sessionTitle ?? null,
     })),
   }
+}
+
+function isEditableBubble(
+  bubble: CalendarBubble | null,
+  today: string,
+  readOnly: boolean,
+): bubble is CalendarBubble & { slotRef: NonNullable<CalendarBubble['slotRef']> } {
+  return !readOnly && bubble?.slotRef !== undefined && bubble.date >= today
 }
 
 interface RoadmapCalendarProps {
@@ -268,6 +298,79 @@ export function RoadmapCalendar({
 
     navigate('/roadmaps')
   }
+  const editPayloadForBubble = (
+    bubble: CalendarBubble,
+    overrides: Partial<RoadmapEditedPayload> = {},
+  ): RoadmapEditedPayload | null => {
+    if (!selectedRoadmap || !bubble.slotRef) return null
+
+    return {
+      roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
+      weekIndex: bubble.slotRef.weekIndex,
+      dayOfWeek: bubble.slotRef.dayOfWeek as RoadmapEditedPayload['dayOfWeek'],
+      materialId: bubble.materialId ?? null,
+      sessionTitle: bubble.sessionTitle ?? bubble.label,
+      plannedMinutes: bubble.plannedMinutes ?? bubble.minutes,
+      ...overrides,
+    }
+  }
+  const handleLogSession = async (bubble: CalendarBubble) => {
+    if (!isEditableBubble(bubble, today, readOnly)) return
+
+    await logEvent('SessionLogged', {
+      source: 'roadmap',
+      sessionId: crypto.randomUUID(),
+      duration: bubble.plannedMinutes ?? bubble.minutes,
+      plannedMinutes: bubble.plannedMinutes,
+      date: bubble.date,
+      description: bubble.label,
+      materialId: bubble.materialId,
+      role: bubble.slotRef.role,
+      timeOfDay: 'morning',
+    })
+    setSelectedBubble(null)
+  }
+  const handleRename = async (bubble: CalendarBubble, title: string) => {
+    if (!isEditableBubble(bubble, today, readOnly)) return
+    const edit = editPayloadForBubble(bubble, { sessionTitle: title })
+    if (!edit) return
+
+    await logRoadmapEdit(logEvent, edit)
+    setSelectedBubble(null)
+  }
+  const handleNudgeMinutes = async (bubble: CalendarBubble, deltaMinutes: number) => {
+    if (!isEditableBubble(bubble, today, readOnly)) return
+    const currentMinutes = bubble.plannedMinutes ?? bubble.minutes
+    const edit = editPayloadForBubble(bubble, {
+      plannedMinutes: Math.max(15, currentMinutes + deltaMinutes),
+    })
+    if (!edit) return
+
+    await logRoadmapEdit(logEvent, edit)
+    setSelectedBubble(null)
+  }
+  const handleMoveNextDay = async (bubble: CalendarBubble) => {
+    if (!isEditableBubble(bubble, today, readOnly)) return
+    const edit = editPayloadForBubble(
+      bubble,
+      nextDayOfWeek(bubble.slotRef.dayOfWeek, bubble.slotRef.weekIndex),
+    )
+    if (!edit) return
+
+    await logRoadmapEdit(logEvent, edit)
+    setSelectedBubble(null)
+  }
+  const handleMarkDone = async (bubble: CalendarBubble) => {
+    if (!isEditableBubble(bubble, today, readOnly)) return
+    if (bubble.status !== 'done') {
+      await handleLogSession(bubble)
+    }
+    const edit = editPayloadForBubble(bubble)
+    if (!edit) return
+
+    await logRoadmapEdit(logEvent, edit)
+    setSelectedBubble(null)
+  }
 
   return (
     <div className="roadmap-page">
@@ -426,6 +529,12 @@ export function RoadmapCalendar({
       <SessionDetailModal
         bubble={selectedBubble}
         onClose={() => setSelectedBubble(null)}
+        canEdit={isEditableBubble(selectedBubble, today, readOnly)}
+        onLogSession={(bubble) => void handleLogSession(bubble)}
+        onRename={(bubble, title) => void handleRename(bubble, title)}
+        onNudgeMinutes={(bubble, deltaMinutes) => void handleNudgeMinutes(bubble, deltaMinutes)}
+        onMoveNextDay={(bubble) => void handleMoveNextDay(bubble)}
+        onMarkDone={(bubble) => void handleMarkDone(bubble)}
       />
     </div>
   )

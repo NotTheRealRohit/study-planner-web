@@ -487,6 +487,27 @@
   text-underline-offset: 3px;
 }
 
+.roadmap-edit-panel {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.roadmap-edit-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.roadmap-edit-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.roadmap-edit-row .btn {
+  flex: 1 1 130px;
+}
+
 .roadmap-day-list {
   display: flex;
   flex-direction: column;

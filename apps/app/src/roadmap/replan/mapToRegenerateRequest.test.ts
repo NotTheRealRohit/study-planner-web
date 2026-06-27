@@ -152,4 +152,31 @@ describe('mapToRegenerateRequest', () => {
 
     expect(request.pins.every((pin) => pin.reason !== 'user-edited')).toBe(true)
   })
+
+  it('maps RoadmapEdited events into user-edited pins', () => {
+    const request = mapToRegenerateRequest([
+      ...baseEvents(),
+      event(
+        'RoadmapEdited',
+        {
+          roadmapCreatedAt: '2026-05-31T10:00:00.000Z',
+          weekIndex: 0,
+          dayOfWeek: 'Wed',
+          materialId: 'mat-2',
+          sessionTitle: 'Practice quorum problems revised',
+          plannedMinutes: 60,
+        },
+        '2026-06-02T09:00:00.000Z',
+      ),
+    ], '2026-06-20')
+
+    expect(request.pins).toContainEqual({
+      weekIndex: 0,
+      dayOfWeek: 'Wed',
+      materialId: 'mat-2',
+      sessionTitle: 'Practice quorum problems revised',
+      plannedMinutes: 60,
+      reason: 'user-edited',
+    })
+  })
 })
