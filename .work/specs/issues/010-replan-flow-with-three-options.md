@@ -9,6 +9,14 @@ covers_user_stories: [30, 31, 32, 71, 72]
 
 PRD: `PRD-study-tracker-web.md`
 
+> **Update 2026-06-26 — the regenerate seam now exists (built + Cowork-verified in roadmap-calendar Phase 7, commit `84abbd2`).** Per plan decision D-12, replan **routes to the Python intelligence service**, not the in-browser TS engine. This slice should build the `/replan` UI on top of the existing seam rather than re-deriving it:
+> - `apps/app/src/roadmap/replan/replanRoadmap.ts` — typed boundary `replanRoadmap(events, opts): Promise<RoadmapOutput>` (default transport = Python; opt-in TS `offlineReplan` fallback behind the same signature).
+> - `apps/app/src/roadmap/replan/mapToRegenerateRequest.ts` — pure mapper to the Python `RoadmapRegenerateRequest` shape (`materials[{id,title,totalMinutes,role,additionOrder}]`, capacity fields, `pins[]` with `reason ∈ {completed,today,user-edited}`).
+> - `apps/app/src/lib/intelligenceClient.ts::postRoadmapRegenerate` — POST `/v1/roadmap/regenerate` (mirrors `postCalibration`: auth, timeout, retry, typed errors).
+> - `/replan` route is **reserved as a stub** in `App.tsx` (under `ProtectedRoute + RequireOnboarding`); this slice replaces the stub with the real flow.
+>
+> So "ReplanEngine" below = compose option deltas (new deadline / hours / material set) + pin set, then call `replanRoadmap(...)` per option. The pin categories below are already represented in `mapToRegenerateRequest` (completed/today; `user-edited` reserved pending the Edit feature, D-11). **Open dependency:** OQ-03 (Intelligence Service deploy + auth + CORS for production) must be resolved for replan to work outside local dev.
+
 ## What to build
 
 When the projection drifts past the deadline, the user can re-plan. `/study/replan` presents three options side-by-side on desktop (stacked on mobile): extend the deadline, increase weekly hours, or trim scope. Trim-scope opens a two-column to-cut/to-keep picker so the user can drag materials between buckets and see the impact on the projection.
@@ -32,6 +40,7 @@ Future, unedited, algorithm-generated slots are fair game. The `ReplanEngine` pa
 - [ ] Selecting "trim scope" opens a two-column to-cut / to-keep picker with materials draggable between columns
 - [ ] As the user moves materials, the projected outcome updates live
 - [ ] Confirming an option emits a `RoadmapReplanned` event with option-chosen and resulting-roadmap
+- [ ] **The Python regenerate response is validated at runtime before use** (replace the current unchecked `as RoadmapOutput` cast in `replanRoadmap.ts::parseRoadmapOutput` with a real shape check; reject/handle a malformed response rather than committing a bad `RoadmapReplanned`) — follow-up flagged in roadmap-calendar Phase 7 verification
 - [ ] After replanning, `/study/home` reflects the new roadmap (projection, burn-up, "Up next")
 - [ ] **Re-plan respects all three pin categories: completed slots are immutable, today's slots are immutable, user-edited slots are preserved verbatim**
 - [ ] **Re-plan regenerates only future, unedited, algorithm-generated slots**

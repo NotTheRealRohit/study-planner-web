@@ -47,7 +47,27 @@ Self-check vs criteria:
 - `pnpm --filter progress test` and `pnpm --filter progress typecheck` pass. Both emitted the existing Node engine warning (`wanted >=20`, current `v18.19.0`) but completed successfully.
 
 ### Reviewer findings
-_(per-criterion verdict · issues · required changes · status: ✅ Verified / 🔁 Changes requested)_
+
+**Reviewed:** 2026-06-26 (Cowork) · commit `c50ff53` (`git show c50ff53`; confirmed ancestor of HEAD). Verified by diff + code inspection; see note on test execution below.
+
+Per-criterion:
+- ✅ `deriveSlotStatuses(roadmap, sessions, today)` present in `packages/progress/src/deriveSlotStatuses.ts`, exported from `index.ts` with its public types.
+- ✅ Match rule is exactly `session.date === slot.date && slot.candidateMaterialIds.includes(session.materialId)`, guarded by `materialId !== undefined`. Each session takes the first **unused** matching slot (`usedSlotIndexes`), so a session maps to ≤1 slot and a slot absorbs ≤1 session — matches D-02.
+- ✅ `done` = ≥1 attributed with summed `loggedMinutes`; `pending` = `slot.date >= today` & unmatched; `skipped` = past & unmatched. Today-as-pending is correct per D-02 ("date ≥ today").
+- ✅ Unattributed sessions returned in `unplanned` (off-plan material, overflow, and empty-roadmap cases all route here).
+- ✅ Pure: no `new Date()` / clock read; all decisions use the caller-supplied ISO `today` (string comparison).
+- ✅ Tests cover all required cases: single match, duplicate-same-day overflow→unplanned, past-skipped, future-pending, off-plan material, empty roadmap, plus all-done week.
+- ✅ fast-check property asserts every session appears exactly once across `slots[].sessionIds ∪ unplanned` (count + Set-size) — no loss, no double-count.
+- ✅ (corroborated) Tests/typecheck: implementer reports green on Node 18 (engine warning only). I could **not re-execute in the Cowork sandbox** — `vitest` fails to load `@rollup/rollup-linux-arm64-gnu` (npm optional-deps bug; environment, not a test failure), consistent with this repo's "tests blocked in this environment" caveat. Logic + coverage verified by inspection instead.
+
+Deviation assessment (`materialId?: string` added to `SessionEvent`):
+- Sound. The field is **optional**, so it's backward-compatible — no existing `packages/progress` consumer breaks. `RoadmapSlot.dayOfWeek` is typed `string`, so the tests' full day-names typecheck.
+- The producer is wired: `apps/app/src/progress/mapEvents.ts::mapSessions` now maps `materialId: e.payload.materialId` (landed in the Phase 2 commit `8019007`, ancestor of HEAD). So when `deriveSlotStatuses` is fed real `SessionEvent[]`, sessions carry `materialId` and the match rule fires — no silent "everything unplanned" failure. ✅
+
+Notes:
+- The historical `c50ff53` diff text recorded the SHA as `ed546a7` (a pre-rebase artifact); the **current on-disk** PLAN.md/VERIFICATION.md correctly reference `c50ff53`. No action — flagging only because later phases were rebased the same way; reviewer of Phases 2–7 should confirm each recorded SHA is an ancestor of HEAD.
+
+**Status: ✅ Verified.** No changes requested.
 
 ### Resolution
 _(implementer fills on redo — loop until ✅ Verified)_
@@ -117,6 +137,12 @@ Self-check vs criteria:
 
 ### Reviewer findings
 
+**Reviewed:** 2026-06-26 (Cowork) · commit `8019007` (ancestor of HEAD) · by diff + code inspection (tests not executed in sandbox — `vitest` can't load `@rollup/rollup-linux-arm64-gnu`, an env bug, not a failure).
+
+All 12 criteria ✅. Evidence: `Roadmap.tsx` → `<RoadmapCalendar/>`; `statusStyles.ts` maps to `var(--moss)`/`var(--surface-card)`/`var(--rust)` (hex scan of new roadmap files = none); `roadmap.css` `.roadmap-day-current-week{background:var(--cal-week-band)}`, `.roadmap-day-today{background:var(--cal-today-fill)}` + `.roadmap-today-pill`, out-of-month `opacity:.55`, rust only in `.roadmap-chip-skipped`; `tokens.css` adds both `--cal-*`; chips pair icon+color (check/clock/x/plus); cap 3 + `+N more`; header uses `useProgressSnapshot`; legend has `data-icon` redundancy; null roadmap → empty state with `to="/onboarding"` before any deref (D-13); 4 footer buttons disabled; `calendarModel.ts` pure (ISO Monday-start) + tests (31-day mid-week 6 rows, Feb, binding, title join); walkthrough `01/02/03` with D-14 assertions. No `/study` route prefix. Deviations sound: `roadmap.css` (auditable styling) and `mapSessions` `materialId` (required for the Phase-1 match rule to fire on real sessions). Nits only: `--cal-today-fill` 12% vs pill 16% (intentional contrast); the null-guard later migrated to `deriveRoadmapLifecycle` in Phase 6 (behavior preserved).
+
+**Status: ✅ Verified.** No changes requested.
+
 ### Resolution
 
 ---
@@ -164,6 +190,12 @@ Self-check vs criteria:
 - Verification passed: `pnpm --filter app test`, `pnpm --filter app typecheck`, and `pnpm lint` (lint passes with 6 pre-existing warnings).
 
 ### Reviewer findings
+
+**Reviewed:** 2026-06-26 (Cowork) · commit `3cb0df6` (Phases 3 & 4 shipped together; ancestor of HEAD) · diff + inspection; tests not executed (sandbox rollup env bug).
+
+All 5 criteria ✅. `MonthNav` renders prev/next/Today; `activeViewMonth` defaults to today's month clamped into bounds; clamp via `calendarMonthBounds`/`clampMonth`/`shiftMonth` with buttons disabled at bounds; slide animation 180ms (`.roadmap-calendar-slide`, `key`-remount) with `@media (prefers-reduced-motion: reduce){animation:none}`; deadline day marked via `.roadmap-deadline-pill` (`data-testid=roadmap-deadline-marker`, token accent); clamp unit-tested in `calendarModel.test.ts`; walkthrough `04/05/06` assert disabled-at-bounds + deadline marker. No `/study` route prefix; no raw hex. Nit (non-blocking): changing month doesn't auto-close an open modal — harmless, bubble data is self-contained.
+
+**Status: ✅ Verified.** No changes requested.
 
 ### Resolution
 
@@ -214,6 +246,12 @@ Self-check vs criteria:
 
 ### Reviewer findings
 
+**Reviewed:** 2026-06-26 (Cowork) · commit `3cb0df6` · diff + inspection; tests not executed (sandbox rollup env bug).
+
+All 5 criteria ✅. `SessionDetailModal` reuses the app modal shell (`modal-overlay`/`modal-card`/`modal-eyebrow`/`modal-title`/`modal-body`, matching `RecalibrationModal`); renders date eyebrow, title, status pill, logged-vs-planned body, material link when `MaterialAdded.url` present, and the exact status→action mapping (done→View session, pending→Start session, skipped→Log it late, unplanned→View session); bubble click opens the modal, `+N more` opens a day list whose rows open the detail modal; close + status mapping unit-tested (`SessionDetailModal.test.tsx`); walkthrough `07–10` assert open/close; hover-expand gated `@media (pointer: fine)`. Notes (non-blocking): the shared desktop modal overlay uses `position: fixed` (allowed — the fixed-prohibition is specific to the Phase-5 sheet); action buttons are disabled stubs (plan-sanctioned, since start/log routes are out of scope).
+
+**Status: ✅ Verified.** No changes requested.
+
 ### Resolution
 
 ---
@@ -259,6 +297,12 @@ Self-check vs criteria:
 - Verification passed: `pnpm --filter app test` and `pnpm --filter app typecheck`.
 
 ### Reviewer findings
+
+**Reviewed:** 2026-06-26 (Cowork) · commit `3967553` · diff + inspection; tests not executed (sandbox rollup env bug).
+
+All 5 criteria ✅. Compact mode (`useMatchMedia('(max-width: 560px)')`) renders status dots + a count badge when `bubbles.length > 1`; desktop bubble buttons are not rendered in compact (hover disabled). **Critical rule honored:** `DaySheet` is a normal-flow `section[role=dialog]` with **no `position` property** — the only `position: fixed` is `.roadmap-modal-overlay` (the separate desktop modal). Sheet rows open `SessionDetailModal`; left/right swipe (`≥48px` deltaX) reuses the clamp + slide, gated to mobile; `app-mobile` Playwright project (Pixel 5) added; walkthrough `11–14`. No `/study` route prefix. **Low (follow-up, non-blocking):** swipe checks only `deltaX`, not `|deltaX| > |deltaY|`, so a mostly-vertical scroll with >48px horizontal drift could spuriously page the month — recommend capturing `clientY` and requiring horizontal dominance. Nit: `formatMinutes` negative-clamp divergence between cell and sheet (cosmetic).
+
+**Status: ✅ Verified** (swipe vertical-intent guard logged as a low-severity follow-up; not an acceptance failure).
 
 ### Resolution
 
@@ -311,6 +355,12 @@ Self-check vs criteria:
 
 ### Reviewer findings
 
+**Reviewed:** 2026-06-26 (Cowork) · commit `192cbef` · diff + inspection; tests not executed (sandbox rollup env bug).
+
+All 7 criteria ✅. Terminal payload types `{ roadmapCreatedAt, resolvedAt, reason? }` added to `sync/types.ts`; footer emits via `useSync().logEvent` (abandon behind `window.confirm`) then `navigate('/roadmaps')`; `roadmapLifecycle.ts` is pure and matches by **`roadmapCreatedAt` identity (not array index)**, latest terminal by `resolvedAt` wins, terminal check precedes supersede so a resolved replan still classifies correctly; `/roadmaps` renders Active/Completed/Abandoned + Fraunces-italic empty state + `to="/onboarding"`; history entry → `<RoadmapCalendar roadmapCreatedAt readOnly>` and `readOnly` genuinely disables resolve/edit/replan (handler early-returns + buttons hidden/disabled); `roadmapLifecycle.test.ts` covers active/completed/abandoned/replan-supersede/multi-roadmap; walkthrough `15–19`. No `/study` route prefix; empty state uses `--font-display` (Fraunces). Info only: `latestTerminalFor` passes `createdAt` twice (harmless redundancy); the internal `superseded` bucket isn't rendered (documented deviation — keeps replanned snapshots out of "active" without a fake terminal event).
+
+**Status: ✅ Verified.** No changes requested.
+
 ### Resolution
 
 ---
@@ -362,15 +412,24 @@ Self-check vs criteria:
 
 ### Reviewer findings
 
+**Reviewed:** 2026-06-26 (Cowork) · commit `84abbd2` · diff + inspection against the Python ground truth (`services/intelligence/app/schemas/roadmap.py`, `routers/roadmap.py`) and rules `fetch-typed-error-normalization` + `react-router-v7-basename`; tests not executed (sandbox rollup env bug).
+
+All 8 criteria ✅. `postRoadmapRegenerate` mirrors `postCalibration` (supabase auth header, `AbortController` timeout, retry/backoff) and POSTs `/v1/roadmap/regenerate`. **Error-normalization trap avoided:** `normalizedRoadmapError` passes through only the client's own typed errors and **wraps the else-`Error` branch** (no `instanceof Error` pass-through), mapping `name === 'AbortError'` → timeout. `mapToRegenerateRequest` is pure and matches the Python schema **exactly** — `materials[{id,title,totalMinutes,role,additionOrder}]` (correctly translating app `estimatedDuration` → `totalMinutes`), capacity fields from `RoadmapCreatedPayload`, `pins[]` with `reason ∈ {completed,today,user-edited}` (so no silent 422). `replanRoadmap(events, opts)` is the boundary (map→post→parse), with an opt-in TS `offlineReplan` fallback behind the same signature, not UI-wired. `/replan` is reserved under `ProtectedRoute + RequireOnboarding` with path `/replan` (no `/study`). Tests cover field-mapping/pins and 401→auth / ≥500→retryable / timeout via a **real `Error` subclass named `AbortError`** (not jsdom `DOMException`) / network-`TypeError` exhaustion. Walkthrough `20` asserts no double `/study`. Info only: `parseRoadmapOutput` is an unchecked cast (acceptable for a stub; add runtime validation when `/replan` is wired); 401 reuses `CalibrationAuthError` (intentional shared auth class).
+
+**Status: ✅ Verified.** No changes requested.
+
 ### Resolution
 
 ---
 
-## Cross-cutting checks (reviewer, at plan completion)
-- [ ] No `/study` prefix introduced in any `to`/route path (rule `react-router-v7-basename`).
-- [ ] No raw hex colors in new UI; design tokens only, incl. the two new `--cal-*` tokens (rule `form-design-spacing`, D-14).
-- [ ] D-14 visual contract honored everywhere: rust only on `skipped`; today = `--cal-today-fill`; current week = `--cal-week-band`; every status chip is icon+color.
-- [ ] `e2e/roadmap.spec.ts` is one ordered visual walkthrough (steps `01`–`20`) writing screenshots to `e2e/__screens__/roadmap/`; authored but not executed (environment constraint, D-15).
-- [ ] No Dexie schema change was needed (events are additive); if any table was touched, it versioned up (rule `dexie-schema-migration`).
-- [ ] E2E specs written but not executed (environment constraint).
-- [ ] `.work/STATUS.md` row updated to reflect the shipped state.
+## Cross-cutting checks (reviewer, at plan completion) — ✅ all pass (2026-06-26)
+- [x] No `/study` prefix introduced in any `to`/route path (rule `react-router-v7-basename`) — confirmed across all 5 review passes; `/study/...` appears only in e2e `page.goto` URLs.
+- [x] No raw hex colors in new UI; design tokens only, incl. the two new `--cal-*` tokens (rule `form-design-spacing`, D-14) — hex scans of `apps/app/src/roadmap/*` + `roadmap.css` returned none.
+- [x] D-14 visual contract honored everywhere: rust only on `skipped`; today = `--cal-today-fill`; current week = `--cal-week-band`; every status chip is icon+color.
+- [x] `e2e/roadmap.spec.ts` is one ordered visual walkthrough (steps `01`–`20`) writing screenshots to `e2e/__screens__/roadmap/`; authored but not executed (environment constraint, D-15).
+- [x] No Dexie schema change was needed — terminal events are additive event kinds; no table touched.
+- [x] E2E specs written but not executed (environment constraint).
+- [x] `.work/STATUS.md` row updated to reflect the shipped + verified state.
+
+## Outcome — all 7 phases ✅ Verified (2026-06-26, Cowork)
+Reviewed by diff + code inspection (5 parallel review passes); test suites authored but not run in the Cowork sandbox (`vitest`/`pnpm` blocked by a `@rollup/rollup-linux-arm64-gnu` optional-dep load error — environment, not a test failure). No changes requested. Follow-ups noted (non-blocking): (a) Phase 5 swipe should require horizontal dominance (`|deltaX| > |deltaY|`) to avoid spurious month paging on vertical scroll; (b) Phase 7 `parseRoadmapOutput` should gain runtime validation when the `/replan` UI is built. **Recommended:** run the Vitest + Playwright suites in a `node >=20` environment with deps reinstalled to confirm the authored tests pass green before treating the feature as shippable.

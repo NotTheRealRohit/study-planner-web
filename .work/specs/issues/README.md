@@ -24,6 +24,9 @@ Vertical-slice breakdown of `PRD-study-tracker-web.md`, generated via the `to-is
 | 15 | Settings, preferences sync, account deletion | AFK | 3 |
 | 16 | Password reset + email-confirmation polish | AFK | 1b |
 | 17 | Plausible Analytics | AFK | 1b |
+| 18 | Roadmap calendar — mobile swipe vertical-intent guard | AFK | — (roadmap-calendar verified) |
+
+> **Post-review follow-ups (2026-06-26, from the roadmap-calendar plan):** #18 is a low-severity Phase-5 robustness fix surfaced in verification. #10 (re-plan flow) was **updated** — the Python-routed regenerate seam (`replanRoadmap` / `postRoadmapRegenerate` / `mapToRegenerateRequest`) now exists from roadmap-calendar Phase 7, and #10 gained an acceptance criterion to validate the Python response at runtime.
 
 ## Dependency graph
 
