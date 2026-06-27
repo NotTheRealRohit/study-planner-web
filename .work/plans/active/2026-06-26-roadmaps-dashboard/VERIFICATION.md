@@ -75,6 +75,17 @@ Reviewed by diff of commit `4631152` (read-only `git show`); tests not re-run in
 
 ### Resolution (Developer fills on redo)
 
+Commit SHA: `521cd6d`
+
+What changed:
+- Moved the new-roadmap + active-roadmap draft branch to the top of `Step3Preview.handleCommit`, before any `MaterialAdded` emission.
+- Updated the active-plan draft test to assert zero `MaterialAdded`, zero `RoadmapCreated`, and zero duplicate `OnboardingCompleted` events.
+
+Verification:
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- Step3Preview Onboarding` passed: 45 test files, 440 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
+
 ---
 
 ## Phase 2 — Session attribution by date window
