@@ -118,6 +118,16 @@ describe('buildStreakGrid', () => {
     expect(todayCell?.minutes).toBe(1)
   })
 
+  it('roadmap quick-log sessions use manual credit and count toward the streak grid', () => {
+    const sessions = [
+      makeSession({ date: '2026-01-15', source: 'manual', duration: 0 }),
+    ]
+    const grid = buildStreakGrid(sessions, today, { '2026-01-15': 60 }, 60)
+    const todayCell = grid.find((d) => d.date === '2026-01-15')
+    expect(todayCell?.level).toBe(1)
+    expect(todayCell?.minutes).toBe(1)
+  })
+
   it('future days always show level 0 even if sessions exist', () => {
     const sessions = [
       makeSession({ date: '2026-01-16', duration: 60 }),

@@ -318,7 +318,7 @@ export function RoadmapCalendar({
     if (!isEditableBubble(bubble, today, readOnly)) return
 
     await logEvent('SessionLogged', {
-      source: 'roadmap',
+      source: 'manual',
       sessionId: crypto.randomUUID(),
       duration: bubble.plannedMinutes ?? bubble.minutes,
       plannedMinutes: bubble.plannedMinutes,

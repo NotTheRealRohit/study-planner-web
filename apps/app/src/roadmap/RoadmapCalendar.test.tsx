@@ -111,7 +111,7 @@ describe('RoadmapCalendar quick actions', () => {
 
     await waitFor(() => {
       expect(mockState.logEvent).toHaveBeenCalledWith('SessionLogged', expect.objectContaining({
-        source: 'roadmap',
+        source: 'manual',
         date: '2099-06-03',
         materialId: 'mat-1',
         duration: 60,
