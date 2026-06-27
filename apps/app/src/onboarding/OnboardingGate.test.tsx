@@ -5,6 +5,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { OnboardingGate } from './OnboardingGate'
 import { BrowserRouter, MemoryRouter, useLocation } from 'react-router-dom'
 import { useOnboardingNavigate } from './useOnboardingNavigate'
+import type { EventStore } from '../events/EventStore'
 
 vi.mock('../events/useEventStore')
 vi.mock('dexie-react-hooks')
@@ -43,7 +44,7 @@ describe('OnboardingGate', () => {
       ]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue([
       { kind: 'SessionLogged', payload: {}, createdAt: '2024-01-01' }
     ])
@@ -66,7 +67,7 @@ describe('OnboardingGate', () => {
       getAll: vi.fn().mockResolvedValue([]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue(undefined)
 
     const { container } = render(
@@ -87,7 +88,7 @@ describe('OnboardingGate', () => {
       ]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue([
       { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
     ])
@@ -110,7 +111,7 @@ describe('OnboardingGate', () => {
       ]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue([
       { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
     ])
@@ -135,7 +136,7 @@ describe('OnboardingGate', () => {
       ]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue([
       { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
     ])
@@ -160,7 +161,7 @@ describe('OnboardingGate', () => {
       ]),
       table: vi.fn(),
     }
-    mockUseEventStore.mockReturnValue(mockEventStore as any)
+    mockUseEventStore.mockReturnValue(mockEventStore as unknown as EventStore)
     mockUseLiveQuery.mockReturnValue([
       { kind: 'OnboardingCompleted', payload: {}, createdAt: '2024-01-01' },
     ])

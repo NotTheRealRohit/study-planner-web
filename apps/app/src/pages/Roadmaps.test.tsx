@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import type { Event } from '../events/EventStore'
 import type { RoadmapCreatedPayload } from '../sync/types'
 import { Roadmaps } from './Roadmaps'
@@ -91,9 +91,15 @@ function event(kind: string, payload: unknown, createdAt: string): Event {
   return { kind, payload: payload as Record<string, unknown>, createdAt }
 }
 
+function LocationProbe() {
+  const location = useLocation()
+  return <div data-testid="location">{location.pathname}{location.search}</div>
+}
+
 function renderRoadmaps() {
   return render(
     <MemoryRouter>
+      <LocationProbe />
       <Roadmaps />
     </MemoryRouter>,
   )
@@ -201,8 +207,9 @@ describe('Roadmaps dashboard', () => {
     })
   })
 
-  it('opens read-only calendar detail from history rows', () => {
+  it('navigates to route detail from history rows without inline calendar state', () => {
     const createdAt = '2026-06-01T00:00:00.000Z'
+    const encodedCreatedAt = encodeURIComponent(createdAt)
     mockState.events = [
       event('RoadmapCreated', roadmapPayload({ purpose: 'Completed plan' }), createdAt),
       event(
@@ -213,10 +220,15 @@ describe('Roadmaps dashboard', () => {
     ]
 
     renderRoadmaps()
-    fireEvent.click(screen.getByRole('button', { name: /Completed plan/ }))
+    expect(screen.queryByTestId('roadmaps-readonly-detail')).not.toBeInTheDocument()
 
-    expect(screen.getByTestId('mock-roadmap-calendar')).toHaveAttribute('data-readonly', 'true')
-    expect(screen.getByTestId('mock-roadmap-calendar')).toHaveTextContent(createdAt)
+    const historyLink = screen.getByRole('link', { name: /Completed plan/ })
+    expect(historyLink).toHaveAttribute('href', `/roadmap?roadmap=${encodedCreatedAt}`)
+    fireEvent.click(historyLink)
+
+    expect(screen.getByTestId('location')).toHaveTextContent(`/roadmap?roadmap=${encodedCreatedAt}`)
+    expect(screen.queryByTestId('roadmaps-readonly-detail')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('mock-roadmap-calendar')).not.toBeInTheDocument()
   })
 
   it('shows an ended status and banner for an active roadmap past its deadline', () => {

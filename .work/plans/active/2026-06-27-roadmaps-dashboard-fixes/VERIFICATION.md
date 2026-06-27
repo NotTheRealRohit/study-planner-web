@@ -74,10 +74,29 @@ fills findings. A phase is done only at `✅ Verified`.
 ### Implementer report (Codex/Sonnet fills)
 
 - Files changed:
-- Commit SHA:
+  - `apps/app/src/pages/Roadmap.tsx`
+  - `apps/app/src/pages/Roadmap.test.tsx`
+  - `apps/app/src/pages/Roadmaps.tsx`
+  - `apps/app/src/pages/Roadmaps.test.tsx`
+  - `apps/app/src/roadmap/RoadmapCalendar.tsx`
+  - `apps/app/src/roadmap/RoadmapCalendar.test.tsx`
+  - `apps/app/src/onboarding/OnboardingGate.test.tsx`
+- Commit SHA: pending
 - What was done:
+  - Changed history rows from component-state buttons to `<Link>` rows targeting `/roadmap?roadmap=${encodeURIComponent(createdAt)}`.
+  - Removed `selectedCreatedAt`, `selectedEntry`, the inline `roadmaps-readonly` calendar panel, and the unused `RoadmapCalendar` import from `Roadmaps.tsx`.
+  - Updated `Roadmap.tsx` to read the `roadmap` search param and render the selected entry in read-only mode when present.
+  - Updated `RoadmapCalendar` so historical read-only route views still show the existing `← Roadmaps` back link.
+  - Added tests for history link navigation/no inline panel, `Roadmap` query-param handoff, and the historical back link.
 - Deviations + why:
+  - Also replaced explicit `any` casts in the touched `OnboardingGate.test.tsx` with typed `EventStore` casts after `pnpm lint` surfaced warnings in that file. No behavior changed.
 - Self-check vs criteria:
+  - `pnpm --filter app test -- Roadmaps Roadmap` passed under Node v22.17.1 (50 files, 455 tests).
+  - `pnpm --filter app test -- OnboardingGate useOnboardingNavigate Roadmaps Roadmap` passed after the touched-test lint cleanup (50 files, 455 tests).
+  - `pnpm --filter app typecheck` passed.
+  - `pnpm lint` exited 0; it reports four warning-only `no-explicit-any` findings in unrelated session files.
+  - Grep found no `selectedCreatedAt`, `roadmaps-readonly`, or `RoadmapCalendar` references left in `Roadmaps.tsx`.
+  - Grep found no `/study` paths in the touched route/calendar files.
 
 ### Reviewer findings (Cowork fills)
 

@@ -284,7 +284,7 @@ navigation listed in the phase while leaving exit routes on plain `useNavigate()
 
 ### Phase B: Historical roadmap opens as a closable route view (`/roadmap?roadmap=...`)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — pending
 **Depends on:** none (independent of Phase A; can be done in parallel)
 **Estimated scope:** ~3 files, ~60 lines
 
@@ -360,7 +360,12 @@ Revert the three files; the inline-selection behavior returns.
 
 #### Notes (filled in during implementation)
 
-<empty>
+Implemented 2026-06-27. History rows now navigate to `/roadmap?roadmap=<createdAt>` and
+the dashboard no longer owns inline selected-roadmap state. `Roadmap.tsx` reads the query param and
+passes historical entries through as read-only calendars; `RoadmapCalendar` shows the existing
+`← Roadmaps` link for historical route views. Verification: `pnpm --filter app test -- Roadmaps
+Roadmap`, `pnpm --filter app typecheck`, and `pnpm lint` all exited 0 under Node v22.17.1. Lint still
+reports four warning-only `no-explicit-any` findings in unrelated session files.
 
 ---
 

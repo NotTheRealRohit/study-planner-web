@@ -4,7 +4,6 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
 import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
-import { RoadmapCalendar } from '../roadmap/RoadmapCalendar'
 import { deriveRoadmapDraft, type RoadmapDraftSummary } from '../roadmap/roadmapDraft'
 import {
   deriveRoadmapLifecycle,
@@ -49,12 +48,8 @@ function sessionStats(entry: RoadmapLifecycleEntry, events: Event[]) {
 
 function HistoryRows({
   entries,
-  selectedCreatedAt,
-  onSelect,
 }: {
   entries: RoadmapLifecycleEntry[]
-  selectedCreatedAt: string | null
-  onSelect: (entry: RoadmapLifecycleEntry) => void
 }) {
   if (entries.length === 0) {
     return <p className="roadmaps-muted">Completed and abandoned plans will settle here.</p>
@@ -63,12 +58,10 @@ function HistoryRows({
   return (
     <div className="roadmaps-list">
       {entries.map((entry) => (
-        <button
+        <Link
           key={entry.roadmapCreatedAt}
-          type="button"
           className="roadmaps-row rmd-history-row"
-          data-selected={entry.roadmapCreatedAt === selectedCreatedAt ? 'true' : undefined}
-          onClick={() => onSelect(entry)}
+          to={`/roadmap?roadmap=${encodeURIComponent(entry.roadmapCreatedAt)}`}
         >
           <span className="roadmaps-row-main">
             <span className="roadmaps-row-title">{entry.title}</span>
@@ -79,7 +72,7 @@ function HistoryRows({
           <span className={`rmd-status-pill rmd-status-${entry.status}`}>
             {entry.status}
           </span>
-        </button>
+        </Link>
       ))}
     </div>
   )
@@ -96,7 +89,6 @@ export function Roadmaps() {
     () => deriveRoadmapDraft(eventStore, hasCompletedOnboarding),
     [eventStore, hasCompletedOnboarding],
   ) ?? null
-  const [selectedCreatedAt, setSelectedCreatedAt] = useState<string | null>(null)
   const [showCloseControls, setShowCloseControls] = useState(false)
   const [closePromptDraft, setClosePromptDraft] = useState<RoadmapDraftSummary | null>(null)
 
@@ -112,9 +104,6 @@ export function Roadmaps() {
   const activeEnded = roadmapEnded.ended &&
     roadmapEnded.entry?.roadmapCreatedAt === activeEntry?.roadmapCreatedAt
   const historyEntries = lifecycle.all.filter((entry) => entry.status !== 'active')
-  const selectedEntry = selectedCreatedAt
-    ? historyEntries.find((entry) => entry.roadmapCreatedAt === selectedCreatedAt) ?? null
-    : null
   const activeStats = activeEntry ? sessionStats(activeEntry, loadedEvents) : null
 
   const handleResolve = async (kind: RoadmapResolutionKind) => {
@@ -316,23 +305,8 @@ export function Roadmaps() {
           <h2>History</h2>
           <span className="roadmaps-count">{historyEntries.length}</span>
         </div>
-        <div className="roadmaps-layout">
-          <div className="roadmaps-groups">
-            <HistoryRows
-              entries={historyEntries}
-              selectedCreatedAt={selectedCreatedAt}
-              onSelect={(entry) => setSelectedCreatedAt(entry.roadmapCreatedAt)}
-            />
-          </div>
-
-          {selectedEntry && (
-            <section className="roadmaps-readonly" data-testid="roadmaps-readonly-detail">
-              <RoadmapCalendar
-                roadmapCreatedAt={selectedEntry.roadmapCreatedAt}
-                readOnly
-              />
-            </section>
-          )}
+        <div className="roadmaps-groups">
+          <HistoryRows entries={historyEntries} />
         </div>
       </section>
     </div>

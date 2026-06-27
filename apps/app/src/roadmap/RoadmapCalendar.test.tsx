@@ -92,6 +92,14 @@ function renderCalendar(readOnly = false) {
   )
 }
 
+function renderHistoricalCalendar() {
+  return render(
+    <MemoryRouter>
+      <RoadmapCalendar roadmapCreatedAt="2026-05-01T09:00:00.000Z" readOnly />
+    </MemoryRouter>,
+  )
+}
+
 function openPlannedBubble() {
   fireEvent.click(screen.getByRole('button', { name: /Planned: Read chapter, 1h/ }))
 }
@@ -147,5 +155,11 @@ describe('RoadmapCalendar quick actions', () => {
     expect(screen.queryByRole('button', { name: 'Log session' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Session title')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+  })
+
+  it('shows the Roadmaps back link for historical route views', () => {
+    renderHistoricalCalendar()
+
+    expect(screen.getByRole('link', { name: /Roadmaps/ })).toHaveAttribute('href', '/roadmaps')
   })
 })

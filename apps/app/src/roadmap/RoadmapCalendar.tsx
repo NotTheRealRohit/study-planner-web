@@ -384,7 +384,7 @@ export function RoadmapCalendar({
         />
       )}
 
-      {!readOnly && (
+      {(!readOnly || roadmapCreatedAt != null) && (
         <Link className="roadmap-back-link" to="/roadmaps">
           &larr; Roadmaps
         </Link>
