@@ -228,6 +228,6 @@ describe('Roadmaps dashboard', () => {
 
     expect(screen.getByText('• Ended — needs review')).toBeInTheDocument()
     expect(screen.getByRole('status', { name: 'Roadmap ended' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Extend deadline' })).toHaveAttribute('href', '/replan')
+    expect(screen.getByRole('link', { name: 'Extend deadline' })).toHaveAttribute('href', '/replan?intent=extend')
   })
 })

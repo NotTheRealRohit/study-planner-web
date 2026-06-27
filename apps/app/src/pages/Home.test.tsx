@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import type { CalibrationState, PromptDetail } from '@study-tracker/progress'
 import { Home } from './Home'
+
+const mockProgressState = vi.hoisted(() => ({
+  calibration: null as CalibrationState | null,
+  promptDetail: null as PromptDetail | null,
+}))
 
 vi.mock('../auth/useAuth', () => ({
   useAuth: () => ({
@@ -30,9 +36,9 @@ vi.mock('../components/SyncIndicator', () => ({
 }))
 
 vi.mock('../progress', () => ({
-  useCalibrationState: () => ({ calibration: null, status: 'ready' }),
+  useCalibrationState: () => ({ calibration: mockProgressState.calibration, status: 'ready' }),
   useProgressSnapshot: () => null,
-  usePromptDetail: () => null,
+  usePromptDetail: () => mockProgressState.promptDetail,
 }))
 
 let mockEvents: Array<{ id?: number; kind: string; payload: Record<string, unknown>; createdAt: string }> = []
@@ -50,6 +56,8 @@ describe('Home', () => {
   beforeEach(() => {
     mockEvents = []
     mockActiveSession = undefined
+    mockProgressState.calibration = null
+    mockProgressState.promptDetail = null
     mockLogEvent.mockClear()
   })
 
@@ -175,5 +183,32 @@ describe('Home', () => {
       sessionId: 'sess-abc',
       exceptional: true,
     })
+  })
+
+  it('routes recalibration replan action to the replan screen', async () => {
+    mockProgressState.calibration = {
+      promptNeeded: true,
+      trend: { phases: [] },
+    } as unknown as CalibrationState
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <Routes>
+          <Route path="/home" element={<Home />} />
+          <Route path="/replan" element={<div>Replan reached</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Review' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust my roadmap' }))
+
+    await waitFor(() => {
+      expect(mockLogEvent).toHaveBeenCalledWith('RecalibrationPromptResolved', {
+        resolution: 'replan',
+        resolvedAt: expect.any(String),
+      })
+    })
+    expect(await screen.findByText('Replan reached')).toBeInTheDocument()
   })
 })

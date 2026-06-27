@@ -7,7 +7,7 @@ function event(kind: string, payload: unknown, createdAt: string): Event {
   return { kind, payload: payload as Record<string, unknown>, createdAt }
 }
 
-function roadmapPayload(): RoadmapCreatedPayload {
+function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): RoadmapCreatedPayload {
   return {
     startDate: '2026-06-01',
     deadline: '2026-06-30',
@@ -39,6 +39,7 @@ function roadmapPayload(): RoadmapCreatedPayload {
         sessionTitle: 'Practice quorum problems',
       },
     ],
+    ...overrides,
   }
 }
 
@@ -178,5 +179,82 @@ describe('mapToRegenerateRequest', () => {
       plannedMinutes: 60,
       reason: 'user-edited',
     })
+  })
+
+  it('matches user-edited pins by original roadmap identity after an in-place replan', () => {
+    const originalCreatedAt = '2026-05-31T10:00:00.000Z'
+    const replanCreatedAt = '2026-06-10T10:00:00.000Z'
+    const request = mapToRegenerateRequest([
+      ...baseEvents(),
+      event(
+        'RoadmapReplanned',
+        { ...roadmapPayload({ purpose: 'Replanned' }), roadmapCreatedAt: originalCreatedAt },
+        replanCreatedAt,
+      ),
+      event(
+        'RoadmapEdited',
+        {
+          roadmapCreatedAt: originalCreatedAt,
+          weekIndex: 0,
+          dayOfWeek: 'Wed',
+          materialId: 'mat-2',
+          sessionTitle: 'Identity-preserved edit',
+          plannedMinutes: 60,
+        },
+        '2026-06-11T09:00:00.000Z',
+      ),
+    ], '2026-06-20')
+
+    expect(request.pins).toContainEqual({
+      weekIndex: 0,
+      dayOfWeek: 'Wed',
+      materialId: 'mat-2',
+      sessionTitle: 'Identity-preserved edit',
+      plannedMinutes: 60,
+      reason: 'user-edited',
+    })
+  })
+
+  it('scopes regenerate materials to the latest active roadmap slots', () => {
+    const oldPayload = roadmapPayload({
+      purpose: 'Old roadmap',
+      startDate: '2026-05-01',
+      deadline: '2026-05-31',
+      slots: [
+        {
+          ...roadmapPayload().slots[0],
+          date: '2026-05-04',
+          candidateMaterialIds: ['old-mat'],
+        },
+      ],
+    })
+    const activePayload = roadmapPayload()
+
+    const request = mapToRegenerateRequest([
+      event(
+        'MaterialAdded',
+        {
+          materialId: 'old-mat',
+          title: 'Old Course',
+          estimatedDuration: 90,
+          kind: 'manual',
+          role: 'foundation',
+        },
+        '2026-04-30T09:00:00.000Z',
+      ),
+      event('RoadmapCreated', oldPayload, '2026-04-30T10:00:00.000Z'),
+      event(
+        'RoadmapMarkedComplete',
+        {
+          roadmapCreatedAt: '2026-04-30T10:00:00.000Z',
+          resolvedAt: '2026-05-31T10:00:00.000Z',
+        },
+        '2026-05-31T10:00:00.000Z',
+      ),
+      ...baseEvents(),
+      event('RoadmapCreated', activePayload, '2026-05-31T10:00:00.000Z'),
+    ], '2026-06-20')
+
+    expect(request.input.materials.map((material) => material.id)).toEqual(['mat-1', 'mat-2'])
   })
 })

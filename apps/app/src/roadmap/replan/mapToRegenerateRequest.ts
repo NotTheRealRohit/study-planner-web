@@ -1,7 +1,13 @@
 import { deriveSlotStatuses, type RoadmapInput as ProgressRoadmapInput } from '@study-tracker/progress'
 import type { DayOfWeek, Pin, RoadmapInput as EngineRoadmapInput } from '@study-tracker/roadmap-engine'
 import type { Event } from '../../events/EventStore'
-import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../../sync/types'
+import type {
+  MaterialAddedPayload,
+  RoadmapCreatedPayload,
+  RoadmapReplannedPayload,
+} from '../../sync/types'
+
+type RoadmapPayload = RoadmapCreatedPayload | RoadmapReplannedPayload
 
 export interface RoadmapRegenerateRequest {
   input: EngineRoadmapInput
@@ -58,17 +64,31 @@ function latestActiveRoadmapEvent(events: Event[]): Event | null {
     )
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null
 
-  if (!latestRoadmap || terminals.has(latestRoadmap.createdAt)) return null
+  if (!latestRoadmap || terminals.has(roadmapIdentity(latestRoadmap))) return null
   return latestRoadmap
 }
 
-function materialPayloads(events: Event[]): MaterialAddedPayload[] {
+function roadmapIdentity(event: Event): string {
+  if (event.kind !== 'RoadmapReplanned') return event.createdAt
+
+  const originalCreatedAt = event.payload.roadmapCreatedAt
+  return typeof originalCreatedAt === 'string' ? originalCreatedAt : event.createdAt
+}
+
+function materialPayloads(events: Event[], roadmap: RoadmapPayload): MaterialAddedPayload[] {
+  const activeMaterialIds = new Set(
+    roadmap.slots
+      .flatMap((slot) => slot.candidateMaterialIds)
+      .filter((materialId) => materialId !== '__rest__'),
+  )
+
   return events
     .filter((event) => event.kind === 'MaterialAdded')
     .map((event) => event.payload as unknown as MaterialAddedPayload)
+    .filter((material) => activeMaterialIds.has(material.materialId))
 }
 
-function toProgressRoadmap(payload: RoadmapCreatedPayload): ProgressRoadmapInput {
+function toProgressRoadmap(payload: RoadmapPayload): ProgressRoadmapInput {
   return {
     startDate: payload.startDate,
     deadline: payload.deadline,
@@ -148,8 +168,9 @@ export function mapToRegenerateRequest(
     throw new Error('No active roadmap to regenerate')
   }
 
-  const payload = roadmapEvent.payload as unknown as RoadmapCreatedPayload
-  const materials = materialPayloads(events).map((material, additionOrder) => ({
+  const payload = roadmapEvent.payload as unknown as RoadmapPayload
+  const activeIdentity = roadmapIdentity(roadmapEvent)
+  const materials = materialPayloads(events, payload).map((material, additionOrder) => ({
     id: material.materialId,
     title: material.title,
     totalMinutes: material.estimatedDuration,
@@ -182,7 +203,7 @@ export function mapToRegenerateRequest(
     }
   }
 
-  for (const pin of userEditedPins(events, roadmapEvent.createdAt)) {
+  for (const pin of userEditedPins(events, activeIdentity)) {
     if (!pinsByKey.has(pinKey(pin))) {
       pinsByKey.set(pinKey(pin), pin)
     }

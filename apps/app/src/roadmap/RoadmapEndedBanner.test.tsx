@@ -58,6 +58,6 @@ describe('RoadmapEndedBanner', () => {
     expect(onMarkComplete).toHaveBeenCalledTimes(1)
     expect(onExtendDeadline).toHaveBeenCalledTimes(1)
     expect(onAbandon).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('link', { name: 'Extend deadline' })).toHaveAttribute('href', '/replan')
+    expect(screen.getByRole('link', { name: 'Extend deadline' })).toHaveAttribute('href', '/replan?intent=extend')
   })
 })

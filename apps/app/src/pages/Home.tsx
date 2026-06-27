@@ -163,7 +163,7 @@ export function Home() {
       resolvedAt: new Date().toISOString(),
     });
     setRecalModalOpen(false);
-    navigate('/roadmap');
+    navigate('/replan');
   }, [logEvent, navigate]);
 
   const handleAcknowledge = useCallback(async () => {

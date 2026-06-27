@@ -28,7 +28,7 @@ export function RoadmapEndedBanner({
         <button className="btn btn-secondary" type="button" onClick={onMarkComplete}>
           Mark complete
         </button>
-        <Link className="btn btn-accent" to="/replan" onClick={onExtendDeadline}>
+        <Link className="btn btn-accent" to="/replan?intent=extend" onClick={onExtendDeadline}>
           Extend deadline
         </Link>
         <button className="btn btn-secondary" type="button" onClick={onAbandon}>

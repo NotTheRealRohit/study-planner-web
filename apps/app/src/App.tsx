@@ -14,6 +14,7 @@ import { Log } from './pages/Log';
 import { Week } from './pages/Week';
 import { Roadmap } from './pages/Roadmap';
 import { Roadmaps } from './pages/Roadmaps';
+import { Replan } from './pages/Replan';
 import { Settings } from './pages/Settings';
 import { Session } from './pages/Session';
 import { AppShell } from './components/AppShell';
@@ -117,18 +118,6 @@ function PublicRouteWithAuthCheck({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function ReplanStub() {
-  return (
-    <div style={{ padding: '2rem 1rem', maxWidth: '640px', margin: '0 auto', textAlign: 'center' }}>
-      <div className="mono-caps">Roadmap</div>
-      <h1 className="t-display-2">Replan</h1>
-      <p className="t-body" style={{ color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
-        Coming soon
-      </p>
-    </div>
-  );
-}
-
 function OnboardingIndexRedirect() {
   const location = useLocation();
   return (
@@ -178,7 +167,7 @@ function AppRoutes() {
         <Route path="/week" element={<Week />} />
         <Route path="/roadmap" element={<Roadmap />} />
         <Route path="/roadmaps" element={<Roadmaps />} />
-        <Route path="/replan" element={<ReplanStub />} />
+        <Route path="/replan" element={<Replan />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route

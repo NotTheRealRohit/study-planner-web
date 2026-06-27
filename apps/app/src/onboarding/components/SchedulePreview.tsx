@@ -19,6 +19,7 @@ interface SchedulePreviewProps {
   onDrop?: (target: SlotKey) => void
   onCancelDrag?: () => void
   isDesktop?: boolean
+  readOnly?: boolean
 }
 
 export function formatMinutes(m: number): string {
@@ -26,7 +27,7 @@ export function formatMinutes(m: number): string {
   return `${m}m`
 }
 
-export function SchedulePreview({ roadmap, materials, onResolveTie, onRename, swapState, onTapSlot, onStartDrag, onDrop, onCancelDrag, isDesktop = false }: SchedulePreviewProps) {
+export function SchedulePreview({ roadmap, materials, onResolveTie, onRename, swapState, onTapSlot, onStartDrag, onDrop, onCancelDrag, isDesktop = false, readOnly = false }: SchedulePreviewProps) {
   const defaultSwapState: SwapState = { mode: 'idle', source: null, destination: null, justSwapped: null, rejectedSlot: null, origin: null }
   const activeSwapState = swapState ?? defaultSwapState
   const handleTap = onTapSlot ?? (() => {})
@@ -93,6 +94,13 @@ export function SchedulePreview({ roadmap, materials, onResolveTie, onRename, sw
                       <div className="chip-row">
                         {slot.candidateMaterialIds.map(id => {
                           if (id === '__rest__') {
+                            if (readOnly) {
+                              return (
+                                <span key="__rest__" className="chip">
+                                  Rest day
+                                </span>
+                              )
+                            }
                             return (
                               <button key="__rest__" className="chip" onClick={(e) => { e.stopPropagation(); onResolveTie(slot.weekIndex, slot.dayOfWeek, null, slot.capacityMinutes) }}>
                                 Rest day
@@ -100,6 +108,13 @@ export function SchedulePreview({ roadmap, materials, onResolveTie, onRename, sw
                             )
                           }
                           const mat = materials.find(m => m.id === id)
+                          if (readOnly) {
+                            return (
+                              <span key={id} className="chip">
+                                Review {mat?.title ?? id}
+                              </span>
+                            )
+                          }
                           return (
                             <button key={id} className="chip" onClick={(e) => { e.stopPropagation(); onResolveTie(slot.weekIndex, slot.dayOfWeek, id, slot.capacityMinutes) }}>
                               Review {mat?.title ?? id}
@@ -149,10 +164,14 @@ export function SchedulePreview({ roadmap, materials, onResolveTie, onRename, sw
                         {ROLE_TO_LABEL[slot.role]}
                       </span>
                     )}
-                    <InlineEditTitle
-                      title={slot.sessionTitle ?? ''}
-                      onCommit={newTitle => onRename(slot.weekIndex, slot.dayOfWeek, newTitle)}
-                    />
+                    {readOnly ? (
+                      slot.sessionTitle ?? ''
+                    ) : (
+                      <InlineEditTitle
+                        title={slot.sessionTitle ?? ''}
+                        onCommit={newTitle => onRename(slot.weekIndex, slot.dayOfWeek, newTitle)}
+                      />
+                    )}
                   </span>
                   <span className={`sched-dur${hasCapacityWarning ? ' capacity-warning' : ''}`}>
                     {formatMinutes(slot.plannedMinutes)}
