@@ -310,7 +310,7 @@ describe('Step3Preview', () => {
     })
 
     const kinds = logEventMock.mock.calls.map((call: unknown[]) => call[0] as string)
-    expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(1)
+    expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(0)
     expect(kinds).not.toContain('RoadmapCreated')
     expect(kinds).not.toContain('OnboardingCompleted')
     await expect(testDb.table('onboardingDraft').get(1)).resolves.toBeDefined()

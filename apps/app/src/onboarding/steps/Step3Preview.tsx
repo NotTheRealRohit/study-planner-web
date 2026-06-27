@@ -170,6 +170,16 @@ export function Step3Preview() {
     if (!displayRoadmap || committing || unresolvedTieCount > 0) return
     setCommitting(true)
     try {
+      const existingEvents = await eventStore.getAll()
+      const hasCompletedOnboarding = existingEvents.some((event) => event.kind === 'OnboardingCompleted')
+      const hasActiveRoadmap = deriveRoadmapLifecycle(existingEvents).active.length > 0
+
+      if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) {
+        // D-04: keep this wizard state as the single next-roadmap draft.
+        navigate('/roadmaps')
+        return
+      }
+
       const committedIds = new Set<string>()
 
       for (const mat of expandedMaterials) {
@@ -209,15 +219,6 @@ export function Step3Preview() {
         weekendHours: state.weekendHours,
         weeklyHours: state.weeklyHours,
         slots: allSlots,
-      }
-      const existingEvents = await eventStore.getAll()
-      const hasCompletedOnboarding = existingEvents.some((event) => event.kind === 'OnboardingCompleted')
-      const hasActiveRoadmap = deriveRoadmapLifecycle(existingEvents).active.length > 0
-
-      if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) {
-        // D-04: keep this wizard state as the single next-roadmap draft.
-        navigate('/roadmaps')
-        return
       }
 
       await logEvent('RoadmapCreated', roadmapPayload as unknown as Record<string, unknown>)
