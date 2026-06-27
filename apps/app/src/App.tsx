@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuthContext } from './auth/AuthProvider';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { EventStoreProvider, useEventStoreContext } from './events/EventStoreProvider';
@@ -129,6 +129,17 @@ function ReplanStub() {
   );
 }
 
+function OnboardingIndexRedirect() {
+  const location = useLocation();
+  return (
+    <Navigate
+      to={{ pathname: '/onboarding/1', search: location.search }}
+      state={location.state}
+      replace
+    />
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -184,7 +195,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/onboarding/1" replace />} />
+        <Route index element={<OnboardingIndexRedirect />} />
         <Route path="1" element={<Step1Deadline />} />
         <Route path="2" element={<Step2Hours />} />
         <Route path="3" element={<Step3Materials />}>

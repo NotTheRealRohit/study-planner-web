@@ -29,6 +29,7 @@ import { DaySheet } from './DaySheet'
 import { MonthNav } from './MonthNav'
 import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
+import { resolveRoadmap as resolveRoadmapEvent, type RoadmapResolutionKind } from './resolveRoadmap'
 import { LEGEND_ITEMS } from './statusStyles'
 import './roadmap.css'
 
@@ -246,20 +247,16 @@ export function RoadmapCalendar({
       setSelectedSheetDay(null)
     }
   }
-  const resolveRoadmap = async (kind: 'RoadmapMarkedComplete' | 'RoadmapMarkedAbandoned') => {
+  const resolveRoadmap = async (kind: RoadmapResolutionKind) => {
     if (!selectedRoadmap || readOnly) return
 
-    if (
-      kind === 'RoadmapMarkedAbandoned' &&
-      !window.confirm('Abandon this roadmap? It will move to your roadmap history.')
-    ) {
-      return
-    }
-
-    await logEvent(kind, {
+    const resolved = await resolveRoadmapEvent({
+      kind,
       roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
-      resolvedAt: new Date().toISOString(),
+      logEvent,
     })
+    if (!resolved) return
+
     navigate('/roadmaps')
   }
 

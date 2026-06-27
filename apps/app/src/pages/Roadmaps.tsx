@@ -1,78 +1,131 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { format, parseISO } from 'date-fns'
+import type { Event } from '../events/EventStore'
 import { useEventStore } from '../events/useEventStore'
 import { RoadmapCalendar } from '../roadmap/RoadmapCalendar'
+import { deriveRoadmapDraft, type RoadmapDraftSummary } from '../roadmap/roadmapDraft'
 import {
   deriveRoadmapLifecycle,
   type RoadmapLifecycleEntry,
 } from '../roadmap/roadmapLifecycle'
+import { resolveRoadmap, type RoadmapResolutionKind } from '../roadmap/resolveRoadmap'
+import { useSync } from '../sync/useSync'
 import '../roadmap/roadmap.css'
 
 function formatRange(entry: RoadmapLifecycleEntry): string {
   return `${format(parseISO(entry.startDate), 'MMM d')} to ${format(parseISO(entry.deadline), 'MMM d, yyyy')}`
 }
 
-function RoadmapGroup({
-  title,
+function formatMinutes(totalMinutes: number): string {
+  const minutes = Math.max(0, Math.round(totalMinutes))
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  if (hours === 0) return `${rest}m`
+  if (rest === 0) return `${hours}h`
+  return `${hours}h ${rest}m`
+}
+
+function onboardingPath(draft: RoadmapDraftSummary): string {
+  return `/onboarding/${draft.stepReached}?new=1`
+}
+
+function sessionStats(entry: RoadmapLifecycleEntry, events: Event[]) {
+  const sessions = events.filter((event) => {
+    if (event.kind !== 'SessionLogged') return false
+    const date = event.payload.date
+    return typeof date === 'string' && date >= entry.startDate && date <= entry.deadline
+  })
+  const minutes = sessions.reduce((total, event) => {
+    const duration = event.payload.duration
+    return total + (typeof duration === 'number' ? duration : 0)
+  }, 0)
+
+  return { count: sessions.length, minutes }
+}
+
+function HistoryRows({
   entries,
   selectedCreatedAt,
   onSelect,
 }: {
-  title: string
   entries: RoadmapLifecycleEntry[]
   selectedCreatedAt: string | null
   onSelect: (entry: RoadmapLifecycleEntry) => void
 }) {
+  if (entries.length === 0) {
+    return <p className="roadmaps-muted">Completed and abandoned plans will settle here.</p>
+  }
+
   return (
-    <section className="roadmaps-group" aria-label={`${title} roadmaps`}>
-      <div className="roadmaps-group-head">
-        <h2>{title}</h2>
-        <span className="roadmaps-count">{entries.length}</span>
-      </div>
-      {entries.length === 0 ? (
-        <p className="roadmaps-muted">Nothing here yet.</p>
-      ) : (
-        <div className="roadmaps-list">
-          {entries.map((entry) => (
-            <button
-              key={entry.roadmapCreatedAt}
-              type="button"
-              className="roadmaps-row"
-              data-selected={entry.roadmapCreatedAt === selectedCreatedAt ? 'true' : undefined}
-              onClick={() => onSelect(entry)}
-            >
-              <span className="roadmaps-row-main">
-                <span className="roadmaps-row-title">{entry.title}</span>
-                <span className="roadmaps-row-meta">
-                  {formatRange(entry)} · {entry.weeks} weeks
-                </span>
-              </span>
-              <span className="roadmaps-row-progress">
-                {entry.percentComplete}%
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
+    <div className="roadmaps-list">
+      {entries.map((entry) => (
+        <button
+          key={entry.roadmapCreatedAt}
+          type="button"
+          className="roadmaps-row rmd-history-row"
+          data-selected={entry.roadmapCreatedAt === selectedCreatedAt ? 'true' : undefined}
+          onClick={() => onSelect(entry)}
+        >
+          <span className="roadmaps-row-main">
+            <span className="roadmaps-row-title">{entry.title}</span>
+            <span className="roadmaps-row-meta">
+              {formatRange(entry)} · {entry.weeks} weeks
+            </span>
+          </span>
+          <span className={`rmd-status-pill rmd-status-${entry.status}`}>
+            {entry.status}
+          </span>
+        </button>
+      ))}
+    </div>
   )
 }
 
 export function Roadmaps() {
   const eventStore = useEventStore()
+  const navigate = useNavigate()
+  const { logEvent } = useSync()
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore])
-  const [selectedCreatedAt, setSelectedCreatedAt] = useState<string | null>(null)
   const loadedEvents = events ?? []
+  const hasCompletedOnboarding = loadedEvents.some((event) => event.kind === 'OnboardingCompleted')
+  const draft = useLiveQuery(
+    () => deriveRoadmapDraft(eventStore, hasCompletedOnboarding),
+    [eventStore, hasCompletedOnboarding],
+  ) ?? null
+  const [selectedCreatedAt, setSelectedCreatedAt] = useState<string | null>(null)
+  const [showCloseControls, setShowCloseControls] = useState(false)
+  const [closePromptDraft, setClosePromptDraft] = useState<RoadmapDraftSummary | null>(null)
+
   const lifecycle = useMemo(
     () => deriveRoadmapLifecycle(loadedEvents),
     [loadedEvents],
   )
-  const hasRoadmaps = lifecycle.all.length > 0
+  const activeEntry = lifecycle.active[0] ?? null
+  const historyEntries = lifecycle.all.filter((entry) => entry.status !== 'active')
   const selectedEntry = selectedCreatedAt
-    ? lifecycle.all.find((entry) => entry.roadmapCreatedAt === selectedCreatedAt) ?? null
+    ? historyEntries.find((entry) => entry.roadmapCreatedAt === selectedCreatedAt) ?? null
     : null
+  const activeStats = activeEntry ? sessionStats(activeEntry, loadedEvents) : null
+
+  const handleResolve = async (kind: RoadmapResolutionKind) => {
+    if (!activeEntry) return
+    const resolved = await resolveRoadmap({
+      kind,
+      roadmapCreatedAt: activeEntry.roadmapCreatedAt,
+      logEvent,
+    })
+    if (!resolved) return
+
+    setShowCloseControls(false)
+    setClosePromptDraft(draft)
+  }
+
+  const handleDiscardDraft = async () => {
+    await eventStore.table('onboardingDraft').delete(1)
+    setClosePromptDraft(null)
+  }
 
   if (!events) {
     return (
@@ -88,42 +141,165 @@ export function Roadmaps() {
     <div className="roadmaps-page">
       <header className="roadmaps-header">
         <div>
-          <div className="mono-caps">Roadmap history</div>
-          <h1 className="roadmaps-title">Past Roadmaps</h1>
+          <div className="mono-caps">Roadmaps</div>
+          <h1 className="roadmaps-title">Plan, close, and begin again</h1>
           <p className="roadmaps-subtitle">
-            Active plans, completed arcs, and abandoned attempts stay visible here.
+            Keep one active roadmap, one next draft, and a quiet ledger of what you have finished.
           </p>
         </div>
-        <Link className="btn btn-accent" to="/onboarding">
-          Start a new roadmap
-        </Link>
       </header>
 
-      {!hasRoadmaps ? (
-        <section className="roadmaps-empty" data-testid="roadmaps-empty">
-          <p>Nothing here yet.</p>
-          <Link className="btn btn-accent" to="/onboarding">
-            Start a new roadmap
+      <section className="rmd-zone" aria-label="Active roadmap">
+        <div className="rmd-zone-head">
+          <h2>Active</h2>
+          {activeEntry && <span className="rmd-status-pill rmd-status-active">active</span>}
+        </div>
+
+        {activeEntry && activeStats ? (
+          <div className="rmd-hero" data-testid="roadmaps-active-hero">
+            <div className="rmd-hero-main">
+              <div className="mono-caps">{formatRange(activeEntry)} · {activeEntry.weeks} weeks</div>
+              <h2 className="rmd-hero-title">{activeEntry.title}</h2>
+              <div className="rmd-progress-row">
+                <span className="mono-caps">Progress</span>
+                <span className="rmd-progress-number">{activeEntry.percentComplete}%</span>
+              </div>
+              <div className="progress" aria-label={`${activeEntry.percentComplete}% complete`}>
+                <div className="progress-fill" style={{ width: `${activeEntry.percentComplete}%` }} />
+              </div>
+              <div className="rmd-stat-strip" aria-label="Active roadmap stats">
+                <span><strong>{activeStats.count}</strong> sessions</span>
+                <span><strong>{formatMinutes(activeStats.minutes)}</strong> logged</span>
+                <span><strong>{activeEntry.percentComplete}%</strong> complete</span>
+              </div>
+            </div>
+            <div className="rmd-actions">
+              <Link className="btn btn-accent" to="/roadmap">
+                Open plan
+              </Link>
+              <Link className="btn btn-secondary" to="/roadmap">
+                Edit &amp; add
+              </Link>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => setShowCloseControls((shown) => !shown)}
+              >
+                Close plan
+              </button>
+            </div>
+
+            {showCloseControls && (
+              <div className="rmd-close-panel" data-testid="roadmaps-close-controls">
+                <span className="rmd-close-copy">Move this roadmap to history as:</span>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => void handleResolve('RoadmapMarkedComplete')}
+                >
+                  Complete
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  type="button"
+                  onClick={() => void handleResolve('RoadmapMarkedAbandoned')}
+                >
+                  Abandon
+                </button>
+              </div>
+            )}
+
+            {closePromptDraft && (
+              <div className="rmd-start-prompt" data-testid="roadmaps-close-prompt">
+                <div>
+                  <div className="mono-caps">Next up</div>
+                  <p>Ready to start {closePromptDraft.title}?</p>
+                </div>
+                <div className="rmd-actions-inline">
+                  <Link className="btn btn-accent" to={onboardingPath(closePromptDraft)}>
+                    Start now
+                  </Link>
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    onClick={() => setClosePromptDraft(null)}
+                  >
+                    Not yet
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="rmd-empty-active" data-testid="roadmaps-empty">
+            <div>
+              <div className="mono-caps">No active roadmap</div>
+              <h2>Plan your next roadmap</h2>
+            </div>
+            {!draft && (
+              <Link className="btn btn-accent" to="/onboarding?new=1">
+                Plan your next roadmap
+              </Link>
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="rmd-zone" aria-label="Next roadmap draft">
+        <div className="rmd-zone-head">
+          <h2>Next up</h2>
+          {draft && <span className="rmd-status-pill rmd-status-draft">draft</span>}
+        </div>
+
+        {draft ? (
+          <div className="rmd-draft" data-testid="roadmaps-draft-card">
+            <div>
+              <div className="mono-caps">Paused at step {draft.stepReached} · {draft.stepLabel}</div>
+              <h3>{draft.title}</h3>
+              {activeEntry && (
+                <p className="rmd-lock-note">Start unlocks when the current plan is closed.</p>
+              )}
+            </div>
+            <div className="rmd-actions">
+              <Link className="btn btn-secondary" to={onboardingPath(draft)}>
+                Resume setup
+              </Link>
+              <button
+                className="btn btn-accent"
+                type="button"
+                data-testid="roadmaps-start-plan"
+                disabled={activeEntry !== null}
+                onClick={() => navigate(onboardingPath(draft))}
+              >
+                Start plan
+              </button>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() => void handleDiscardDraft()}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        ) : activeEntry ? (
+          <Link className="rmd-slim-add" to="/onboarding?new=1">
+            + Plan your next roadmap
           </Link>
-        </section>
-      ) : (
+        ) : (
+          <p className="roadmaps-muted">No draft waiting.</p>
+        )}
+      </section>
+
+      <section className="rmd-zone" aria-label="Roadmap history">
+        <div className="rmd-zone-head">
+          <h2>History</h2>
+          <span className="roadmaps-count">{historyEntries.length}</span>
+        </div>
         <div className="roadmaps-layout">
           <div className="roadmaps-groups">
-            <RoadmapGroup
-              title="Active"
-              entries={lifecycle.active}
-              selectedCreatedAt={selectedCreatedAt}
-              onSelect={(entry) => setSelectedCreatedAt(entry.roadmapCreatedAt)}
-            />
-            <RoadmapGroup
-              title="Completed"
-              entries={lifecycle.completed}
-              selectedCreatedAt={selectedCreatedAt}
-              onSelect={(entry) => setSelectedCreatedAt(entry.roadmapCreatedAt)}
-            />
-            <RoadmapGroup
-              title="Abandoned"
-              entries={lifecycle.abandoned}
+            <HistoryRows
+              entries={historyEntries}
               selectedCreatedAt={selectedCreatedAt}
               onSelect={(entry) => setSelectedCreatedAt(entry.roadmapCreatedAt)}
             />
@@ -138,7 +314,7 @@ export function Roadmaps() {
             </section>
           )}
         </div>
-      )}
+      </section>
     </div>
   )
 }
