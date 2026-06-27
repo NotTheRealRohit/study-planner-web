@@ -723,7 +723,7 @@ Delete the hook + banner; remove the three mounts. No data effects.
 
 ### Phase 6: Add-session quick-log + inline light edits (`RoadmapEdited`)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1, Phase 3 (`✅ Complete`)
 **Estimated scope:** ~3 files, ~200 lines
 
