@@ -4,7 +4,7 @@ import { useEventStore } from '../events/useEventStore'
 import type { CalibrationState } from '@study-tracker/progress'
 import { getUpNextSlot } from '../events/ProgressEngine'
 import { CalibrationAuthError, postCalibration } from '../lib/intelligenceClient'
-import { mapSessions, mapExceptionalTags, mapResolutions, findRoadmap } from './mapEvents'
+import { mapSessions, mapExceptionalTags, mapResolutions, findActiveRoadmap } from './mapEvents'
 
 export type CalibrationStatus = 'loading' | 'ready' | 'stale' | 'auth-error' | 'error'
 
@@ -24,7 +24,7 @@ export function useCalibrationState(): CalibrationResult {
   const request = useLiveQuery(async () => {
     const events = await eventStore.getAll()
     const sessions = mapSessions(events)
-    const roadmap = findRoadmap(events)
+    const roadmap = findActiveRoadmap(events)
     const today = new Date().toISOString().split('T')[0]
     const upNext = roadmap ? getUpNextSlot(roadmap, today) : null
     const sessionIndex = roadmap && upNext ? roadmap.slots.indexOf(upNext) : -1

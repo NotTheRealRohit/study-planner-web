@@ -37,10 +37,12 @@ verification:
 
 1. **[P0 — blocks everything] New-roadmap onboarding can't start.** "Plan your next roadmap" → `/onboarding/1?new=1` opens correctly, but clicking **Continue** lands the user on `/home` and the wizard never advances. **Root cause:** the `?new=1` search param (the only signal that puts `OnboardingGate` into new-roadmap mode for a returning user) is **dropped by every intra-onboarding `navigate()` call**. The first `navigate('/onboarding/2')` produces a URL with no `?new=1`; `OnboardingGate` recomputes `newRoadmapMode = false`, sees an existing `OnboardingCompleted` event, and redirects to `/home`. Fix = make new-roadmap mode survive every step navigation. (Phase A — **do this first**.)
 2. **[P1 — blocks history verification] Historical roadmap detail has no way to close.** Clicking a History row sets a component-state `selectedCreatedAt` and renders a read-only `RoadmapCalendar` inline under the list, with no back/close affordance and no URL change — the only escape is a full page refresh. Fix = open the historical roadmap as a real route view at `/roadmap?roadmap=<createdAt>` (read-only, with the existing "← Roadmaps" back link), so the browser back button and the back link both close it. (Phase B.)
-3. **[P2 — cosmetic, needs input] "Bad dashboard layout."** Under-specified; gated on clarification from Rohit (see Open Questions OQ-01). Not scoped here yet.
+3. **[P2 — cosmetic, deferred] "Bad dashboard layout."** Deferred to a later holistic UI pass per Rohit (OQ-01 / D-03). Not scoped here.
+4. **[P1 — blocks calibration/Home trust] Abandoned roadmap keeps driving Home.** After abandon (or complete with no successor), Home still prompts the user to start the OLD plan's session, because "current roadmap" is resolved by a naïve `findRoadmap` that ignores terminal events. Fix = make the UI's current-roadmap resolution lifecycle-aware (active entry, else null), while session events stay in the store and keep training calibration. (Phase D — D-04.)
 
 Phase A unblocks the user's stated priority ("so onboarding and new roadmap can at least start so I can
-verify the rest"). Phase B unblocks history verification. Phase C is a placeholder pending OQ-01.
+verify the rest"). Phase B unblocks history verification. Phase D fixes Home/progress/calibration scoping
+after abandon. Phase C (layout) is deferred.
 
 ## Context & grounding
 
@@ -120,6 +122,28 @@ new code.
 
 **Reversibility:** easy.
 
+### D-04: The UI's "current roadmap" is the active lifecycle entry (terminal plans stop driving Home); abandon = archival, sessions still train calibration
+
+**Status:** ✅ Agreed (Rohit 2026-06-27)
+
+**Context:** After abandoning the active roadmap, Home still prompted the user to start the old plan's
+session. The "current roadmap" was resolved by a naïve `findRoadmap` (latest `RoadmapCreated|
+RoadmapReplanned`) that ignores terminal events.
+
+**Decision:** UI resolves "current roadmap" via `deriveRoadmapLifecycle(events).active[0]` (→ `null`
+when none active). Abandon/Complete is **archival via lifecycle status** — session events are never
+deleted or mutated. Calibration keeps consuming **all** `SessionLogged` events (`mapSessions` stays
+global); only the UI plan/up-next/progress and the calibration `nextContext` scope to the active
+roadmap. No schema change.
+
+**Rationale:** Matches the user's intent — "use session events for learning the user's calibration,
+but in the UI only the current roadmap's sessions are tracked." Reuses the existing lifecycle deriver;
+pure derivation, data-safe, reversible.
+
+**User pushback:** none — user confirmed and asked it be written up.
+
+**Reversibility:** easy (revert consumers to `findRoadmap`).
+
 ### D-03: Bug #1 ("bad layout") is not scoped until Rohit specifies what is wrong
 
 **Status:** 🤔 Open (OQ-01)
@@ -144,6 +168,12 @@ answered (or after a design critique the user approves).
 | `apps/app/src/roadmap/RoadmapCalendar.tsx` | modify | B | Render "← Roadmaps" back link in read-only-via-route mode (D-02) |
 | `apps/app/src/pages/Roadmaps.tsx` | modify | B | History row → `Link to="/roadmap?roadmap=..."`; remove inline `selectedCreatedAt` calendar (D-02) |
 | `apps/app/src/pages/Roadmaps.test.tsx` | modify | B | History click navigates by URL; no inline detail panel |
+| `apps/app/src/progress/mapEvents.ts` | modify | D | Add `findActiveRoadmap` (lifecycle-aware); keep `mapSessions` global (D-04) |
+| `apps/app/src/progress/mapEvents.test.ts` | new/modify | D | Active resolution, replan parity, sessions-stay-global |
+| `apps/app/src/pages/Home.tsx` | modify | D | Drop local `findRoadmap`; use active resolver → no stale up-next (D-04) |
+| `apps/app/src/pages/Week.tsx` | modify | D | Use active resolver for week bounds so terminal plans do not drive weekly UI (D-04) |
+| `apps/app/src/progress/useProgress.ts` | modify | D | Use `findActiveRoadmap` (progress hides when none active) |
+| `apps/app/src/progress/useCalibration.ts` | modify | D | Use `findActiveRoadmap` for `nextContext` ONLY; sessions unchanged (D-04) |
 
 ## Phases
 
@@ -378,6 +408,146 @@ reports four warning-only `no-explicit-any` findings in unrelated session files.
 Not part of this plan's execution. The dashboard layout (and likely other screens) will get a single
 holistic design pass later — a `design-critique` → restyle effort rather than a one-off patch here.
 Do NOT make piecemeal layout edits while fixing Phases A/B.
+
+---
+
+### Phase D: "Current roadmap" is lifecycle-aware (abandoned/completed plans stop driving Home)
+
+**Status:** ✅ Complete — pending native commit/review
+**Depends on:** none for code, but **sequence after** the active-roadmap work is reviewed; independent of Phases A/B
+**Estimated scope:** ~4 files, ~70 lines
+
+#### Problem (verified)
+
+After a user abandons (or completes) the active roadmap with no successor, **Home still prompts the
+user to start the OLD roadmap's planned session**, and the progress card still shows the dead plan.
+
+Root cause: "current roadmap" is resolved by a naïve `findRoadmap` that returns the **latest**
+`RoadmapCreated|RoadmapReplanned` payload and **ignores terminal events** (`RoadmapMarkedAbandoned` /
+`RoadmapMarkedComplete`). Two copies exist:
+
+- `apps/app/src/pages/Home.tsx:67` (local `findRoadmap`) → drives `upNextSlot`, the progress card, `deadline`.
+- `apps/app/src/progress/mapEvents.ts:46` (exported `findRoadmap`) → used by
+  `apps/app/src/progress/useProgress.ts:18` (progress display) and
+  `apps/app/src/progress/useCalibration.ts:27` (builds `nextContext`).
+
+`resolveRoadmap` (`apps/app/src/roadmap/resolveRoadmap.ts`) only logs `RoadmapMarkedAbandoned
+{roadmapCreatedAt, resolvedAt}` — it correctly archives via lifecycle status and does NOT touch
+sessions. `deriveRoadmapLifecycle` (`apps/app/src/roadmap/roadmapLifecycle.ts`) already computes the
+correct `active`/`completed`/`abandoned` groups and exposes the active entry's full snapshot at
+`.active[0].payload` (a `RoadmapPayload` = `RoadmapCreatedPayload` with `slots`/`startDate`/`deadline`/
+`weeks`/`weeklyHours`). The parent plan's Phase 2 deliberately left `findRoadmap` as "latest = active",
+which holds **only until a roadmap is terminal with no successor** — that's the missed case (D-04 below).
+
+#### Decisions referenced
+
+- **D-04 (this plan):** UI's "current roadmap" = `deriveRoadmapLifecycle(events).active[0]`, or `null`
+  when none active. Abandon/complete = **archival via lifecycle status** — events are never deleted,
+  and **calibration keeps learning from ALL sessions** (`mapSessions` stays global). Only the UI plan/
+  up-next/progress and the calibration `nextContext` scope to the active roadmap.
+
+#### Codebase state assumed at start
+
+```bash
+cd apps/app
+grep -n "function findRoadmap" src/pages/Home.tsx src/progress/mapEvents.ts   # expect both copies
+grep -n "findRoadmap" src/progress/useProgress.ts src/progress/useCalibration.ts
+grep -n "RoadmapMarkedAbandoned\|RoadmapMarkedComplete" src/roadmap/roadmapLifecycle.ts  # terminal handling exists
+```
+
+If a shared `findActiveRoadmap` already exists, STOP and surface — the plan is stale.
+
+#### Steps
+
+1. **Add one shared lifecycle-aware resolver** and dedupe the two `findRoadmap` copies. Export from
+   `apps/app/src/progress/mapEvents.ts` (next to the existing `findRoadmap`):
+
+   ```ts
+   import { deriveRoadmapLifecycle } from '../roadmap/roadmapLifecycle'
+   // Returns the ACTIVE roadmap as RoadmapInput, or null when none is active
+   // (abandoned/completed with no successor). UI-facing only. (D-04)
+   export function findActiveRoadmap(events: Event[]): RoadmapInput | null {
+     const active = deriveRoadmapLifecycle(events).active[0]
+     if (!active) return null
+     const payload = active.payload  // RoadmapCreatedPayload snapshot
+     return {
+       startDate: payload.startDate,
+       deadline: payload.deadline,
+       weeks: payload.weeks,
+       weeklyHours: payload.weeklyHours,
+       slots: payload.slots.map((slot) => ({
+         date: slot.date, dayOfWeek: slot.dayOfWeek, weekIndex: slot.weekIndex,
+         plannedMinutes: slot.plannedMinutes, candidateMaterialIds: slot.candidateMaterialIds,
+         role: slot.role, sessionTitle: slot.sessionTitle ?? null,
+       })),
+     }
+   }
+   ```
+
+   Keep the `RoadmapInput` mapping byte-for-byte identical to the existing `findRoadmap` so consumers
+   are unaffected in the normal active case. (You may keep `findRoadmap` exported if other non-UI code
+   uses it; the UI consumers below switch to `findActiveRoadmap`.)
+
+2. **`Home.tsx`** — delete the local `findRoadmap` (line ~67) and use `findActiveRoadmap(events)`.
+   `roadmapPayload` becomes `null` when no active roadmap → `upNextSlot`, the progress card
+   (`{progress && roadmapPayload && ...}`), and `deadline` all naturally hide. Home already guards on
+   `roadmapPayload` truthiness, so the empty/rest state shows instead of the stale plan. (Home's local
+   resolver returns `RoadmapCreatedPayload`; if reusing the `RoadmapInput`-returning shared helper
+   changes a field name Home reads, either add a thin `findActiveRoadmapPayload` returning the raw
+   `active.payload`, or adjust Home's reads — pick the smaller diff and note it.)
+
+3. **`useProgress.ts`** — swap `findRoadmap(events)` → `findActiveRoadmap(events)`. It already returns
+   `null` (hiding progress) when the roadmap is null.
+
+4. **`useCalibration.ts`** — swap `findRoadmap(events)` → `findActiveRoadmap(events)` for the
+   roadmap/`upNext`/`nextContext` ONLY. **Do NOT change `mapSessions(events)`** — the calibration
+   request must keep sending every `SessionLogged` event so the model learns from abandoned/completed
+   roadmaps too. When no active roadmap, `nextContext` becomes `null` (correct: no "next planned
+   session" to describe), but `sessions` is unchanged.
+
+5. **Do NOT** delete, mutate, or migrate any events; **no** Dexie schema change. Pure derivation.
+
+#### Tests (Vitest, Node ≥ 20 — default shell Node v18 cannot run the app suite; use v22.x)
+
+- `mapEvents.test.ts`: `findActiveRoadmap` returns `null` when the latest roadmap has a matching
+  `RoadmapMarkedAbandoned`/`RoadmapMarkedComplete` and no later `RoadmapCreated`; returns the active
+  snapshot otherwise.
+- Parity: a **replanned-in-place** active roadmap (`RoadmapReplanned` carrying `roadmapCreatedAt`) still
+  resolves as active, and `findActiveRoadmap` returns the latest snapshot (same as old `findRoadmap`).
+- Calibration preservation: with an abandoned roadmap + logged sessions, `findActiveRoadmap` is `null`
+  AND the calibration request still includes all sessions (assert `mapSessions(events).length` unchanged).
+- Home/useProgress level: abandoned roadmap → no `upNextSlot` / no progress card produced.
+- Run: `pnpm --filter app test -- mapEvents useProgress useCalibration Home`
+
+#### Verification (DONE)
+
+```bash
+cd apps/app
+pnpm --filter app test -- mapEvents useProgress useCalibration Home   # expect green
+pnpm --filter app typecheck && pnpm lint
+```
+
+Manual smoke: abandon the active roadmap → Home shows no "up next" and no progress card (rest/empty
+state); the plan appears under `/roadmaps` History/abandoned (already works). Start a NEW roadmap →
+Home tracks only the new plan. Calibration nudges still derive from full session history.
+
+#### Rollback
+
+Revert the consumers to `findRoadmap`; delete `findActiveRoadmap`. No data effects (nothing was mutated).
+
+#### Notes (filled in during implementation)
+
+Implemented 2026-06-27. Added shared `findActiveRoadmap(events)` backed by
+`deriveRoadmapLifecycle(events).active[0]` and switched Home, Week, `useProgressSnapshot`, and
+`useCalibrationState` to it. Kept `findRoadmap` exported for compatibility and factored both resolvers
+through the same `RoadmapInput` mapper so the normal active/replanned shape stays unchanged. Added
+Vitest coverage for abandoned/completed/null resolution, new-active-after-abandon, replan parity,
+global session mapping, calibration `nextContext` clearing, `useProgressSnapshot` nulling, and Home no
+longer rendering the retired up-next card. Verification under Node v22.17.1:
+`pnpm --filter app test -- mapEvents useProgress useCalibration Home Week`,
+`pnpm --filter app typecheck`, and `pnpm lint` passed; lint still reports four unrelated warning-only
+`no-explicit-any` findings in session files. No events were deleted/mutated and no Dexie schema
+changed.
 
 ---
 

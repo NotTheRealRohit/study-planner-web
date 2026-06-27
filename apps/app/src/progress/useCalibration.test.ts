@@ -146,6 +146,32 @@ describe('useCalibrationState', () => {
     })
   })
 
+  it('keeps sessions global but clears next context after roadmap abandonment', async () => {
+    mocks.getAll.mockResolvedValue([
+      roadmapEvent,
+      {
+        id: 3,
+        kind: 'RoadmapMarkedAbandoned',
+        createdAt: '2026-01-15T00:00:00Z',
+        payload: {
+          roadmapCreatedAt: roadmapEvent.createdAt,
+          resolvedAt: '2026-01-15T00:00:00Z',
+        },
+      },
+      sessionEvent,
+    ])
+    mocks.postCalibration.mockResolvedValue(calibrationState)
+
+    renderHook(() => useCalibrationState())
+
+    await waitFor(() => expect(mocks.postCalibration).toHaveBeenCalledTimes(1))
+    const body = mocks.postCalibration.mock.calls[0][0]
+
+    expect(body.sessions).toHaveLength(1)
+    expect(body.sessions[0].sessionId).toBe('s-1')
+    expect(body.nextContext).toBeNull()
+  })
+
   it('returns stale cached calibration when the service rejects after a prior success', async () => {
     cacheRows.set('last', {
       key: 'last',

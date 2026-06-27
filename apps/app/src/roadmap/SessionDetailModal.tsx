@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { format, parseISO } from 'date-fns'
 import type { BoundCalendarDay, CalendarBubble, CalendarBubbleStatus } from './calendarModel'
 import { statusStyleFor } from './statusStyles'
@@ -78,7 +79,7 @@ function ModalFrame({
   children: ReactNode
   onClose: () => void
 }) {
-  return (
+  const frame = (
     <div
       className="modal-overlay center roadmap-modal-overlay"
       role="dialog"
@@ -105,6 +106,10 @@ function ModalFrame({
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') return frame
+
+  return createPortal(frame, document.body)
 }
 
 export function SessionDetailModal({

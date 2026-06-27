@@ -26,12 +26,12 @@ vi.mock('dexie-react-hooks', () => ({
   },
 }))
 
-const { mockFindRoadmap } = vi.hoisted(() => ({
-  mockFindRoadmap: vi.fn().mockReturnValue(null),
+const { mockFindActiveRoadmap } = vi.hoisted(() => ({
+  mockFindActiveRoadmap: vi.fn().mockReturnValue(null),
 }))
 
 vi.mock('../progress/mapEvents', () => ({
-  findRoadmap: mockFindRoadmap,
+  findActiveRoadmap: mockFindActiveRoadmap,
 }))
 
 function makeProgress(overrides: Partial<ProgressSnapshot> = {}): ProgressSnapshot {
@@ -81,7 +81,7 @@ function makeProgress(overrides: Partial<ProgressSnapshot> = {}): ProgressSnapsh
 }
 
 function mockRoadmapWithPastWeeks() {
-  mockFindRoadmap.mockReturnValue({
+  mockFindActiveRoadmap.mockReturnValue({
     startDate: '2025-01-06',
     deadline: '2026-12-31',
     weeks: 104,
@@ -91,7 +91,7 @@ function mockRoadmapWithPastWeeks() {
 }
 
 function mockShortRoadmapAfterPlanEnd() {
-  mockFindRoadmap.mockReturnValue({
+  mockFindActiveRoadmap.mockReturnValue({
     startDate: '2026-05-04',
     deadline: '2026-06-07',
     weeks: 5,
@@ -102,7 +102,7 @@ function mockShortRoadmapAfterPlanEnd() {
 
 describe('Week', () => {
   beforeEach(() => {
-    mockFindRoadmap.mockReturnValue(null)
+    mockFindActiveRoadmap.mockReturnValue(null)
     mockCalibration = null
     mockCalibrationStatus = 'ready'
   })

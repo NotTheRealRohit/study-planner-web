@@ -128,6 +128,59 @@ describe('Home', () => {
     expect(screen.getByText('DDIA Chapter 1')).toBeInTheDocument()
   })
 
+  it('does not show the old up-next card after the roadmap is abandoned', () => {
+    const today = new Date().toISOString().split('T')[0]
+    const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const roadmapCreatedAt = new Date().toISOString()
+
+    mockEvents = [
+      {
+        id: 1,
+        kind: 'RoadmapCreated',
+        payload: {
+          startDate: today,
+          deadline: futureDate,
+          weeks: 4,
+          selectedStudyDays: ['Mon', 'Wed', 'Fri'],
+          weekdayHours: 2,
+          weekendHours: 0,
+          weeklyHours: 6,
+          slots: [
+            {
+              weekIndex: 0,
+              dayOfWeek: 'Mon',
+              date: today,
+              capacityMinutes: 120,
+              role: 'anchor',
+              candidateMaterialIds: ['mat-1'],
+              plannedMinutes: 60,
+              sessionTitle: 'Retired session',
+            },
+          ],
+        },
+        createdAt: roadmapCreatedAt,
+      },
+      {
+        id: 2,
+        kind: 'RoadmapMarkedAbandoned',
+        payload: {
+          roadmapCreatedAt,
+          resolvedAt: new Date().toISOString(),
+        },
+        createdAt: new Date().toISOString(),
+      },
+    ]
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <Home />
+      </MemoryRouter>
+    )
+
+    expect(screen.queryByText(/Up next/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Retired session')).not.toBeInTheDocument()
+  })
+
   it('shows recent activity with session events', () => {
     mockEvents = [
       {

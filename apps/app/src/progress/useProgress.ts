@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useEventStore } from '../events/useEventStore'
 import { computeProgress } from '@study-tracker/progress'
 import type { ProgressSnapshot, CalibrationState } from '@study-tracker/progress'
-import { mapSessions, findRoadmap } from './mapEvents'
+import { mapSessions, findActiveRoadmap } from './mapEvents'
 
 export function useProgressSnapshot(
   calibration: CalibrationState | null,
@@ -15,7 +15,7 @@ export function useProgressSnapshot(
     useLiveQuery(async () => {
       if (!calibration) return null
       const events = await eventStore.getAll()
-      const roadmap = findRoadmap(events)
+      const roadmap = findActiveRoadmap(events)
       if (!roadmap) return null
       let sessions = mapSessions(events)
       if (referenceDate) {

@@ -6,6 +6,7 @@ import type {
   RoadmapInput,
 } from '@study-tracker/progress'
 import type { RoadmapCreatedPayload } from '../sync/types'
+import { deriveRoadmapLifecycle } from '../roadmap/roadmapLifecycle'
 
 export function mapSessions(events: Event[]): SessionEvent[] {
   // D-06: gap sessions remain available to global progress stats; roadmap progress
@@ -43,13 +44,7 @@ export function mapResolutions(events: Event[]): RecalibrationResolution[] {
     }))
 }
 
-export function findRoadmap(events: Event[]): RoadmapInput | null {
-  const roadmapEvents = events.filter(
-    (e) => e.kind === 'RoadmapCreated' || e.kind === 'RoadmapReplanned',
-  )
-  if (roadmapEvents.length === 0) return null
-  const payload = roadmapEvents[roadmapEvents.length - 1]
-    .payload as unknown as RoadmapCreatedPayload
+function toRoadmapInput(payload: RoadmapCreatedPayload): RoadmapInput {
   return {
     startDate: payload.startDate,
     deadline: payload.deadline,
@@ -65,4 +60,22 @@ export function findRoadmap(events: Event[]): RoadmapInput | null {
       sessionTitle: slot.sessionTitle ?? null,
     })),
   }
+}
+
+export function findRoadmap(events: Event[]): RoadmapInput | null {
+  const roadmapEvents = events.filter(
+    (e) => e.kind === 'RoadmapCreated' || e.kind === 'RoadmapReplanned',
+  )
+  if (roadmapEvents.length === 0) return null
+  const payload = roadmapEvents[roadmapEvents.length - 1]
+    .payload as unknown as RoadmapCreatedPayload
+  return toRoadmapInput(payload)
+}
+
+// UI-facing current-roadmap resolver. Terminal plans are archival, so abandoned
+// or completed roadmaps stop driving Home/progress while their sessions remain.
+export function findActiveRoadmap(events: Event[]): RoadmapInput | null {
+  const active = deriveRoadmapLifecycle(events).active[0]
+  if (!active) return null
+  return toRoadmapInput(active.payload)
 }

@@ -464,11 +464,15 @@
   font-size: 13px;
 }
 
-.roadmap-modal-overlay {
+.modal-overlay.roadmap-modal-overlay {
   position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  align-items: center;
+  justify-content: center;
 }
 
-.roadmap-modal-card {
+.modal-card.roadmap-modal-card {
   max-width: 480px;
   position: relative;
 }

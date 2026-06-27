@@ -3,7 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { useCalibrationState, useProgressSnapshot } from '../progress';
 import { useEventStore } from '../events/useEventStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findRoadmap } from '../progress/mapEvents';
+import { findActiveRoadmap } from '../progress/mapEvents';
 import { startOfISOWeek, addDays, addWeeks, differenceInCalendarISOWeeks, format, parseISO } from 'date-fns';
 import Card from '../components/Card';
 import Tag from '../components/Tag';
@@ -31,7 +31,7 @@ export function Week() {
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore]) ?? [];
 
   const roadmapBounds = useMemo(() => {
-    const roadmap = findRoadmap(events);
+    const roadmap = findActiveRoadmap(events);
     if (!roadmap) return null;
     const planStart = parseISO(roadmap.startDate);
     const planStartWeek = startOfISOWeek(planStart);

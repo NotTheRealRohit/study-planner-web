@@ -76,6 +76,26 @@ describe('SessionDetailModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('renders in a body-level portal without locking page scroll', () => {
+    document.body.style.overflow = 'auto'
+
+    const { container, unmount } = render(
+      <SessionDetailModal
+        bubble={makeBubble()}
+        onClose={vi.fn()}
+      />,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'Roadmap session detail' })
+    expect(dialog.parentElement).toBe(document.body)
+    expect(container).toBeEmptyDOMElement()
+    expect(document.body.style.overflow).toBe('auto')
+
+    unmount()
+    expect(document.body.style.overflow).toBe('auto')
+    document.body.style.overflow = ''
+  })
+
   it('renders nothing without a selected bubble', () => {
     const { container } = render(
       <SessionDetailModal bubble={null} onClose={vi.fn()} />,

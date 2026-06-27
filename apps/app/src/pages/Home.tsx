@@ -10,12 +10,12 @@ import Button from '../components/Button';
 import { StreakCard } from '../components/StreakCard';
 import { Link, useNavigate } from 'react-router-dom';
 import { ROLE_TO_LABEL } from '@study-tracker/roadmap-engine';
-import type { Slot } from '@study-tracker/roadmap-engine';
-import type { RoadmapCreatedPayload } from '../sync/types';
+import type { RoadmapSlot } from '@study-tracker/progress';
 import type { ActiveSessionRecord, SessionSlotData, MaterialKind } from '../session/types';
 import { AbandonedSessionBanner } from '../session/components/AbandonedSessionBanner';
 import { PlannedEndBanner } from '../session/components';
 import { useCalibrationState, useProgressSnapshot, usePromptDetail } from '../progress';
+import { findActiveRoadmap } from '../progress/mapEvents';
 import { RecalibrationBanner } from '../components/RecalibrationBanner';
 import { RecalibrationModal } from '../components/RecalibrationModal';
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
@@ -62,12 +62,6 @@ function computePlaylistCursor(
   return events
     .filter(e => e.kind === 'SessionLogged' && e.payload.materialId === materialId)
     .reduce((sum, e) => sum + ((e.payload.videosCompleted as number) ?? 0), 0);
-}
-
-function findRoadmap(events: Array<{ kind: string; payload: Record<string, unknown> }>): RoadmapCreatedPayload | null {
-  const roadmapEvents = events.filter(e => e.kind === 'RoadmapCreated' || e.kind === 'RoadmapReplanned');
-  if (roadmapEvents.length === 0) return null;
-  return roadmapEvents[roadmapEvents.length - 1].payload as unknown as RoadmapCreatedPayload;
 }
 
 export function Home() {
@@ -132,10 +126,10 @@ export function Home() {
 
   const totalMinutes = totalMinutesLogged(events as Event[]);
 
-  const roadmapPayload = findRoadmap(events);
+  const roadmapPayload = findActiveRoadmap(events as Event[]);
   const roadmapEnded = deriveRoadmapEndedState(events as Event[]);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const upNextSlot: Slot | null = roadmapPayload ? getUpNextSlot(roadmapPayload, todayStr) : null;
+  const upNextSlot: RoadmapSlot | null = roadmapPayload ? getUpNextSlot(roadmapPayload, todayStr) : null;
 
   const projectedFinish = progress?.projection?.finishDate ?? null;
   const confidenceInterval = progress?.projection?.confidenceInterval ?? null;
