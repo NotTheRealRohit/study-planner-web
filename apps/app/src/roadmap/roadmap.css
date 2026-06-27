@@ -688,6 +688,9 @@
   padding: var(--space-6) var(--space-4) var(--space-8);
   max-width: var(--container-wide);
   margin: 0 auto;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .roadmaps-header {
@@ -700,14 +703,19 @@
 
 .roadmaps-title {
   font-family: var(--font-display);
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.15;
+  letter-spacing: 0;
+  font-variation-settings: 'opsz' 96;
   color: var(--text-primary);
   margin: var(--space-1) 0 var(--space-2);
 }
 
 .roadmaps-subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-secondary);
   margin: 0;
 }
@@ -754,8 +762,9 @@
 .roadmaps-muted {
   margin: 0;
   color: var(--text-tertiary);
-  font-family: var(--font-display);
-  font-style: italic;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .roadmaps-list {
@@ -799,6 +808,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-body);
+  font-size: 15px;
   font-weight: 600;
 }
 
@@ -806,6 +817,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-body);
   color: var(--text-tertiary);
   font-size: 12px;
 }
@@ -828,9 +840,9 @@
 
 .roadmaps-empty p {
   margin: 0;
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 30px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 
@@ -864,9 +876,11 @@
 .rmd-zone-head h2 {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variation-settings: 'opsz' 48;
   color: var(--text-primary);
 }
 
@@ -893,9 +907,11 @@
 .rmd-hero-title {
   margin: var(--space-1) 0 var(--space-4);
   font-family: var(--font-display);
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.15;
+  letter-spacing: 0;
+  font-variation-settings: 'opsz' 96;
   color: var(--text-primary);
 }
 
@@ -927,8 +943,10 @@
   padding: 7px 10px;
   border-radius: var(--radius-sm);
   background: var(--surface-recessed);
+  font-family: var(--font-body);
   color: var(--text-secondary);
   font-size: 13px;
+  line-height: 1.4;
 }
 
 .rmd-stat-strip strong {
@@ -970,8 +988,10 @@
 
 .rmd-close-copy {
   margin-right: var(--space-2);
+  font-family: var(--font-body);
   color: var(--text-secondary);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .rmd-start-prompt {
@@ -985,6 +1005,9 @@
 
 .rmd-start-prompt p {
   margin: var(--space-1) 0 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--text-primary);
 }
 
@@ -999,9 +1022,11 @@
 .rmd-empty-active h2 {
   margin: var(--space-1) 0 0;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variation-settings: 'opsz' 48;
 }
 
 .rmd-draft {
@@ -1017,15 +1042,19 @@
 .rmd-draft h3 {
   margin: var(--space-1) 0 0;
   font-family: var(--font-display);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
-  line-height: 1.1;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-variation-settings: 'opsz' 48;
 }
 
 .rmd-lock-note {
   margin: var(--space-2) 0 0;
+  font-family: var(--font-body);
   color: var(--text-secondary);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .rmd-slim-add {
@@ -1050,6 +1079,7 @@
   min-height: 24px;
   padding: 0 9px;
   border-radius: var(--radius-pill);
+  font-family: var(--font-body);
   font-size: 12px;
   line-height: 1;
   text-transform: capitalize;
