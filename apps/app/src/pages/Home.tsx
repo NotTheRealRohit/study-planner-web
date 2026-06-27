@@ -19,6 +19,9 @@ import { useCalibrationState, useProgressSnapshot, usePromptDetail } from '../pr
 import { RecalibrationBanner } from '../components/RecalibrationBanner';
 import { RecalibrationModal } from '../components/RecalibrationModal';
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
+import { RoadmapEndedBanner } from '../roadmap/RoadmapEndedBanner';
+import { deriveRoadmapEndedState } from '../roadmap/useRoadmapEndedState';
+import { resolveRoadmap, type RoadmapResolutionKind } from '../roadmap/resolveRoadmap';
 import { format, isToday, isTomorrow, differenceInCalendarDays } from 'date-fns';
 
 function formatMinutesToHoursAndMinutes(totalMinutes: number): string {
@@ -130,6 +133,7 @@ export function Home() {
   const totalMinutes = totalMinutesLogged(events as Event[]);
 
   const roadmapPayload = findRoadmap(events);
+  const roadmapEnded = deriveRoadmapEndedState(events as Event[]);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const upNextSlot: Slot | null = roadmapPayload ? getUpNextSlot(roadmapPayload, todayStr) : null;
 
@@ -143,6 +147,15 @@ export function Home() {
   const handleSignOut = async () => {
     await signOut();
   };
+
+  const handleResolveRoadmap = useCallback(async (kind: RoadmapResolutionKind) => {
+    if (!roadmapEnded.entry) return;
+    await resolveRoadmap({
+      kind,
+      roadmapCreatedAt: roadmapEnded.entry.roadmapCreatedAt,
+      logEvent,
+    });
+  }, [logEvent, roadmapEnded.entry]);
 
   const handleReplan = useCallback(async () => {
     await logEvent('RecalibrationPromptResolved', {
@@ -187,6 +200,14 @@ export function Home() {
 
   return (
     <div style={{ padding: '2rem 1rem', maxWidth: '640px', margin: '0 auto' }}>
+      {roadmapEnded.ended && roadmapEnded.entry && (
+        <RoadmapEndedBanner
+          entry={roadmapEnded.entry}
+          onMarkComplete={() => void handleResolveRoadmap('RoadmapMarkedComplete')}
+          onAbandon={() => void handleResolveRoadmap('RoadmapMarkedAbandoned')}
+        />
+      )}
+
       <div className="mono-caps" style={{ marginBottom: 4 }}>{dateHeader}</div>
       <h1 className="t-display-2" style={{ marginBottom: '0.5rem' }}>
         {getGreeting()}, {emailPrefix}.

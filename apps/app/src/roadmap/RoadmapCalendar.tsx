@@ -29,7 +29,9 @@ import { DaySheet } from './DaySheet'
 import { MonthNav } from './MonthNav'
 import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
+import { RoadmapEndedBanner } from './RoadmapEndedBanner'
 import { resolveRoadmap as resolveRoadmapEvent, type RoadmapResolutionKind } from './resolveRoadmap'
+import { deriveRoadmapEndedState } from './useRoadmapEndedState'
 import { LEGEND_ITEMS } from './statusStyles'
 import './roadmap.css'
 
@@ -123,6 +125,10 @@ export function RoadmapCalendar({
     () => deriveRoadmapLifecycle(loadedEvents),
     [loadedEvents],
   )
+  const roadmapEnded = useMemo(
+    () => deriveRoadmapEndedState(loadedEvents, today),
+    [loadedEvents, today],
+  )
   const selectedRoadmap = useMemo(() => {
     if (roadmapCreatedAt) {
       return lifecycle.all.find((entry) => entry.roadmapCreatedAt === roadmapCreatedAt) ?? null
@@ -130,6 +136,9 @@ export function RoadmapCalendar({
     return lifecycle.active[0] ?? null
   }, [lifecycle, roadmapCreatedAt])
   const roadmapPayload = selectedRoadmap?.payload ?? null
+  const selectedRoadmapEnded = !readOnly &&
+    roadmapEnded.ended &&
+    roadmapEnded.entry?.roadmapCreatedAt === selectedRoadmap?.roadmapCreatedAt
   const roadmap = useMemo(
     () => roadmapPayload ? roadmapInputFromPayload(roadmapPayload) : null,
     [roadmapPayload],
@@ -263,6 +272,14 @@ export function RoadmapCalendar({
   return (
     <div className="roadmap-page">
       <ServiceStatusBanner status={status} />
+
+      {selectedRoadmapEnded && selectedRoadmap && (
+        <RoadmapEndedBanner
+          entry={selectedRoadmap}
+          onMarkComplete={() => void resolveRoadmap('RoadmapMarkedComplete')}
+          onAbandon={() => void resolveRoadmap('RoadmapMarkedAbandoned')}
+        />
+      )}
 
       {!readOnly && (
         <Link className="roadmap-back-link" to="/roadmaps">

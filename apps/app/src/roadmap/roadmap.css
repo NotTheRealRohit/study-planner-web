@@ -69,6 +69,36 @@
   font-size: 13px;
 }
 
+.roadmap-ended-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  border: var(--border-width-hair) solid var(--terracotta);
+  border-left: 4px solid var(--rust);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--terracotta) 10%, var(--surface-card));
+}
+
+.roadmap-ended-copy {
+  min-width: 0;
+}
+
+.roadmap-ended-copy p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-primary);
+}
+
+.roadmap-ended-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  align-items: center;
+}
+
 .roadmap-toolbar {
   display: flex;
   justify-content: space-between;
@@ -978,6 +1008,11 @@
   background: var(--rust);
 }
 
+.rmd-status-ended {
+  color: var(--text-on-inverted);
+  background: var(--rust);
+}
+
 .rmd-status-draft {
   color: var(--terracotta-d);
   background: color-mix(in srgb, var(--clay) 20%, var(--surface-card));
@@ -986,6 +1021,11 @@
 
 .rmd-history-row .rmd-status-pill {
   justify-self: end;
+}
+
+.rmd-hero > .roadmap-ended-banner {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
 }
 
 @media (pointer: fine) {
@@ -1160,9 +1200,20 @@
 
   .rmd-actions .btn,
   .rmd-actions-inline .btn,
+  .roadmap-ended-actions .btn,
   .rmd-actions button,
-  .rmd-actions-inline button {
+  .rmd-actions-inline button,
+  .roadmap-ended-actions button {
     flex: 1 1 150px;
+  }
+
+  .roadmap-ended-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .roadmap-ended-actions {
+    justify-content: flex-start;
   }
 }
 

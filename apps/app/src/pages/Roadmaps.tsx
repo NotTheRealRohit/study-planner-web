@@ -11,6 +11,8 @@ import {
   type RoadmapLifecycleEntry,
 } from '../roadmap/roadmapLifecycle'
 import { resolveRoadmap, type RoadmapResolutionKind } from '../roadmap/resolveRoadmap'
+import { RoadmapEndedBanner } from '../roadmap/RoadmapEndedBanner'
+import { deriveRoadmapEndedState } from '../roadmap/useRoadmapEndedState'
 import { useSync } from '../sync/useSync'
 import '../roadmap/roadmap.css'
 
@@ -102,7 +104,13 @@ export function Roadmaps() {
     () => deriveRoadmapLifecycle(loadedEvents),
     [loadedEvents],
   )
+  const roadmapEnded = useMemo(
+    () => deriveRoadmapEndedState(loadedEvents),
+    [loadedEvents],
+  )
   const activeEntry = lifecycle.active[0] ?? null
+  const activeEnded = roadmapEnded.ended &&
+    roadmapEnded.entry?.roadmapCreatedAt === activeEntry?.roadmapCreatedAt
   const historyEntries = lifecycle.all.filter((entry) => entry.status !== 'active')
   const selectedEntry = selectedCreatedAt
     ? historyEntries.find((entry) => entry.roadmapCreatedAt === selectedCreatedAt) ?? null
@@ -152,11 +160,23 @@ export function Roadmaps() {
       <section className="rmd-zone" aria-label="Active roadmap">
         <div className="rmd-zone-head">
           <h2>Active</h2>
-          {activeEntry && <span className="rmd-status-pill rmd-status-active">active</span>}
+          {activeEntry && (
+            <span className={`rmd-status-pill ${activeEnded ? 'rmd-status-ended' : 'rmd-status-active'}`}>
+              {activeEnded ? <>&bull; Ended &mdash; needs review</> : 'active'}
+            </span>
+          )}
         </div>
 
         {activeEntry && activeStats ? (
           <div className="rmd-hero" data-testid="roadmaps-active-hero">
+            {activeEnded && (
+              <RoadmapEndedBanner
+                entry={activeEntry}
+                onMarkComplete={() => void handleResolve('RoadmapMarkedComplete')}
+                onAbandon={() => void handleResolve('RoadmapMarkedAbandoned')}
+              />
+            )}
+
             <div className="rmd-hero-main">
               <div className="mono-caps">{formatRange(activeEntry)} · {activeEntry.weeks} weeks</div>
               <h2 className="rmd-hero-title">{activeEntry.title}</h2>

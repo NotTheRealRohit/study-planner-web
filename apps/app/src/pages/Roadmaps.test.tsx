@@ -54,7 +54,7 @@ vi.mock('../roadmap/RoadmapCalendar', () => ({
 function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): RoadmapCreatedPayload {
   return {
     startDate: '2026-06-01',
-    deadline: '2026-06-30',
+    deadline: '2099-06-30',
     weeks: 4,
     purpose: 'Distributed systems',
     selectedStudyDays: ['Mon', 'Wed'],
@@ -217,5 +217,17 @@ describe('Roadmaps dashboard', () => {
 
     expect(screen.getByTestId('mock-roadmap-calendar')).toHaveAttribute('data-readonly', 'true')
     expect(screen.getByTestId('mock-roadmap-calendar')).toHaveTextContent(createdAt)
+  })
+
+  it('shows an ended status and banner for an active roadmap past its deadline', () => {
+    mockState.events = [
+      event('RoadmapCreated', roadmapPayload({ deadline: '2026-06-01' }), '2026-05-01T00:00:00.000Z'),
+    ]
+
+    renderRoadmaps()
+
+    expect(screen.getByText('• Ended — needs review')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'Roadmap ended' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Extend deadline' })).toHaveAttribute('href', '/replan')
   })
 })
