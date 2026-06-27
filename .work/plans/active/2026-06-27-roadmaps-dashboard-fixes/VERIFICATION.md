@@ -35,7 +35,7 @@ fills findings. A phase is done only at `✅ Verified`.
   - `apps/app/src/onboarding/steps/Step2Hours.tsx`
   - `apps/app/src/onboarding/steps/Step3Materials.tsx`
   - `apps/app/src/onboarding/steps/Step3Preview.tsx`
-- Commit SHA: `1d1fe1b02f856ae472d628cbb8ad4d97ba256eaa`
+- Commit SHA: `03f7386331c56c193ed49ea32fb73ed79d6ae5a8`
 - What was done:
   - Added `useOnboardingNavigate()` to preserve `location.search` and `location.state` while navigating between onboarding steps.
   - Converted the Phase A intra-onboarding navigations to the helper, while leaving `/roadmaps`, `/onboarding/4`, and `/home` exits on plain `useNavigate()`.
