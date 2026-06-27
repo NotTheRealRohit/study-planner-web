@@ -665,7 +665,7 @@ Restore the previous `Roadmaps.tsx`; delete `roadmapDraft.ts`. History/active li
 
 ### Phase 5: Deadline-passed banner (Home + dashboard + calendar)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1, Phase 4 (`✅ Complete`)
 **Estimated scope:** ~4 files, ~150 lines
 
