@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Week } from './Week'
@@ -90,11 +90,25 @@ function mockRoadmapWithPastWeeks() {
   })
 }
 
+function mockShortRoadmapAfterPlanEnd() {
+  mockFindRoadmap.mockReturnValue({
+    startDate: '2026-05-04',
+    deadline: '2026-06-07',
+    weeks: 5,
+    weeklyHours: 10,
+    slots: [],
+  })
+}
+
 describe('Week', () => {
   beforeEach(() => {
     mockFindRoadmap.mockReturnValue(null)
     mockCalibration = null
     mockCalibrationStatus = 'ready'
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('shows fallback when no progress data', () => {
@@ -200,6 +214,25 @@ describe('Week', () => {
       </MemoryRouter>,
     )
 
+    expect(screen.getByText('Past')).toBeInTheDocument()
+  })
+
+  it('renders explicit post-plan past week from the URL instead of falling back to current week', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-26T12:00:00Z'))
+    mockProgress = makeProgress()
+    mockShortRoadmapAfterPlanEnd()
+
+    render(
+      <MemoryRouter initialEntries={['/week?w=6']}>
+        <Week />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText((_, element) =>
+      element?.className === 'mono-caps' &&
+      element.textContent?.startsWith('Week 6 ·') === true,
+    )).toBeInTheDocument()
     expect(screen.getByText('Past')).toBeInTheDocument()
   })
 

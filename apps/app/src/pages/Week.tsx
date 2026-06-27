@@ -40,8 +40,7 @@ export function Week() {
       0,
       differenceInCalendarISOWeeks(today, planStartWeek),
     );
-    const maxWeekIndex = Math.min(currentWeekIndex, roadmap.weeks - 1);
-    return { planStartWeek, currentWeekIndex, maxWeekIndex };
+    return { planStartWeek, currentWeekIndex };
   }, [events]);
 
   const wParam = searchParams.get('w');
@@ -49,7 +48,7 @@ export function Week() {
     if (!roadmapBounds) return 0;
     if (wParam !== null) {
       const parsed = parseInt(wParam, 10);
-      if (!isNaN(parsed) && parsed >= 1 && parsed <= roadmapBounds.maxWeekIndex + 1) {
+      if (!isNaN(parsed) && parsed >= 1 && parsed <= roadmapBounds.currentWeekIndex + 1) {
         return parsed - 1;
       }
     }
