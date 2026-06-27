@@ -264,11 +264,46 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/pages/Home.tsx`
+- `apps/app/src/pages/Roadmaps.tsx`
+- `apps/app/src/pages/Roadmaps.test.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/RoadmapEndedBanner.tsx`
+- `apps/app/src/roadmap/RoadmapEndedBanner.test.tsx`
+- `apps/app/src/roadmap/roadmap.css`
+- `apps/app/src/roadmap/useRoadmapEndedState.ts`
+- `apps/app/src/roadmap/useRoadmapEndedState.test.ts`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `03a2537`
+
+What was done:
+- Added `useRoadmapEndedState.ts` with a pure `deriveRoadmapEndedState` helper and a live hook for active-plan ended detection.
+- Added `RoadmapEndedBanner`, a non-dismissible inline banner with Mark complete, Extend deadline, and Abandon actions.
+- Mounted the ended banner as the first child in `Home.tsx`, above the date/greeting header and independent of `RecalibrationBanner`.
+- Mounted the banner in the dashboard active hero and changed the active status pill to `• Ended — needs review` when the active deadline has passed.
+- Mounted the banner at the top of non-readOnly `RoadmapCalendar`.
+- Routed Mark complete and Abandon through the shared `resolveRoadmap` helper everywhere; Extend deadline links to `/replan`.
+- Added tests for ended-state past/future/terminal truth table, the hook itself, banner actions/no-dismiss control, and dashboard ended rendering.
+
+Deviations + why:
+- Home, Roadmaps, and Calendar use the pure derivation from the hook module where they already have event arrays in scope, avoiding duplicate live queries while keeping the exported hook available and directly tested.
+- `RoadmapEndedBanner` accepts an optional `onExtendDeadline` for testability while still rendering the required `/replan` link.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest/jsdom stack.
+- `pnpm lint` passed with the same 9 existing `no-explicit-any` warnings in unrelated files.
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ Ended state is true only for an active entry whose `deadline < today`; future active plans and completed past-deadline plans return false.
+- ✅ `RoadmapEndedBanner` is non-dismissible and renders exactly three actions: Mark complete, Extend deadline, Abandon.
+- ✅ Home renders the banner before the date/greeting header when ended, separate from `RecalibrationBanner`.
+- ✅ Dashboard status pill flips to `• Ended — needs review` and surfaces the same three banner actions.
+- ✅ Calendar renders the banner only for non-readOnly active ended plans.
+- ✅ Mark complete and Abandon route through the shared resolve helper.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- RoadmapEnded useRoadmapEndedState` passed: 43 test files, 435 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ Extra guard: `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
 
 ### Reviewer findings (Cowork fills)
 
