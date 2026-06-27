@@ -196,11 +196,48 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/App.tsx`
+- `apps/app/src/pages/Roadmaps.tsx`
+- `apps/app/src/pages/Roadmaps.test.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/resolveRoadmap.ts`
+- `apps/app/src/roadmap/roadmap.css`
+- `apps/app/src/roadmap/roadmapDraft.ts`
+- `apps/app/src/roadmap/roadmapDraft.test.ts`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `2cba6cf`
+
+What was done:
+- Added `deriveRoadmapDraft`, which reads the existing `onboardingDraft` row and exposes a dashboard-ready summary only for completed users with meaningful post-step-1 draft state.
+- Reworked `/roadmaps` into a dashboard with Active, Next up, and History zones.
+- Added the active roadmap hero with title, date range, weeks, progress bar, session count, logged time, percent complete, and actions for Open plan, Edit & add, and Close plan.
+- Added a Next-up draft card with resume/start/discard controls, active-plan lock messaging, and no direct `RoadmapCreated` emission from the dashboard.
+- Extracted shared terminal-event emission into `resolveRoadmap.ts` and made both the dashboard and `RoadmapCalendar` use it.
+- Added an inline "Ready to start <draft>?" prompt after closing an active roadmap while a draft exists.
+- Preserved `/onboarding?new=1` through the onboarding index redirect so the exact empty-state route keeps new-roadmap mode.
+- Added tests for draft thresholds, active hero rendering, active-plan start locking, enabled start when no active plan exists, draft presence, close prompt, and read-only history detail.
+
+Deviations + why:
+- `App.tsx` was touched even though Phase 4's main file list was the dashboard/roadmap modules. The direct `/onboarding?new=1` route requested by the plan would otherwise hit the onboarding index redirect and lose its query string before `OnboardingGate` could keep new-roadmap mode active.
+- The active hero stat strip implements sessions, logged time, and percent complete. Richer streak/projection stats remain covered by the plan's OQ-01 follow-up.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest/jsdom stack.
+- `pnpm lint` passed with 9 existing `no-explicit-any` warnings in unrelated files (`OnboardingGate.test.tsx`, `YouTubePlayerAdapter.test.ts`, `loadYouTubeApi.ts`).
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ `deriveRoadmapDraft` returns `null` when onboarding is incomplete, step is `<= 1`, or deadline is missing; it returns title fallback and correct step labels otherwise.
+- ✅ Dashboard renders Active hero, Next-up draft, and History zones.
+- ✅ Active hero shows title, range, weeks, progress, session count, logged time, percent complete, and Open / Edit & add / Close actions.
+- ✅ Draft card appears only when a derived post-step-1 draft exists and shows `Paused at step N · <label>` plus the active-plan lock note.
+- ✅ Start plan is disabled while a roadmap is active and enabled when no roadmap is active; it navigates to `/onboarding/<step>?new=1` and does not emit `RoadmapCreated` directly.
+- ✅ Complete/Abandon actions use the shared resolver; closing with a draft shows the inline ready-to-start prompt.
+- ✅ Empty state routes to `/onboarding?new=1`; `App.tsx` preserves that search query into `/onboarding/1`.
+- ✅ Read-only history detail remains available by selecting a completed/abandoned row.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- Roadmaps roadmapDraft` passed: 41 test files, 429 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
 
 ### Reviewer findings (Cowork fills)
 
