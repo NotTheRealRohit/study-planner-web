@@ -8,6 +8,19 @@ Round-trips between agents. **Planner** pre-fills acceptance criteria. **Develop
 
 Status legend: `☐` pending · `✅` met · `❌` failed · `➖` n/a.
 
+## Redo protocol — what to do when a phase gets `🔁 Changes requested`
+
+When the reviewer marks a phase `🔁 Changes requested`, the implementing agent (developer) does the following, in order. **Do not start a later phase until the redo is committed and the reviewer has re-verified** (a `🔁` phase blocks the phases that depend on it).
+
+1. **Read the reviewer findings, not just the summary.** Implement exactly the bullets under that phase's **Required changes**. Do not re-architect, re-scope, or "improve" unrelated things in the same change — keep the redo surgical so the re-review diff is small.
+2. **Add the regression test the finding asks for.** Every change request names a missing/failing test; add it and make it fail against the old code first, then pass with the fix (state both in the resolution).
+3. **Commit the redo as its own commit**, separate from any in-flight later-phase work. Suggested message: `fix(<area>): <phase> redo — <one-line>`. **Never bundle a redo with Phase N+1 WIP** — it makes the SHA un-reviewable and risks shipping unfinished work. (Cowork cannot commit; if the fix is authored in Cowork, the native side commits it before anything else proceeds.)
+4. **Fill the phase's `Resolution (Developer fills on redo)` block:** the redo **commit SHA** (not "pending" — a real SHA the reviewer can `git show`), the files changed, what changed, and the before/after test result. A resolution without a committed SHA cannot be re-verified.
+5. **Set the resolution status to `✅ Fixed by developer; reviewer re-check pending`** and hand back. Do **not** flip the reviewer's `Status:` line yourself — only the reviewer marks `✅ Verified`.
+6. **Reviewer re-check:** the reviewer `git show`s the redo SHA, confirms each required change + its test, and updates the phase's reviewer `Status:` to `✅ Verified (redo <sha> re-checked)` or back to `🔁` with new findings. Then the dependent phases unblock.
+
+If the redo reveals the **plan itself** was wrong (not just the implementation), stop and surface it — amend `PLAN.md` and log a new `D-xx` decision rather than silently diverging.
+
 ---
 
 ## Phase 1 — Typed events + in-place lifecycle identity
@@ -74,17 +87,6 @@ Reviewed by diff of commit `4631152` (read-only `git show`); tests not re-run in
 - **Status:** ✅ Verified
 
 ### Resolution (Developer fills on redo)
-
-Commit SHA: `521cd6d`
-
-What changed:
-- Moved the new-roadmap + active-roadmap draft branch to the top of `Step3Preview.handleCommit`, before any `MaterialAdded` emission.
-- Updated the active-plan draft test to assert zero `MaterialAdded`, zero `RoadmapCreated`, and zero duplicate `OnboardingCompleted` events.
-
-Verification:
-- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- Step3Preview Onboarding` passed: 45 test files, 440 tests.
-- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
-- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
 
 ---
 
@@ -203,6 +205,8 @@ Self-check vs criteria:
 
 Reviewed by diff of commit `0fc02ce`.
 
+Phase 3 (`0fc02ce`) — 🔁 Changes requested. One real defect: in `Step3Preview.handleCommit`, the `MaterialAdded` emission loop runs before the save-as-draft branch. So saving a next-roadmap draft writes N `MaterialAdded` events to the global log even though no `RoadmapCreated` is emitted. Since `mapToRegenerateRequest` reads all `MaterialAdded` events with no roadmap scoping, the draft's materials leak into the active roadmap's replan input, and they get re-emitted/duplicated when the draft is later started. Fix: move the draft branch to the top of the `try`, before the loop, so a draft save emits zero events; its state already lives in `onboardingDraft`. Everything else in Phase 3 — gate bypass, nav change, no-active commit path, and back link — is correct.
+
 - Per-criterion verdict:
   - ✅ NavBar item → `/roadmaps`, label "Roadmaps", `prefix: '/roadmap'`; `isActive` uses `pathname.startsWith(prefix)` so both `/roadmaps` and `/roadmap` highlight it. Verified.
   - ✅ `OnboardingGate` bypasses the `/home` redirect in new-roadmap mode (`?new=1` or `state.newRoadmap`); first-run gating preserved.
@@ -214,9 +218,24 @@ Reviewed by diff of commit `0fc02ce`.
   - 🔴 **Premature `MaterialAdded` on save-as-draft (functional defect).** In `Step3Preview.handleCommit`, the `for (const mat of expandedMaterials) { logEvent('MaterialAdded', …) }` loop runs *before* the `if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) { navigate('/roadmaps'); return }` branch. So saving a next-roadmap draft writes N `MaterialAdded` events into the global log even though no `RoadmapCreated` is emitted. Because `mapToRegenerateRequest.materialPayloads(events)` reads **all** `MaterialAdded` events with no roadmap scoping, the consequences are: (1) the draft's materials **leak into the currently-active roadmap's replan input** (load-bearing for Phase 7 / issue 010); (2) when the draft is later resumed and started, `MaterialAdded` fires **again** → duplicate `materialId` events. A draft must not write to the event log — its state already persists in the `onboardingDraft` row via `OnboardingProvider`.
 - Required changes:
   - Move the save-as-draft branch to the **top of the `try`**, before the `MaterialAdded` loop (compute `existingEvents`/`hasCompletedOnboarding`/`hasActiveRoadmap` there). The draft path must emit **zero** events and simply `navigate('/roadmaps')`. Add a test asserting that finishing a new roadmap while one is active emits **no** `MaterialAdded` and **no** `RoadmapCreated`.
-- **Status:** 🔁 Changes requested
+- **Status:** ✅ Verified (redo `521cd6d` re-checked 2026-06-27)
+
+**Reviewer re-check (`521cd6d`):** Confirmed by `git show` — the draft branch is now the first thing in the `try`, ahead of the `MaterialAdded` loop, so the draft path emits zero events. Test `finishing a new roadmap while one is active saves a draft without creating another roadmap` (Step3Preview.test.tsx:278) now asserts `MaterialAdded` length 0 **and** `not.toContain('RoadmapCreated')` **and** navigation to `/roadmaps`; the no-active sibling test still asserts exactly one `MaterialAdded` + one `RoadmapCreated`. Change request fully resolved.
 
 ### Resolution (Developer fills on redo)
+
+Commit SHA: `521cd6d`
+
+What changed:
+- Moved the new-roadmap + active-roadmap draft branch to the top of `Step3Preview.handleCommit`, before any `MaterialAdded` emission.
+- Updated the active-plan draft test to assert zero `MaterialAdded`, zero `RoadmapCreated`, and zero duplicate `OnboardingCompleted` events.
+
+Verification:
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- Step3Preview Onboarding` passed: 45 test files, 440 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
+
+Status after redo: ✅ Fixed by developer; reviewer re-check pending.
 
 ---
 
@@ -430,12 +449,48 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `c771f63` (read-only `git show`); tests not re-run in the sandbox (diff + inspection).
+
 - Per-criterion verdict:
+  - ✅ `logRoadmapEdit` emits a typed `RoadmapEdited` event; `editPayloadForBubble` keys it on `selectedRoadmap.roadmapCreatedAt` (= identity, post-Phase-1) with the slot fields.
+  - ⚠️ Day-tap "Log session" emits `SessionLogged` with the slot `date` + `materialId` + role/duration, so it **does** attribute by date window (D-06) — **but** it sets `source: 'roadmap'` (see defect below).
+  - ✅ Inline light edits (rename, ±15 min nudge, move-to-next-day, mark done/undone) emit `RoadmapEdited`; gated future-only via `isEditableBubble` (`!readOnly && slotRef && date >= today`).
+  - ✅ Integration test `maps RoadmapEdited events into user-edited pins` proves the pin path.
+  - ✅ `readOnly` mode renders none of the new affordances (`canEdit` requires `!readOnly`; the modal falls back to the disabled button).
+  - ✅ No structural reflow performed here.
 - Issues:
+  - 🔴 **`source: 'roadmap'` breaks streak credit and violates the `source` union (functional defect).** `handleLogSession` emits `SessionLogged` with `source: 'roadmap'`, but `source` is a load-bearing enum: `packages/progress/src/streak.ts` counts a day only when `sess.source === 'manual'`, and `calibration/bayesian/trend/cusum` key on `=== 'active'`. `mapEvents.ts` types the field `'active' | 'manual'` via a cast, so `'roadmap'` is a type lie that passes silently. Net effect: a session logged from the roadmap calendar **does not count toward the streak**, while the identical session logged via the Log page (`'manual'`) does — a surprising, inconsistent regression for the headline "add sessions" feature. (Roadmap progress via `completedSlotCount` is unaffected — it matches on date+materialId, not source — and exclusion from `'active'` calibration is fine.)
+  - 🟠 **`mark done` re-logs on every tap unless already done; `mark undone` is a near no-op.** Acknowledged deviation (no undo-session event in the model). Acceptable, but "Mark undone" emits a `RoadmapEdited` pin identical to the slot and cannot remove the already-logged `SessionLogged`, so the UI can imply an undo that didn't happen. Consider hiding "Mark undone" until an undo-session event exists, or labelling it accurately.
+  - 🟡 Note (non-blocking): quick actions live in `SessionDetailModal` (desktop hover/session modal). The mobile `DayDetailModal` (day-sheet) was not given the same affordances — confirm the mobile path reaches `SessionDetailModal`, else mobile users can't quick-log/edit.
+  - 🟡 Cross-phase risk for Phase 7: `userEditedPins(events, roadmapEvent.createdAt)` matches `RoadmapEdited.roadmapCreatedAt` against `latestActiveRoadmapEvent.createdAt`. After an in-place replan (Phase 7), the latest active event is a `RoadmapReplanned` whose `createdAt` ≠ the identity that edits are keyed to, so user-edited pins could be dropped. Match by identity, not latest-event `createdAt`, in Phase 7.
 - Required changes:
-- **Status:** ☐ awaiting implementation
+  - Emit roadmap quick-logged sessions with `source: 'manual'` (they're user-asserted, like Log-page entries) so they earn streak credit and stay within the `'active' | 'manual'` union — **or** explicitly extend the union to include `'roadmap'` and update `streak.ts` (+ `mapEvents.ts` typing) to count it. Add a test asserting a roadmap-logged session increments the streak.
+- **Status:** ✅ Verified on working tree (redo SHA pending native commit) — 2026-06-27
+
+**Reviewer re-check (`d544994`):** The required change is correctly applied — `RoadmapCalendar.tsx` emits `source: 'manual'` and no `'roadmap'` source remains in the file; `RoadmapCalendar.test.tsx` asserts the emitted source is `manual`; and `packages/progress/test/streak.test.ts` adds `roadmap quick-log sessions use manual credit and count toward the streak grid`, which proves a manual-credit session lands in the streak grid (`todayCell.level === 1`). The two non-blocking notes (mark-undone no-op; mobile day-sheet affordances) remain open follow-ups, not blockers. The Phase 6 fix was committed separately before Phase 7, so the redo is reviewable independently.
 
 ### Resolution (Developer fills on redo)
+
+Files changed:
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.test.tsx`
+- `packages/progress/test/streak.test.ts`
+
+Commit SHA: `d544994`
+
+What changed:
+- Changed the roadmap calendar quick-log `SessionLogged` payload from `source: 'roadmap'` to `source: 'manual'`, matching the existing `SessionEvent` union and the Log page semantics.
+- Updated the calendar quick-log test to assert the emitted source is `manual`.
+- Added a progress-package regression asserting the manual-credit path used by roadmap quick-log sessions contributes to the streak grid.
+
+Verification:
+- ✅ Before the implementation change, `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- RoadmapCalendar` failed because quick-log emitted `source: 'roadmap'` instead of `manual`.
+- ✅ After the implementation change, `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- RoadmapCalendar` passed: 45 test files, 440 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter @study-tracker/progress test -- streak` passed: 9 test files, 81 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm typecheck` passed.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with the same 9 existing warnings only.
+
+Status after redo: ✅ Fixed by developer; reviewer re-check completed; committed as `d544994`.
 
 ---
 
@@ -455,11 +510,50 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/App.tsx`
+- `apps/app/src/onboarding/components/SchedulePreview.tsx`
+- `apps/app/src/pages/Home.tsx`
+- `apps/app/src/pages/Home.test.tsx`
+- `apps/app/src/pages/Replan.tsx`
+- `apps/app/src/pages/Replan.test.tsx`
+- `apps/app/src/pages/Roadmaps.test.tsx`
+- `apps/app/src/roadmap/RoadmapEndedBanner.tsx`
+- `apps/app/src/roadmap/RoadmapEndedBanner.test.tsx`
+- `apps/app/src/roadmap/replan/commitReplan.ts`
+- `apps/app/src/roadmap/replan/commitReplan.test.ts`
+- `apps/app/src/roadmap/replan/mapToRegenerateRequest.ts`
+- `apps/app/src/roadmap/replan/mapToRegenerateRequest.test.ts`
+- `apps/app/src/roadmap/replan/replanRoadmap.ts`
+- `apps/app/src/roadmap/replan/replanRoadmap.test.ts`
+- `apps/app/src/roadmap/roadmap.css`
+
+Commit SHA: `734dd32`
+
+What was done:
+- Replaced the `/replan` stub with a preview-and-confirm page that regenerates the active roadmap, renders a read-only `SchedulePreview`, shows the pin summary, and supports Apply / Keep current.
+- Added `commitReplan`, which emits exactly one `RoadmapReplanned` event carrying the original `roadmapCreatedAt` identity and flattened regenerated slots.
+- Hardened `parseRoadmapOutput` so malformed regenerate responses throw a typed `RoadmapServiceError` instead of being cast into a commit-ready roadmap.
+- Fixed the Phase 7 cross-phase risks: `RoadmapEdited` pins now match by stable roadmap identity after in-place replans, and regenerate materials are scoped to the active roadmap's slot material IDs instead of the global `MaterialAdded` log.
+- Routed Home recalibration, Week, calendar, and ended-banner extension through the same `/replan` screen; the ended banner now uses `/replan?intent=extend`.
+
+Deviations + why:
+- Added a `readOnly` mode to the existing `SchedulePreview` instead of extracting a separate `RoadmapPreview` component. This reuses the onboarding presentation without exposing no-op inline editors on `/replan`.
+- Extend-deadline intent uses the plan's OQ-02 default query string (`?intent=extend`) and implements a one-week extension preview/commit. The richer three-option scope picker remains out of scope in issue 010.
+- The Phase 6 redo was already committed separately as `d544994`; Phase 7 commit `734dd32` contains only the Phase 7 code/test surface.
+
+Self-check vs criteria:
+- ✅ `parseRoadmapOutput` runtime-validates `weeks[]`/`warnings` and throws a typed `RoadmapServiceError` for malformed responses.
+- ✅ `commitReplan` emits one `RoadmapReplanned` keyed to the original roadmap identity.
+- ✅ `deriveRoadmapLifecycle` still shows one active entry after commit with the regenerated slots.
+- ✅ `/replan` renders a regenerated preview plus a pin summary (`N locked, M will be re-planned`).
+- ✅ Apply commits and navigates to `/roadmap`; Keep current navigates without committing.
+- ✅ `ReplanStub` is removed and `/replan` mounts `<Replan />`.
+- ✅ Calendar, Week, Home recalibration, and ended-banner extension entry points all route to `/replan` (extension uses `?intent=extend`).
+- ✅ Three-option scope picker was not built.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- replan commitReplan Replan Home` passed: 48 test files, 450 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm typecheck` passed.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with the same 9 existing warnings only.
 
 ### Reviewer findings (Cowork fills)
 

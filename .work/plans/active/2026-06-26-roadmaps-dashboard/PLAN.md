@@ -786,7 +786,7 @@ Delete `logRoadmapEdit.ts`; remove the calendar affordances. `RoadmapEdited` eve
 
 ### Phase 7: `/replan` preview-and-confirm with in-place commit + unified entry points
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete — 734dd32
 **Depends on:** Phase 1, Phase 6 (`✅ Complete`)
 **Estimated scope:** ~4 files, ~240 lines
 
