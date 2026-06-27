@@ -57,10 +57,21 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `4631152` (read-only `git show`); tests not re-run in the Cowork sandbox (Node-version/jsdom block — same constraint as the calendar slice), so verdicts are diff + inspection against criteria.
+
 - Per-criterion verdict:
+  - ✅ Both payloads added to `sync/types.ts` verbatim (`RoadmapReplannedPayload extends RoadmapCreatedPayload` + `roadmapCreatedAt`; `RoadmapEditedPayload`).
+  - ✅ Identity grouping correct — `roadmapIdentity()` returns `payload.roadmapCreatedAt` for replans (fallback to own `createdAt`), snapshot map keeps the latest event per identity.
+  - ✅ Replan-chain collapse — `snapshotsByIdentity` + `activeIdentity` yield one active entry with `roadmapCreatedAt === A` and the latest payload; test `collapses a replan chain into one active entry` asserts `all.length === 1`.
+  - ✅ Terminal-on-original — `latestTerminalFor` now keys on identity; test proves `MarkedComplete(A)` → `completed`, not `active`.
+  - ✅ `superseded` removed from the status union and `RoadmapLifecycleGroups`; `grep` clean.
+  - ✅ All three required tests present and asserting the right shapes.
+  - ✅ No `SessionLogged` change, no Dexie bump.
 - Issues:
-- Required changes:
-- **Status:** ☐ awaiting implementation
+  - Minor (non-blocking): an *orphan* roadmap that is neither terminated nor the most-recent identity is now **dropped from `all`** (status stays `null`). Previously it was `superseded` — but that group was never rendered, so this is not a UI regression. Under D-01 (one active, old roadmaps get terminal events) it shouldn't arise; worth a note only.
+  - Minor: `activeIdentity` is chosen by identity `createdAt` (original), not latest event time. Correct for well-formed data; in malformed multi-active data it could pick a different "active" than the old latest-event logic. Acceptable under D-01.
+- Required changes: none.
+- **Status:** ✅ Verified
 
 ### Resolution (Developer fills on redo)
 
@@ -109,10 +120,18 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `37a0361`.
+
 - Per-criterion verdict:
-- Issues:
-- Required changes:
-- **Status:** ☐ awaiting implementation
+  - ✅ `completedSlotCount` adds `inWindow(date)` = `date >= startDate && date <= deadline` and filters sessions before the greedy slot match. Inclusive, ISO-string compare (safe for `YYYY-MM-DD`).
+  - ✅ Out-of-window session excluded — test `does not count sessions outside a roadmap window toward progress`.
+  - ✅ Per-window counting — test `counts sessions only inside each roadmap window`.
+  - ✅ `findRoadmap` unchanged; active still = latest.
+  - ✅ Gap-session/global-stats-only documented in both `roadmapLifecycle.ts` and `mapEvents.ts` (D-06 comments).
+  - ✅ Two window tests present.
+- Issues: none. (Minor, shared with Phase 5: "today"/window edges use UTC-derived ISO dates; off-by-one possible near local midnight — acceptable and internally consistent.)
+- Required changes: none.
+- **Status:** ✅ Verified
 
 ### Resolution (Developer fills on redo)
 
@@ -171,10 +190,20 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `0fc02ce`.
+
 - Per-criterion verdict:
+  - ✅ NavBar item → `/roadmaps`, label "Roadmaps", `prefix: '/roadmap'`; `isActive` uses `pathname.startsWith(prefix)` so both `/roadmaps` and `/roadmap` highlight it. Verified.
+  - ✅ `OnboardingGate` bypasses the `/home` redirect in new-roadmap mode (`?new=1` or `state.newRoadmap`); first-run gating preserved.
+  - ✅ new-mode + no active → emits `RoadmapCreated`, skips duplicate `OnboardingCompleted`, clears draft, navigates `/roadmaps`.
+  - ✅ first-run → `RoadmapCreated` + `OnboardingCompleted`, navigate `/onboarding/4`.
+  - ✅ Calendar (non-readOnly) renders `← Roadmaps` back link `to="/roadmaps"` (no `/study`).
+  - ⚠️ new-mode + active → returns to `/roadmaps` without emitting `RoadmapCreated`/`OnboardingCompleted` — **but see the defect below**: it returns *after* the `MaterialAdded` loop has already fired.
 - Issues:
+  - 🔴 **Premature `MaterialAdded` on save-as-draft (functional defect).** In `Step3Preview.handleCommit`, the `for (const mat of expandedMaterials) { logEvent('MaterialAdded', …) }` loop runs *before* the `if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) { navigate('/roadmaps'); return }` branch. So saving a next-roadmap draft writes N `MaterialAdded` events into the global log even though no `RoadmapCreated` is emitted. Because `mapToRegenerateRequest.materialPayloads(events)` reads **all** `MaterialAdded` events with no roadmap scoping, the consequences are: (1) the draft's materials **leak into the currently-active roadmap's replan input** (load-bearing for Phase 7 / issue 010); (2) when the draft is later resumed and started, `MaterialAdded` fires **again** → duplicate `materialId` events. A draft must not write to the event log — its state already persists in the `onboardingDraft` row via `OnboardingProvider`.
 - Required changes:
-- **Status:** ☐ awaiting implementation
+  - Move the save-as-draft branch to the **top of the `try`**, before the `MaterialAdded` loop (compute `existingEvents`/`hasCompletedOnboarding`/`hasActiveRoadmap` there). The draft path must emit **zero** events and simply `navigate('/roadmaps')`. Add a test asserting that finishing a new roadmap while one is active emits **no** `MaterialAdded` and **no** `RoadmapCreated`.
+- **Status:** 🔁 Changes requested
 
 ### Resolution (Developer fills on redo)
 
@@ -241,10 +270,20 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `2cba6cf`.
+
 - Per-criterion verdict:
+  - ✅ `deriveRoadmapDraft` returns `null` for `!hasCompletedOnboarding`, missing `deadline`, or `stepReached <= 1`; otherwise `{ title: purpose||'Untitled plan', stepReached, stepLabel }` with the correct label map.
+  - ✅ Dashboard renders Active hero / Next-up draft / History; hero shows title, range, weeks, progress, sessions + logged time + percent.
+  - ✅ Draft card appears only post-step-1 (D-12); shows "Paused at step N · <label>" + lock note when active.
+  - ✅ **Start plan** `disabled={activeEntry !== null}`; promotion via `onboardingPath()` = `/onboarding/<step>?new=1` — no direct `RoadmapCreated` from the dashboard.
+  - ✅ Close goes through shared `resolveRoadmap` (calendar adopted the same helper this phase); close-with-draft shows the inline "Ready to start <title>?" prompt → Start now routes to `onboardingPath`.
+  - ✅ Empty state → `/onboarding?new=1`; `OnboardingIndexRedirect` preserves `search`+`state` so new-mode survives the index redirect (good catch on the `App.tsx` deviation).
+  - ✅ Read-only history detail preserved; Discard uses `onboardingDraft.delete(1)`.
 - Issues:
-- Required changes:
-- **Status:** ☐ awaiting implementation
+  - The Next-up draft card surfaces the draft correctly, but its trustworthiness depends on the Phase 3 fix — until then a draft also leaves stray `MaterialAdded` events (Phase 3 defect), which doesn't break the dashboard but pollutes the log. No change needed in Phase 4 itself.
+- Required changes: none (dashboard is correct as committed).
+- **Status:** ✅ Verified
 
 ### Resolution (Developer fills on redo)
 
@@ -307,10 +346,20 @@ Self-check vs criteria:
 
 ### Reviewer findings (Cowork fills)
 
+Reviewed by diff of commit `03a2537`.
+
 - Per-criterion verdict:
+  - ✅ `deriveRoadmapEndedState` (pure) + `useRoadmapEndedState` (live) compute `ended = active[0].deadline < today`. Terminated plans aren't `active` (Phase 1), so completed/abandoned past-deadline → `ended: false`; future deadline → `false`. Matches the truth table.
+  - ✅ `RoadmapEndedBanner` is non-dismissible (no close control) with exactly three actions: Mark complete, Extend deadline (`<Link to="/replan">`), Abandon. `role="status"`.
+  - ✅ Mounted on Home as the **first child** of the outer wrapper, above the date header, independent of `RecalibrationBanner`, only when `ended`.
+  - ✅ Dashboard flips the pill to "• Ended — needs review" and surfaces the banner, scoped to the active entry (`activeEnded` guards by `roadmapCreatedAt`).
+  - ✅ Calendar mounts the banner only when `!readOnly && ended && matches selected`.
+  - ✅ Mark complete / Abandon route through shared `resolveRoadmap` on all three surfaces.
+  - ✅ Hook truth-table tests + banner action/no-dismiss tests present.
 - Issues:
-- Required changes:
-- **Status:** ☐ awaiting implementation
+  - Minor: `todayISO()` uses `new Date().toISOString().slice(0,10)` (UTC). Near local midnight the "ended" flip can be off by one day. Consistent with Phase 2; acceptable. Note only.
+- Required changes: none.
+- **Status:** ✅ Verified
 
 ### Resolution (Developer fills on redo)
 
@@ -330,11 +379,43 @@ Self-check vs criteria:
 
 ### Implementer report (Developer fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+Files changed:
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`
+- `apps/app/src/roadmap/RoadmapCalendar.test.tsx`
+- `apps/app/src/roadmap/SessionDetailModal.tsx`
+- `apps/app/src/roadmap/edit/logRoadmapEdit.ts`
+- `apps/app/src/roadmap/edit/logRoadmapEdit.test.ts`
+- `apps/app/src/roadmap/replan/mapToRegenerateRequest.test.ts`
+- `apps/app/src/roadmap/roadmap.css`
+- `.work/plans/active/2026-06-26-roadmaps-dashboard/PLAN.md`
+
+Commit SHA: `c771f63`
+
+What was done:
+- Added `logRoadmapEdit`, a helper that emits typed `RoadmapEdited` payloads through the shared sync `logEvent` path.
+- Added future-only quick actions to the roadmap session detail modal for planned slot bubbles: Log session, rename session title, nudge planned minutes, move to next day, and mark done/undone.
+- Gated all new quick actions behind non-readOnly mode and future/today slot dates; read-only history still shows inspection-only modal actions.
+- `Log session` emits `SessionLogged` with the slot date, material id, planned duration, role, and source `roadmap`, so the session attributes by the roadmap date window.
+- Inline edits emit `RoadmapEdited` keyed by the active roadmap identity.
+- Added integration coverage proving `RoadmapEdited` events become `user-edited` pins in `mapToRegenerateRequest`.
+
+Deviations + why:
+- The plan's "move material to another day" is implemented as a simple "Move to next day" light edit in this phase. Full arbitrary drag/drop or day picker belongs with the broader Phase 7 `/replan` editing flow.
+- "Mark done" logs the planned session and records a `RoadmapEdited` pin; "Mark undone" records a `RoadmapEdited` pin only. The current event model has no delete-session/undo-session event, so true undo of already-logged time is intentionally not invented here.
+- Verification used Node `v22.17.1`; default shell Node `v18.19.0` remains unsuitable for this app Vitest/jsdom stack.
+- `pnpm lint` passed with the same 9 existing `no-explicit-any` warnings in unrelated files.
+- The final commit SHA is recorded in this follow-up doc state because amending a self-referential SHA changes the commit hash.
+
+Self-check vs criteria:
+- ✅ `logRoadmapEdit` emits `RoadmapEdited` with roadmap identity and slot fields.
+- ✅ Calendar quick Log session emits `SessionLogged` with tapped slot date and material id.
+- ✅ Inline rename, minute nudge, move-next-day, and done-toggle actions emit `RoadmapEdited`.
+- ✅ Edits are future-only and hidden in readOnly history mode.
+- ✅ `RoadmapEdited` is consumed as a `user-edited` pin by `mapToRegenerateRequest`.
+- ✅ No structural reflow is performed in this phase; `/replan` remains the structural path.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app test -- RoadmapCalendar logRoadmapEdit` passed: 45 test files, 440 tests.
+- ✅ `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm --filter app typecheck` passed.
+- ✅ Extra guard: `env PATH=/Users/rsaji/.nvm/versions/node/v22.17.1/bin:$PATH pnpm lint` passed with existing warnings only.
 
 ### Reviewer findings (Cowork fills)
 
