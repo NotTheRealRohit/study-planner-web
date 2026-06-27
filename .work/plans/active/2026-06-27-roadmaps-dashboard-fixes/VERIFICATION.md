@@ -81,7 +81,7 @@ fills findings. A phase is done only at `✅ Verified`.
   - `apps/app/src/roadmap/RoadmapCalendar.tsx`
   - `apps/app/src/roadmap/RoadmapCalendar.test.tsx`
   - `apps/app/src/onboarding/OnboardingGate.test.tsx`
-- Commit SHA: pending
+- Commit SHA: `5d3cfcc94849c97c299370c4af8aa4d10897e4b0`
 - What was done:
   - Changed history rows from component-state buttons to `<Link>` rows targeting `/roadmap?roadmap=${encodeURIComponent(createdAt)}`.
   - Removed `selectedCreatedAt`, `selectedEntry`, the inline `roadmaps-readonly` calendar panel, and the unused `RoadmapCalendar` import from `Roadmaps.tsx`.
