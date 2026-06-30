@@ -20,7 +20,7 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** R2 calibration regression is implemented and awaiting reviewer sign-off. The decoupled result is on disk in a separate result dir; frozen P0b default-dir calibration results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `749e87947c395f84d1e1c4cf3b5b8809d4bfd004` (R2 evidence/docs); latest code phase commit remains `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6` (R1).
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `51a5d4087d7353bdd4e33060a3048252fa50d415` (R2 evidence/docs); latest code phase commit remains `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6` (R1).
 - **Phase board:** P0 ✅ · R1 ✅ · R2 🟡 · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
@@ -106,7 +106,7 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 - **Goal this session:** Execute reviewer-requested P0b frozen-baseline correction, then prepare to begin R1.
 - **Did:** Read reviewer findings in `VERIFICATION.md`; accepted that D-08 is rejected and R1 is unblocked, with P0b required before R2/R4/R5.
 - **Files changed:** `SCRATCHPAD.md` session-start update; `VERIFICATION.md` already has uncommitted reviewer notes from the user.
-- **Commit SHA:** `749e87947c395f84d1e1c4cf3b5b8809d4bfd004`.
+- **Commit SHA:** pending.
 - **Results / numbers:** pending P0b runs.
 - **Deviations / decisions:** D-09 created as pending correction/supersession of D-08.
 - **Left off at / next:** Run the three P0b baseline commands exactly as specified by the reviewer.

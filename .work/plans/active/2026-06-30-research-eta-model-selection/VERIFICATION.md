@@ -401,7 +401,7 @@ drift→cusum/step→page_hinkley baseline). Process note honored: marker left a
 
 **Developer notes:**
 R2 implemented by Codex on 2026-06-30. Evidence/docs commit:
-`749e87947c395f84d1e1c4cf3b5b8809d4bfd004`.
+`51a5d4087d7353bdd4e33060a3048252fa50d415`.
 
 Files changed for committed R2 evidence:
 - `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
