@@ -364,22 +364,94 @@ elements provisional pending R4; reuse real classes (`onboarding.css`, `roadmap-
 **Home (D15, ✅):** stays exactly as today **except** the up-next/booking card labels its material as
 **"Suggested material"** (not a locked assignment). No dial on Home. "Start session" routes to `/session`.
 Mock: `mocks/proposed/home.html` (diff vs `baseline/home.html` = the card copy only).
-**New pre-session page (D15a, 🟡 choosing via mocks):** clicking Start lands on a **new setup step on the
+**New pre-session page (D15a, ✅ — V1 chosen):** clicking Start lands on a **new setup step on the
 Session route, before the timer runs** — confirm/swap the material **+ set planned length on the dial**
 (D7) — then Start begins the existing running-session UI. Built faithful to `/session`
 (`.session-frame`, eyebrow→title→subtitle, `material-strip`, `session-actions`). Dial **re-skinned to
 Marginalia** (warm: ink knob, moss recommended, terracotta cap — the `SessionDial.jsx` prototype's
-teal/blue/purple clashed) and **reduced to "set planned length"** (no running ring/timer yet). Three
-variations in `mocks/proposed/session-presession-options.html`:
-- **V1 — Confirm card (stacked):** suggested material as the title, dial where the timer sits, Change +
-  Start. Closest to live session layout.
-- **V2 — Split:** material directory (suggested pre-selected) on the left, dial + Start on the right.
-  Material-choice-forward; stacks on mobile.
-- **V3 — Dial-forward (minimal):** dial is the hero, material a slim strip with a quiet "Change" link.
-Open: which variation; whether soft-cap/recommended copy is enough; the material picker UX (reusing a
-grouped directory + modal, shown as `#picker1`).
+teal/blue/purple clashed) and **reduced to "set planned length"** (no running ring/timer yet).
+**Chosen = V1 (Confirm card, stacked):** suggested material as the session title, the dial where the
+timer will sit, "Change"/"Pick a different material" → material-picker modal, "Start session" (accent).
+Reads as the pre-state of the running timer — the frame "comes alive" on Start. Canonical mock:
+`mocks/proposed/session-presession.html`. Rejected V2 (split) / V3 (dial-forward) retained in
+`mocks/proposed/session-presession-options.html`. ETA/recommended copy provisional pending R4.
 
-<!-- append D16+ here as the grill resolves them -->
+### D16 — Session state model: pre-session runs once; Continue resumes the running timer ✅
+Grounded in real code: the in-progress session is the **Dexie `activeSession` singleton (id=1)** =
+`ActiveSessionRecord` (`session/types.ts`) holding `materialId, sessionTitle, plannedMinutes, startedAt,
+status:'active'|'paused', pauseIntervals, videoPlaybackPosition, …`. It is the **local source of truth**;
+the lifecycle **events** (`SessionStarted/Paused/Resumed/Logged/Abandoned`) flow through sync so other
+devices reconstruct it. `SessionLifecycle.initialize()` loads any existing record on mount.
+
+**Rule that prevents re-running the pre-req:**
+- **Pre-session page (V1) shows ONLY on a fresh start** — i.e. `state==='idle'` and **no `activeSession`
+  record** yet. It is the step that *creates* the record. Today `Session.tsx` auto-calls `lc.start(slotData)`
+  when `idle && slotData`; the change is to **render the pre-session page instead of auto-starting**, seeded
+  with the booking's suggested material + `estimatedDuration` as the dial default.
+- **"Start session"** (on the pre-session page) → `lc.start(...)` writes the `activeSession` record with the
+  **confirmed/swapped `materialId`** + the **dial's `plannedMinutes`** and emits `SessionStarted`. From here
+  on, an active record exists.
+- **"Come back later"** → `lc.pause()` writes `status:'paused'` (+ saves `videoPlaybackPosition`) and emits
+  `SessionPaused`; the record **persists**. (Navigates to Home.)
+- **Continue** → Home shows the **"Continue session"** card whenever the `activeSession` record exists
+  (already implemented: `eventStore.table('activeSession').get(1)`). It routes to `/session` with **no
+  slotData**; `initialize()` finds the existing record → `state!=='idle'` → **renders the running timer
+  layout directly, bypassing the pre-session page.** Resume is one tap.
+- **Session tab with nothing running** (no record): instead of today's bare "No active session" empty state,
+  show the **pre-session page seeded with today's booking/suggested material** (or the directory to pick) —
+  a strict improvement, same component.
+
+**Implementation notes for the plan:** `ActiveSessionRecord` + `SessionStartedPayload` gain **`bookingId`**
+(D9a #3 / D11) and the slot-era fields (`slotDate`, `weekIndex`) become derived/deprecated. The only
+behavioural change to the running screen's resume path is **none** — Continue already bypasses start; we are
+only inserting the explicit pre-session step on the *fresh-start* branch that currently auto-starts.
+
+### D17 — The dial is PRE-SESSION ONLY; the running session keeps the existing numeric timer ✅
+**Corrects/scopes D2 & D7.** The `SessionDial` is used **only on the pre-session setup page (D15a/V1)** to
+**set the planned length** before starting. It does **NOT** appear on the running session screen. The
+running screen keeps the **current `TimerDisplay`** (big numeric elapsed) and its existing layout
+(`SessionDefaultLayout` / `SessionYouTubeLayout`) **unchanged** — explicitly rejecting the earlier
+"timer becomes the dial / live actual ring (teal→amber→red)" idea from the `SessionDial.jsx` prototype's
+running state. (Rohit: "The timer becomes the dial — False, i don't want that in running session page.")
+- **Consequence:** the dial's "actual ring", overrun-as-ring, and live cap-on-dial visuals are **not built**.
+  `plannedMinutes` is captured once on the pre-session dial; the running timer shows elapsed as it does today
+  (overrun still indicated the **current** way — terracotta numeric + planned-end line/banner).
+- **D2 restated:** Input 1 (planned) = pre-session dial; Input 2 (actual) = existing running timer. Both still
+  feed the intelligence layer (D8); only the *running UI* is unchanged.
+
+**Running-session changes that DO remain (no dial):**
+- **D4 — end controls split:** `End · complete` (log + mark material done) / `Interrupt` (auto-log partial,
+  material stays open) / `Pause · come back later` (resume same session, nothing logged). Replaces today's
+  single End + the `stale_midnight → SessionAbandoned` no-log path.
+- **D10 — end-of-session position capture** for non-YouTube (% / position), on complete *and* interrupt;
+  YouTube/playlist stays automatic.
+- **D3 — material strip** shows logged-vs-estimated progress (optional in-session nudge).
+- **D8 — throughput** computed from actual + captured position (backend; no running-UI change).
+
+### D18 — Running-session redesign (D4 + D10), decided by frontend-design principles ✅
+Rohit: "use frontend-design principles for UI decisions." Decisions, with the principle behind each:
+- **Progressive disclosure → one primary `End session`, not three end-buttons.** Tapping End opens an
+  **end-of-session bottom sheet** that handles *both* D4 (complete vs keep-open) and D10 (position) — keeps
+  the live screen calm; defers the "did I finish?" decision to when it's actually answerable.
+- **Quiet resume stays:** `Pause · come back later` remains the ghost/tertiary action (resume same session,
+  nothing logged — the D16 path). Visual hierarchy: one accent primary, one ghost tertiary.
+- **End sheet contents:**
+  - **Positive reinforcement:** "13m logged for this session" up top.
+  - **D10 position capture (non-YouTube):** quick presets (¼ ½ ¾ Done) **+** a % slider — *recognition over
+    recall*, low-effort, with a precise fallback. (YouTube/playlist: auto from video progress, read-only.)
+  - **D4 completion choice:** two clear options — **"↺ Keep open / continue later"** vs **"✓ Finished /
+    mark material done"** — with a **smart default** wired to position (100% → Finished, else Keep open).
+    *Forgiveness:* nothing destructive; "Back to session" cancels; Interrupt-equivalent = log + keep open.
+  - "This session was unusual" moves into the sheet (it's an end-time judgement).
+- **Running screen otherwise unchanged (D17):** same numeric timer, frame, eyebrow, open-material. The
+  **material strip gains a progress sub-line** (logged-vs-estimated bar, D3).
+- **Consistency/a11y:** reuses `session-actions`, `btn-*`, `checkbox-box`, `modal-overlay` (bottom-sheet on
+  mobile, centered on desktop); colour from tokens (moss = finished/progress, ink = selection).
+- Mocks: baseline `mocks/baseline/session-running.html`; proposed `mocks/proposed/session-running.html`
+  (interactive: tap End → sheet; slider/presets drive the smart default). ETA/“over plan” still shown the
+  current way (terracotta numeric + planned-end line) — no dial on this screen (D17).
+
+<!-- append D19+ here as the grill resolves them -->
 
 ## 6. Change log
 
@@ -405,6 +477,15 @@ grouped directory + modal, shown as `#picker1`).
   extend the generator, regression-test calibration/detection, **benchmark the ETA composite (R4)** on the
   existing `research/comparison/` harness with A-series rigour, guard circularity via Phase-5 real data.
   #3 composite is now 🟡 gated on R4.
+- **2026-06-30 (grill session 2)** — **D16** (session state model: pre-session runs once; Continue resumes
+  the running timer via the persisted `activeSession` record, bypassing the pre-req) + **D17** (dial is
+  pre-session-only; running session keeps the existing numeric timer — rejects dial-as-running-timer) locked.
+  Running-session changes reduced to D4 end-controls + D10 position capture + D3 strip progress.
+- **2026-06-30 (grill session 2)** — **D15 + D15a locked:** Home stays a launcher (booking material
+  re-labelled "Suggested material", `mocks/proposed/home.html`); new **pre-session page** chosen = **V1
+  confirm card** (`mocks/proposed/session-presession.html`) — material confirm/swap + Marginalia-skinned
+  planned-length dial, faithful to `/session`. Next: running-session changes (D4 interrupt/complete, D10
+  partial position capture) + Roadmap.
 - **2026-06-30 (grill session 2)** — **D14a:** playlist row keeps the existing `PlaylistPickerPopup`
   modal (not inline checklist) — reproduced in the mock. **Page 3 UI AGREED** — `mocks/proposed/onboarding-3.html`
   is the frozen visual contract. Moving on to **Home**.
