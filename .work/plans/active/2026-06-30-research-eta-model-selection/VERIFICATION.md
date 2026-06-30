@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: p0-✅ · R1-✅ · R2-✅ · R3-✅ (CUSUM-favoring) · R4-✅ (composite wins small-band only) · R5-🟡 · R6-ready
+status: P0–R5 ✅ (synthetic workstream COMPLETE) · R6 ⏸ DEFERRED — blocked on real N=1 data (stub-only now)
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -762,7 +762,7 @@ eventually to justify the displayed ideal line. **R4 done. R5 (rigour parity + c
 
 ---
 
-## R5 — Rigour parity + claims ledger  🟡
+## R5 — Rigour parity + claims ledger  ✅ (reviewer-verified — all three docs read against the evidence)
 **Acceptance criteria**
 - [ ] R2/R3/R4 protocol matches the A-series projection config recorded in P0 (D-05); provenance hashes
       stamped in each result JSON.
@@ -832,19 +832,53 @@ Commands / checks run:
 
 Deviation: none. This phase intentionally ran no new benchmark per the R5 instructions.
 
-**Reviewer findings:**
+**Reviewer findings (2026-06-30 · Cowork/planner): ✅ VERIFIED — all four acceptance criteria met; the
+docs match the evidence and do NOT overclaim.** I read the rendered content of all three artifacts (not
+just the dev summary):
+
+- *Parity (D-05):* both anchor and decoupled JSONs stamp the same protocol — 200 seeds / 5400 / 9 arch /
+  3 bands / held-out (5 train, 4 held) / Holm-primary + BH-reported / bootstrap Δ-CIs. Parity is correctly
+  on the PROTOCOL (decoupled is its own DGP/hash by design). ✓
+- *Claims-ledger* (`research/doc/2026-06-18-...md`, new "Material/session decoupling validation (R2-R4)"
+  section + changelog row): calibration framed "holds, not improves" with the `max|night_owl` caveat and
+  partials-included external-validity note; detection stated vs A4/P0b (more CUSUM-favoring, step→cusum,
+  3 fading_flame drift exceptions); **ETA #3 = qualified, small-band only, `analytic` never wins, conformal
+  = coverage fix.** Every number matches my independent R2/R3/R4 counts. No Holm-loss dressed as a win. ✓
+- *Comparability doc* (`research/doc/2026-06-30-frozen-vs-decoupled-comparability.md`): protocol table +
+  per-track frozen-vs-decoupled Holm tables, all matching the result JSONs; claim-discipline TL;DR correct. ✓
+- *DECISIONS.md*: #3 flipped to **🟡 QUALIFIED by R4** with the exact "cold-start/small-plan fallback
+  layered on GP, not a general GP replacement" wording + dated change-log entry. Correctly NOT locked. ✓
+
+Docs-only phase; no code/benchmark; `git diff --check` clean. (Minor: the ledger cites an R4 follow-up
+commit `7d55bc1` alongside `7f97a3c` — not part of R5, no impact on this verdict.)
+
+**R5 done. Only R6 (N=1 real-data circularity guard) remains** — note its PLAN/​prompt availability gate:
+if no real N=1 logged sessions exist, the executor must stop and ask, not fabricate.
 
 ---
 
-## R6 — N=1 real-data circularity guard (Research Phase 5)  ☐
+## R6 — N=1 real-data circularity guard (Research Phase 5)  ⏸ DEFERRED — blocked on real N=1 data (2026-06-30)
 **Acceptance criteria**
-- [ ] Partial-session throughput `active/(position×chunk)` from real N=1 data compared to the synthetic
-      partial distribution (in-family or flagged).
-- [ ] ETA candidates run on the real burn-up curve; finish-date error reported **descriptively** (N=1, no
-      significance / no algorithm-superiority claim).
-- [ ] Descriptive bounds only — **no** synthetic parameter tuned to real data (circularity guard).
-- [ ] Write-up stub under `research/doc/` (or `college/...`) with **explicit non-claims**; relevant P5
-      boxes checked in `college/scope/research-tasklist.md`.
+- [ ] (DEFERRED) Partial-session throughput `active/(position×chunk)` from real N=1 data compared to the
+      synthetic partial distribution (in-family or flagged).
+- [ ] (DEFERRED) ETA candidates run on the real burn-up curve; finish-date error reported **descriptively**
+      (N=1, no significance / no algorithm-superiority claim).
+- [ ] (DEFERRED) Descriptive bounds only — **no** synthetic parameter tuned to real data (circularity guard).
+- [ ] (DO NOW — does not need data) Write-up **stub** under `research/doc/` with the protocol + **explicit
+      non-claims** + "execution pending real N=1 data"; check `college/scope/research-tasklist.md` P5.6
+      (write-up stub) and leave P5.1–P5.5 open.
+
+**Planner decision (2026-06-30 · Cowork, confirmed by Rohit):** **No N=1 real logged sessions exist yet**,
+so R6's data-dependent core (partial-throughput overlay, ETA-on-real, descriptive bounds) is **DEFERRED**,
+NOT executed and NOT fabricated. This is the correct call — synthetic scoring is model-dependent and the
+guard is meaningless without real data.
+- **Unblocks when:** real session logs are captured (e.g. the candidate's own usage via
+  `research/comparison/scripts/capture_evidence.py`, or pilot users). Then run R6 as specified.
+- **Do now (non-fabricating):** the executor may write the **stub** doc (protocol + explicit non-claims +
+  pending-data status) and tick P5.6 only. Leave R6's marker DEFERRED until the data exists; do not flip ✅.
+- **Consequence for the dissertation (already hedged):** external validity of the *new event types*
+  (esp. interrupted/partial throughput) rests on the synthetic generator alone until R6 runs. The
+  claims-ledger's partials "external-validity caveat" (R5) **carries this** — keep it; do not soften it.
 
 **Developer notes:**
 
