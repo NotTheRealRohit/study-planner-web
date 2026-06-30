@@ -273,7 +273,7 @@ forward). **R1 is cleared to start.**
 
 ---
 
-## R1 — `decoupled` generator regime  ☐
+## R1 — `decoupled` generator regime  🟡
 **Acceptance criteria**
 - [ ] New dataset `synthetic-decoupled-<hash>-seed0-n5400` created; **A-series + reality datasets
       untouched** (list `research/datasets/` before/after — both unchanged).
@@ -288,7 +288,70 @@ forward). **R1 is cleared to start.**
       with `0<plannedMinutes<chunk`; ad-hoc sessions off study-days; `face_validity.json` has the new dists.
 - [ ] Latent-pace core unchanged (no edits to `pace.py` constants / regimes / `m_global`).
 
-**Developer notes:**
+**Developer notes:** R1 implemented by Codex on 2026-06-30. Implementation commit:
+`36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6` (`feat(research): add decoupled generator`).
+
+Files changed for R1 implementation:
+- `college/scope/decoupled-session-preregistration.md`
+- `research/comparison/src/research_comparison/params_decoupled.py`
+- `research/comparison/src/research_comparison/generator/types.py`
+- `research/comparison/src/research_comparison/generator/capacity.py`
+- `research/comparison/src/research_comparison/generator/generate.py`
+- `research/comparison/src/research_comparison/manifest.py`
+- `research/comparison/tests/test_generator.py`
+- `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400/manifest.json`
+
+Commands and evidence:
+- Red state captured after tests were authored:
+  `uv run --package research-comparison pytest research/comparison/tests/test_generator.py -q`
+  initially failed at collection because `DECOUPLED_REGIME` was not implemented yet.
+- Focused R1 tests:
+  `uv run --package research-comparison pytest research/comparison/tests/test_generator.py -q`
+  → `14 passed`.
+- Generator/provenance tests:
+  `uv run --package research-comparison pytest research/comparison/tests/test_generator.py research/comparison/tests/test_scaffold.py -q`
+  → `17 passed`.
+- Smoke generation:
+  `uv run --package research-comparison python -m research_comparison.generator.generate --regime decoupled --seeds 4 --out-dir /private/tmp/study-r1-decoupled-smoke --quiet`
+  → `synthetic-decoupled-9e6d48db2da8-seed0-n108`.
+- Full generation:
+  `uv run --package research-comparison python -m research_comparison.generator.generate --regime decoupled --seeds 200 --out-dir research/datasets --quiet`
+  → `synthetic-decoupled-9e6d48db2da8-seed0-n5400`.
+
+Full dataset invariant summary:
+- Manifest: `dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`,
+  `generator_version=0.2.0`, `params_version_hash=9e6d48db2da8`,
+  `base_params_version_hash=21c2cdabfa91`, `decoupled_params_hash=a99216b83551`,
+  `seed_count=200`, `n_learners=5400`.
+- Generated local data files exist in the dataset dir: `learners.jsonl`, `sidecars.jsonl`,
+  `face_validity.json`, and `manifest.json`; the first three remain ignored by repo convention, while
+  the manifest is committed.
+- Full dataset has `346394` events; observed partial rate `0.2004538184841539`; observed ad-hoc rate
+  `0.14957822595079592`.
+- Structured validation over all learners: `bad_ratio=0` for active `activeMinutes/plannedMinutes`
+  vs `r_star` at `1e-6`; `bad_duration=0`; `bad_ad_hoc=0`.
+- `face_validity.json` includes `pace_ratio`, `duration`, `gaps_days`, `planned_session_minutes`,
+  `material_position`, `adherence_ratio`, `partial_fraction`, `is_adhoc`, and `resolution`.
+
+Protection checks:
+- Dataset listing before R1 contained only `oulad`, frozen `synthetic-21c2cdabfa91-seed0-n5400`, older
+  frozen `synthetic-e716cd12dddc-*`, and reality `synthetic-reality-*` datasets. After R1, the only added
+  dataset directory is `synthetic-decoupled-9e6d48db2da8-seed0-n5400`.
+- P0b default result files were not clobbered: calibration `102M Jun 30 11:48`, detection `13M Jun 30
+  11:48`, projection `74M Jun 30 12:28`.
+- `PARAMS_VERSION_HASH` still derives from `college/scope/archetype-preregistration.md`; calibration
+  reference ids remain `synthetic-21c2cdabfa91-seed0-n5400` and
+  `synthetic-reality-c545404bcacf-seed0-n5400`.
+
+OQ-2 resolution: frozen cadence/adherence params are recorded in the new pre-reg doc. The implementation
+uses 3-6 study days/week, ad-hoc target `Uniform(0.10,0.20)`, interruption target
+`Uniform(0.15,0.25)`, partial fraction `Uniform(0.25,0.70)`, and dial/adherence bias
+`LogNormal(mu=0,sigma=0.12)` clipped to `[0.85,1.20]`.
+
+Deviation/reviewer flag: the first full decoupled dataset validation found 82 rounding-only
+`active/planned` drift cases above the strict `1e-6` threshold. The decoupled event writer now serializes
+the material denominator and active minutes at 12-decimal precision; regeneration then produced
+`bad_ratio=0`. This is a serialization precision fix, not a latent-pace math change.
 
 **Reviewer findings:**
 

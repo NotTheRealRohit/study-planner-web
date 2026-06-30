@@ -8,7 +8,7 @@ purpose: >-
   the reviewer can reconstruct exactly what happened. Update at the START of every work session
   (set "Next actions") and at the END (append a Session-log entry). NEVER delete history — append.
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
-last_updated: "2026-06-30 12:45 IST — Codex"
+last_updated: "2026-06-30 13:17 IST — Codex"
 ---
 
 # Scratchpad
@@ -19,13 +19,17 @@ last_updated: "2026-06-30 12:45 IST — Codex"
 > next step — enough that a fresh session (or the reviewer) can resume with zero extra context.
 
 ## 1. Current status (one-liner + phase board)
-- **Now:** P0b frozen A-series baseline has been regenerated, snapshotted, and documented; per reviewer instruction P0 is ✅. Stop here before R1.
-- **Branch / latest phase evidence commit:** `project/phase-1` @ `7c66d89` (previous P0 evidence `5a3eec91bdb05de177428f597543869c113d110f`)
-- **Phase board:** P0 ✅ · R1 ☐ · R2 ☐ · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
+- **Now:** R1 decoupled generator regime is implemented and awaiting reviewer sign-off. P0b frozen A-series baseline remains the comparison anchor and was not clobbered.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6` (P0b evidence `7c66d89`)
+- **Phase board:** P0 ✅ · R1 🟡 · R2 ☐ · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
-1. Commit the scoped P0b work: `SCRATCHPAD.md`, `VERIFICATION.md`, projection overflow guard, and regression test only.
-2. Start R1 anchor verification and generator tests after this stop point.
+1. Hand R1 to the reviewer: inspect commit `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6`, this scratchpad, `VERIFICATION.md`, and local dataset `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400/`.
+2. After reviewer clears R1 (or explicitly authorizes proceeding while R1 is 🟡), start R2/R3/R4 on the decoupled dataset with separate result dirs:
+   - R2: `research/results/calibration_decoupled`
+   - R3: `research/results/detection_decoupled`
+   - R4: `research/results/projection_decoupled`
+3. Continue carrying forward: use `enriched_dual_prior` (not `dual_prior`), and compare R3 against the P0b baseline where drift→`cusum` but step→`page_hinkley`.
 
 ## 3. Environment / run notes
 - What runs in this sandbox vs authored-only (record the arm64/dep status the first time you hit it): the full research comparison pytest suite runs with escalated permissions for uv cache access; baseline result is `92 passed, 2 failed`.
@@ -37,13 +41,18 @@ last_updated: "2026-06-30 12:45 IST — Codex"
   - `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q -k linear_forecast_caps_pathological_far_future_dates` → `1 passed, 9 deselected`.
   - `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q -k 'linear or kalman or projection_runner'` → `4 passed, 6 deselected`.
   - `jq` extraction commands over `research/results/{calibration,detection,projection}/*_results.json`.
-- New decoupled dataset id once generated: `synthetic-decoupled-<hash>-seed0-n<count>` → `<path>`
+  - `uv run --package research-comparison pytest research/comparison/tests/test_generator.py -q` → red first (`DECOUPLED_REGIME` missing), then green `14 passed`.
+  - `uv run --package research-comparison pytest research/comparison/tests/test_generator.py research/comparison/tests/test_scaffold.py -q` → `17 passed`.
+  - `uv run --package research-comparison python -m research_comparison.generator.generate --regime decoupled --seeds 4 --out-dir /private/tmp/study-r1-decoupled-smoke --quiet` → `synthetic-decoupled-9e6d48db2da8-seed0-n108`.
+  - `uv run --package research-comparison python -m research_comparison.generator.generate --regime decoupled --seeds 200 --out-dir research/datasets --quiet` → `synthetic-decoupled-9e6d48db2da8-seed0-n5400`.
+- New decoupled dataset id once generated: `synthetic-decoupled-9e6d48db2da8-seed0-n5400` → `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400`
 
 ## 4. Decisions made during execution (continue PLAN §2's D-xx numbering)
 > Record every choice you make that the PLAN left open or that deviates from it, with the why.
 - **D-08 — OQ-4 parity source = the on-disk projection result, even though it is reality n3600 not frozen n5400.** `research/results/projection/projection_results.json` currently stamps `dataset_id=synthetic-reality-3b404c903563-seed0-n3600`, `seed_count=200`, `bands=small,medium,max`, `n_learners=3600`, `scored_split=held_out`, 6 archetypes (`3 train + 3 held_out`). PLAN D-05 explicitly says parity means matching the current on-disk A-series projection result if it differs from the expected n5400 lineage. — *why:* no fabrication; current stamped JSON is the authoritative P0 evidence. — *date:* 2026-06-30
 - **D-09 — P0b supersedes D-08: authoritative parity anchor is frozen n5400.** D-08 is rejected for R2/R4/R5 parity. The authoritative P0 baseline is now the regenerated default-outdir frozen A-series run on `synthetic-21c2cdabfa91-seed0-n5400` with 9 archetypes × 3 bands × 200 seeds, `generator_version=0.1.0`, and `params_version_hash=21c2cdabfa91`. Calibration includes `enriched_shrink` and `enriched_dual_prior` (the current-code dual-prior candidate name). — *why:* R2/R4/R5 require dissertation-grade A-series parity and dual-prior/enriched-shrink visibility. — *date:* 2026-06-30
 - **D-10 — Projection date overflow guard is part of P0b baseline hygiene.** The reviewer-specified frozen projection command exposed a deterministic `OverflowError: date value out of range` in the linear baseline when pathological low progress forecasted an impossible far-future date. `_index_to_date()` now clamps non-finite/out-of-range day offsets to Python's supported `date` bounds before serialization. — *why:* this preserves result generation for extreme but observed baseline paths without changing normal forecast currency or candidate registration. — *date:* 2026-06-30
+- **D-11 — OQ-2 frozen decoupled cadence/adherence params.** R1 freezes 3-6 study days/week with weights `{3:0.20,4:0.35,5:0.30,6:0.15}`, target ad-hoc fraction `Uniform(0.10,0.20)`, target interruption fraction `Uniform(0.15,0.25)`, partial fraction `Uniform(0.25,0.70)`, and dial/adherence bias `LogNormal(mu=0,sigma=0.12)` clipped to `[0.85,1.20]`; `DECOUPLED_PARAMS_HASH=a99216b83551` and combined dataset hash `9e6d48db2da8`. — *why:* matches PLAN R1's recommended OQ-2 ranges while making the new regime reproducible and distinct from `PARAMS_VERSION_HASH`. — *date:* 2026-06-30
 - (OQ resolutions go here too: OQ-1 partial inclusion policy, OQ-2 cadence params, OQ-3 COLD_START_N +
   interval recipe, OQ-4 A-series parity config.)
 
@@ -55,7 +64,8 @@ last_updated: "2026-06-30 12:45 IST — Codex"
   - Calibration `context_pred_mae` winners are all `oracle_calibration`. Non-oracle baselines: max `hierarchical_bayes=0.10440349677245025`, `enriched_shrink=0.0743644361853051`, `enriched_dual_prior=0.07964693330557786`; medium `hierarchical_bayes=0.1075614799189899`, `enriched_shrink=0.08132948740137101`, `enriched_dual_prior=0.08712631181875113`; small `hierarchical_bayes=0.11106906535728693`, `enriched_shrink=0.09635347023180586`, `enriched_dual_prior=0.1004458991381396`. Holm survivors vs `hierarchical_bayes`: context-pred `archetype_router_hard, archetype_soft, covariate_bayes, eb_partial_pool, enriched_dual_prior, enriched_shrink, ewma, oracle_calibration`; recovery `archetype_router_hard, archetype_soft, enriched_dual_prior, enriched_shrink, oracle_calibration`.
   - Detection: current-code frozen baseline is **not** the old pure robust-null story. `cusum` wins `drift` overall (latency `1.3606837606837607`, false alarm `0.2960410840918919`, missed `15.0`, score `1508.761710862981`); `page_hinkley` wins `step` overall (latency `3.03`, false alarm `0.14928175554741097`, missed `0.0`, score `6.762043888685274`). For `step`, `cusum` has latency `1.425`, false alarm `0.3117871322402778`, missed `0.0`, score `9.219678306006946`, while `csd` has latency `5.155`, false alarm `0.08346613127896195`, missed `0.0`, score `7.241653281974049`. Holm survivors vs `cusum`: `csd` 3 cells and `page_hinkley` 3 cells, all in fading_flame (`max/drift`, `max/step`, `medium/drift`) with negative deltas; no small-band fading_flame drift win survives because deltas are positive there.
   - Projection: winners by band are all `oracle_projection` (upper bound only). `gp_ard` baseline by band: max coverage `0.186875`, MAE `20.1709375`, sharpness `6.610625`; medium coverage `0.29080357142857144`, MAE `9.4475`, sharpness `4.98110119047619`; small coverage `0.43822916666666667`, MAE `2.1460416666666666`, sharpness `1.9139583333333334`. `conformal`: max coverage `0.93734375`, MAE `20.1709375`, sharpness `92.0`; medium coverage `0.9899702380952381`, MAE `9.4475`, sharpness `85.9946130952381`; small coverage `0.9689583333333333`, MAE `2.1460416666666666`, sharpness `15.7884375`. `kalman`: max coverage `0.1065625`, MAE `34.07828125`, sharpness `1.958125`; medium coverage `0.1799702380952381`, MAE `12.8925`, sharpness `1.915327380952381`; small coverage `0.5084375`, MAE `2.5221875`, sharpness `1.82875`. Holm survivors vs `gp_ard`: `conformal` 12 cells, `gp_hetero_t` 12 cells, `linear` 4 cells, `oracle_projection` 12 cells.
-- **R2 calibration (decoupled):** enriched_shrink / dual_prior held-out Holm verdict = …
+- **R1 decoupled dataset:** `dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`, `generator_version=0.2.0`, `params_version_hash=9e6d48db2da8`, `base_params_version_hash=21c2cdabfa91`, `decoupled_params_hash=a99216b83551`, `seed_count=200`, `n_learners=5400`, formula `9 archetypes x 3 bands x 200 seeds`. Full dataset has `346394` emitted events; observed partial rate `0.2004538184841539`; observed ad-hoc rate `0.14957822595079592`; full structured invariant check found `bad_ratio=0`, `bad_duration=0`, and `bad_ad_hoc=0`. Face-validity keys: `adherence_ratio`, `duration`, `gaps_days`, `is_adhoc`, `material_position`, `pace_ratio`, `partial_fraction`, `planned_session_minutes`, `resolution`.
+- **R2 calibration (decoupled):** enriched_shrink / enriched_dual_prior held-out Holm verdict = …
 - **R3 detection (decoupled):** robust-null holds? = … (deviations: …)
 - **R4 ETA (decoupled) — HEADLINE:** per band, gp_ard vs analytic_required_rate vs gp_plus_analytic
   (coverage / MAE-days / sharpness); **paired-Holm vs gp_ard survives?** = … ; cold-start (R4a) = … ;
@@ -65,9 +75,11 @@ last_updated: "2026-06-30 12:45 IST — Codex"
 ## 6. Deviations from PLAN (what + why + reviewer-flagged?)
 - Superseded: initial P0 baseline provenance used the reality `synthetic-reality-3b404c903563-seed0-n3600` / 6-archetype result because it was the current on-disk stamped result. Reviewer rejected that as the parity anchor. D-09 replaces it with the regenerated frozen `synthetic-21c2cdabfa91-seed0-n5400` / 9-archetype baseline.
 - Projection P0b required a small code fix: the linear baseline could forecast dates outside Python's supported date range under pathological low-progress histories. The fix is limited to date-index clamping in `research/comparison/src/research_comparison/baselines/projection.py`, with regression coverage in `research/comparison/tests/test_projection_track.py`.
+- R1 serialization precision fix: first full decoupled dataset validation found 82 rounding-only `active/planned` ratio drifts above the strict `1e-6` R1 threshold. Decoupled event serialization now writes planned/active values at 12-decimal precision, and regeneration produced `bad_ratio=0`.
+- R1 dataset tracking follows existing repo convention: `manifest.json` is committed; `learners.jsonl`, `sidecars.jsonl`, and `face_validity.json` exist locally but remain ignored by `.gitignore`.
 
 ## 7. Blockers / open risks
-- R1 has not started. P0b is complete; next session should begin R1.
+- R1 is 🟡 awaiting reviewer sign-off. R2/R3/R4 are queued on the new decoupled dataset and must use separate result dirs.
 - Baseline test suite has 2 pre-existing failures in `research/comparison/tests/test_closed_loop.py`, both from `py_roadmap_engine` rejecting `RoadmapInput(materials=[])` during closed-loop regeneration.
 
 ---
@@ -100,3 +112,12 @@ last_updated: "2026-06-30 12:45 IST — Codex"
 - **Results / numbers:** frozen baseline provenance and headline metrics copied into §5.
 - **Deviations / decisions:** D-09 supersedes D-08; D-10 records the projection date-overflow guard. Full `test_projection_track.py` run was attempted after focused passes but interrupted by user, so it is not counted as completed verification.
 - **Left off at / next:** Commit scoped P0b work only; start R1 in a later step.
+
+### 2026-06-30 13:17 IST — session 3 — Codex
+- **Goal this session:** Execute R1: add the decoupled generator regime, freeze OQ-2 params, generate the new n5400 dataset, and leave R1 at 🟡 for review.
+- **Did:** Verified PLAN R1 anchors against live code; authored the decoupled pre-reg doc; added decoupled params/hash module; extended generator types, booking cadence helpers, dataset dispatch, manifest stamping, CLI `--regime decoupled`, and face-validity distributions; wrote tests first and then implemented to green; generated smoke n108 and full n5400 datasets.
+- **Files changed:** `college/scope/decoupled-session-preregistration.md`; `research/comparison/src/research_comparison/params_decoupled.py`; `research/comparison/src/research_comparison/generator/{types,capacity,generate}.py`; `research/comparison/src/research_comparison/manifest.py`; `research/comparison/tests/test_generator.py`; `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400/manifest.json`; `VERIFICATION.md`; `SCRATCHPAD.md`.
+- **Commit SHA:** implementation `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6`; evidence docs recorded in this commit.
+- **Results / numbers:** dataset `synthetic-decoupled-9e6d48db2da8-seed0-n5400`; `346394` events; partial rate `0.2004538184841539`; ad-hoc rate `0.14957822595079592`; invariant check `bad_ratio=0`, `bad_duration=0`, `bad_ad_hoc=0`; tests `14 passed` and `17 passed` for generator+scaffold.
+- **Deviations / decisions:** D-11 resolves OQ-2; decoupled event serialization uses 12-decimal precision after a first full-run rounding check found 82 strict-ratio misses.
+- **Left off at / next:** R1 is 🟡 awaiting reviewer sign-off. Next queued work is R2/R3/R4 on the decoupled dataset with separate out dirs once reviewer clears or explicitly authorizes proceeding.
