@@ -17,7 +17,14 @@ def _date_to_index(day: str, start_date: str) -> int:
 
 
 def _index_to_date(index: float, start_date: str) -> str:
-    return (_parse(start_date) + timedelta(days=round(index))).isoformat()
+    start = _parse(start_date)
+    if not math.isfinite(index):
+        return (date.max if index > 0 else date.min).isoformat()
+    days = round(index)
+    min_offset = (date.min - start).days
+    max_offset = (date.max - start).days
+    bounded_days = min(max(days, min_offset), max_offset)
+    return (start + timedelta(days=bounded_days)).isoformat()
 
 
 def conformal_abs_residual_quantile(residuals: list[float], alpha: float = 0.05) -> float:

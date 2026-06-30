@@ -63,6 +63,16 @@ def test_linear_baseline_interval_is_discriminating_not_fixed_to_nominal():
     assert abs(metrics["coverage"] - 0.95) > 0.01
 
 
+def test_linear_forecast_caps_pathological_far_future_dates():
+    sessions = _sessions([0.001] * 5)
+
+    forecast = forecast_linear_finish(sessions, total_minutes=4501.986406618768)
+
+    assert forecast["predicted_finish_date"] >= sessions[-1]["date"]
+    assert forecast["interval_low"] <= forecast["predicted_finish_date"]
+    assert forecast["interval_high"] >= forecast["predicted_finish_date"]
+
+
 def test_kalman_forecast_handles_negative_early_trend_without_date_overflow():
     sessions = _sessions([121.522702, 44.232158, 13.082674, 41.55206, 17.799342])
 
