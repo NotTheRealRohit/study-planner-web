@@ -498,7 +498,7 @@ recovery weak-cell (present on both lineages) is worth a one-line caveat. **R2 d
 
 ---
 
-## R3 — Detection regression (must re-run)  ☐
+## R3 — Detection regression (must re-run)  🟡
 **Acceptance criteria**
 - [ ] Ran on the decoupled dataset, separate `--out-dir`. Out path: `__________`
 - [ ] `paired_vs_incumbent` / `mc_correction` vs `cusum` recorded; verdict stated: robust-null **holds** or
@@ -507,6 +507,86 @@ recovery weak-cell (present on both lineages) is worth a one-line caveat. **R2 d
       axis sanity-checked under the new cadence.
 
 **Developer notes:**
+R3 implemented by Codex on 2026-06-30. Evidence/docs commit:
+`14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de`.
+
+Files changed for committed R3 evidence:
+- `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
+- `.work/plans/active/2026-06-30-research-eta-model-selection/VERIFICATION.md`
+
+Generated result file on disk, ignored by existing repo convention:
+- `research/results/detection_decoupled/detection_results.json` (`13M`, mtime `2026-06-30 16:37`)
+
+Commands run:
+```
+uv run --package research-comparison python -m research_comparison.runners.detection \
+  --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 \
+  --out-dir /private/tmp/study-r3-detection-smoke --seeds 4 --quiet
+uv run --package research-comparison python -m research_comparison.runners.detection \
+  --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
+  --out-dir research/results/detection_decoupled --seeds 200 --quiet
+uv run --package research-comparison pytest research/comparison/tests/test_detection_track.py -q
+```
+Also ran an inline `PYTHONPATH=research/comparison/src python3` dataset-level active-axis mapping sanity
+check over all decoupled learners, reading `learners.jsonl` / `sidecars.jsonl` and calling the live
+`_active_series_with_indices(...)` and `_shifts_on_active_axis(...)` helpers.
+
+The first uv smoke attempt hit the known sandbox cache restriction at `/Users/rsaji/.cache/uv`; escalated
+reruns completed. Focused detection tests passed: `8 passed in 0.93s`.
+
+R3 provenance:
+`dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`; `scored_split=held_out`;
+`generator_version=0.2.0`; `params_version_hash=9e6d48db2da8`; `seed_count=200`;
+`n_learners=5400`; `bands=[small, medium, max]`; train archetypes
+`crammer, marathon_runner, morning_lark, steady, steady_improver`; held-out archetypes
+`deadline_sprinter, fading_flame, night_owl, weekend_warrior`.
+
+Protection check: frozen P0b detection anchor was not clobbered:
+`research/results/detection/detection_results.json` remains `13M`, mtime `2026-06-30 11:48`.
+
+CUSUM tuning / leakage check:
+- Live anchor verified: `run_detection_track(...)` computes the archetype split from dataset archetypes and
+  calls `tune_cusum_params(learners, sidecars, split["train"])`.
+- Result metadata confirms `method=grid_search_train_archetypes_only`, train archetypes as above, selected
+  params `{step_k: 0.45, step_h: 3.5, drift_k: 0.15, drift_h: 4.5}`.
+- Existing train-only tuning regression test passed in `test_detection_track.py`.
+
+Active-axis mapping sanity check under the decoupled cadence:
+- Live anchor verified: `_active_series_with_indices(...)` reads only `source=="active"` sessions with
+  `plannedMinutes>0` and uses `activeMinutes/plannedMinutes`; `_shifts_on_active_axis(...)` maps each raw
+  regime onset to the first active original event index at or after that onset.
+- Full dataset check over all `5400` learners: `raw_shifts=1720`, `mapped_shifts=1720`,
+  `unmapped_tail_shifts=0`, `bad_mappings=0`. No focused code test was added because the existing ordering
+  logic still matched the new cadence and the dataset-level sanity check found no changed ordering.
+
+Headline decoupled result:
+- Winner by shift type: `cusum` wins both `drift` and `step`. This changes the P0b baseline shape, where
+  drift→`cusum` but step→`page_hinkley`.
+- Drift `cusum`: latency `2.294314381270903`, false alarm `0.19204096308226398`, missed `2.0`, score
+  `207.09533845832752`.
+- Step `cusum`: latency `1.375`, false alarm `0.17977427274222404`, missed `0.0`, score
+  `5.869356818555601`. Step `page_hinkley` score is `6.502785692486437`.
+
+Overall paired deltas vs `cusum`:
+- drift/csd delta `52.24497139273184`, p `4.151920318569917E-74`.
+- drift/page_hinkley delta `11.683183504703685`, p `3.555715731555795E-9`.
+- step/csd delta `2.962598976218512`, p `0.0831041143117605`.
+- step/page_hinkley delta `0.633428873930836`, p `0.0000820270265637579`.
+
+Cell-level Holm-surviving wins vs `cusum`:
+- `band=max|archetype=fading_flame|shift_type=drift`, `page_hinkley`, delta
+  `-0.906571126069164`, p `7.977878181339604E-8`.
+- `band=medium|archetype=fading_flame|shift_type=drift`, `csd`, delta
+  `-2.74707349251134`, p `3.6834168178369585E-29`.
+- `band=medium|archetype=fading_flame|shift_type=drift`, `page_hinkley`, delta
+  `-1.9542051530171258`, p `2.0362612193628E-27`.
+
+Verdict against the P0b baseline shape: **changed, and more CUSUM-favoring under the decoupled cadence.**
+P0b had drift→`cusum`, step→`page_hinkley`, with `csd`/`page_hinkley` Holm-surviving on fading_flame
+max-drift, max-step, and medium-drift cells. Decoupled has drift→`cusum`, step→`cusum`; only the
+fading_flame drift cells at max/medium retain Holm-surviving `csd`/`page_hinkley` wins. The pure-null
+strawman remains false at cell level, but no deployable detector displaces CUSUM overall on the decoupled
+track, and no step-cell Holm win survives.
 
 **Reviewer findings:**
 

@@ -8,7 +8,7 @@ purpose: >-
   the reviewer can reconstruct exactly what happened. Update at the START of every work session
   (set "Next actions") and at the END (append a Session-log entry). NEVER delete history — append.
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
-last_updated: "2026-06-30 15:20 IST — Codex"
+last_updated: "2026-06-30 16:45 IST — Codex"
 ---
 
 # Scratchpad
@@ -19,14 +19,17 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 > next step — enough that a fresh session (or the reviewer) can resume with zero extra context.
 
 ## 1. Current status (one-liner + phase board)
-- **Now:** R2 calibration regression is implemented and awaiting reviewer sign-off. The decoupled result is on disk in a separate result dir; frozen P0b default-dir calibration results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `51a5d4087d7353bdd4e33060a3048252fa50d415` (R2 evidence/docs); latest code phase commit remains `36f271868e7a6c1c6c70eacd76ce4bd2a4a5b3c6` (R1).
-- **Phase board:** P0 ✅ · R1 ✅ · R2 🟡 · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
+- **Now:** R3 detection regression is implemented and awaiting reviewer sign-off. The decoupled result is on disk in a separate result dir; frozen P0b default-dir detection results were not clobbered.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de` (R3 docs/evidence); Step-0 reviewer-doc commit before R3/R4 was `a9c3e70`.
+- **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
-1. Next independent phase can be R3 or R4:
-   - R3: run detection on `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400` to `research/results/detection_decoupled`; compare against the P0b baseline where drift→`cusum`, step→`page_hinkley`, and `csd`/`page_hinkley` Holm-survive on fading_flame cells.
-   - R4: implement/register `analytic_required_rate` + `gp_plus_analytic`, then run projection to `research/results/projection_decoupled`; report paired-Holm vs `gp_ard`.
+1. R4:
+   - Verify projection anchors against live code: `baselines/projection.py`, `runners/projection.py::projection_candidates()`, and `metrics/projection.py`.
+   - Add/register `analytic_required_rate` and `gp_plus_analytic`; analytic stays in actual-minutes currency with no throughput-factor double-count.
+   - Add focused projection tests for forecaster shape, cold-start switch, and GP non-crossing rescue.
+   - Smoke with a small decoupled run before the full `research/results/projection_decoupled --seeds 200` benchmark.
+   - Record per-band coverage / MAE-days / sharpness for `gp_ard`, `analytic_required_rate`, and `gp_plus_analytic`, plus paired-Holm verdict vs `gp_ard`, R4a cold-start, and R4b done/deferred.
 2. Continue carrying forward: use `enriched_dual_prior` (not `dual_prior`), keep default A-series result dirs untouched for decoupled runs, and report only Holm-surviving improvements as wins.
 
 ## 3. Environment / run notes
@@ -46,6 +49,10 @@ last_updated: "2026-06-30 15:20 IST — Codex"
   - `uv run --package research-comparison python -m research_comparison.runners.calibration --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 --out-dir /private/tmp/study-r2-calibration-smoke --seeds 4 --quiet` → `/private/tmp/study-r2-calibration-smoke/calibration_results.json`.
   - `uv run --package research-comparison python -m research_comparison.runners.calibration --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 --out-dir research/results/calibration_decoupled --seeds 200 --quiet` → `research/results/calibration_decoupled/calibration_results.json`.
   - `uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q` → `21 passed in 1.76s`.
+  - `uv run --package research-comparison python -m research_comparison.runners.detection --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 --out-dir /private/tmp/study-r3-detection-smoke --seeds 4 --quiet` → `/private/tmp/study-r3-detection-smoke/detection_results.json`.
+  - `uv run --package research-comparison python -m research_comparison.runners.detection --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 --out-dir research/results/detection_decoupled --seeds 200 --quiet` → `research/results/detection_decoupled/detection_results.json`.
+  - `uv run --package research-comparison pytest research/comparison/tests/test_detection_track.py -q` → `8 passed in 0.93s`.
+  - Active-axis mapping sanity check over the full decoupled dataset → `raw_shifts=1720`, `mapped_shifts=1720`, `unmapped_tail_shifts=0`, `bad_mappings=0`.
 - New decoupled dataset id once generated: `synthetic-decoupled-9e6d48db2da8-seed0-n5400` → `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400`
 
 ## 4. Decisions made during execution (continue PLAN §2's D-xx numbering)
@@ -72,7 +79,14 @@ last_updated: "2026-06-30 15:20 IST — Codex"
   - Decoupled `recovery_mae` held-out means: max `hierarchical_bayes=0.053781208921856095`, `enriched_shrink=0.05796821240533966`, `enriched_dual_prior=0.05796821240533963`; medium `hierarchical_bayes=0.06282626722706933`, `enriched_shrink=0.0464706622090255`, `enriched_dual_prior=0.046470662209025446`; small `hierarchical_bayes=0.07298248820655219`, `enriched_shrink=0.041654466222238236`, `enriched_dual_prior=0.041654466222238166`.
   - Decoupled `context_pred_mae` held-out means: max `hierarchical_bayes=0.0637788512190975`, `enriched_shrink=0.0330672740666157`, `enriched_dual_prior=0.033067274066615714`; medium `hierarchical_bayes=0.06772464999821183`, `enriched_shrink=0.0409602186967752`, `enriched_dual_prior=0.040960218696775214`; small `hierarchical_bayes=0.07099182097701337`, `enriched_shrink=0.05645622275279758`, `enriched_dual_prior=0.0564562227527976`.
   - Holm verdict vs `hierarchical_bayes`: `context_pred_mae` = both enriched candidates survive as wins in all 12 held-out cells; `recovery_mae` = both survive as wins in 8/12 cells, with one Holm-significant loss (`band=max|archetype=night_owl`) and three non-winning/non-significant cells. Compared with P0b: context improves from 11/12 to 12/12; recovery improves from `enriched_shrink` 6/12 and `enriched_dual_prior` 2/12 to 8/12 for both. OQ-1 fallback not run; partials stay included.
-- **R3 detection (decoupled):** robust-null holds? = … (deviations: …)
+- **R3 detection (decoupled):** result file `research/results/detection_decoupled/detection_results.json` (`13M`, mtime 2026-06-30 16:37), provenance `dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`, `generator_version=0.2.0`, `params_version_hash=9e6d48db2da8`, `seed_count=200`, `n_learners=5400`, `scored_split=held_out`, formula `9 archetypes x 3 bands x 200 seeds`; train archetypes `crammer,marathon_runner,morning_lark,steady,steady_improver`; held-out `deadline_sprinter,fading_flame,night_owl,weekend_warrior`.
+  - Frozen P0b anchor was not clobbered: `research/results/detection/detection_results.json` remained `13M` at `2026-06-30 11:48`.
+  - CUSUM tuning stayed train-archetypes-only: `method=grid_search_train_archetypes_only`, train archetypes as above, selected params `{step_k:0.45, step_h:3.5, drift_k:0.15, drift_h:4.5}`.
+  - Active-axis mapping sanity check under the new cadence: over all 5400 learners, `1720` raw regime shifts mapped to `1720` active-axis shifts, with `0` tail drops and `0` bad first-active-at-or-after-onset mappings.
+  - Winner by shift type changed relative to the P0b baseline shape: decoupled `cusum` wins both `drift` and `step`. Drift `cusum`: latency `2.294314381270903`, false alarm `0.19204096308226398`, missed `2.0`, score `207.09533845832752`. Step `cusum`: latency `1.375`, false alarm `0.17977427274222404`, missed `0.0`, score `5.869356818555601`; `page_hinkley` step score is `6.502785692486437`.
+  - Overall paired deltas vs `cusum` are worse for `csd`/`page_hinkley`: drift `csd` delta `52.24497139273184` (p `4.151920318569917E-74`), drift `page_hinkley` delta `11.683183504703685` (p `3.555715731555795E-9`), step `csd` delta `2.962598976218512` (p `0.0831041143117605`), step `page_hinkley` delta `0.633428873930836` (p `0.0000820270265637579`).
+  - Cell-level Holm-surviving wins vs `cusum`: `page_hinkley` at `band=max|archetype=fading_flame|shift_type=drift` (delta `-0.906571126069164`, p `7.977878181339604E-8`); `csd` at `band=medium|archetype=fading_flame|shift_type=drift` (delta `-2.74707349251134`, p `3.6834168178369585E-29`); `page_hinkley` at `band=medium|archetype=fading_flame|shift_type=drift` (delta `-1.9542051530171258`, p `2.0362612193628E-27`). No step-cell Holm win survives on decoupled data; the P0b `max/fading_flame/step` wins changed to non-wins, with `page_hinkley` a Holm-significant loss there.
+  - Verdict against the P0b baseline shape: **changed but more CUSUM-favoring under decoupled cadence**. P0b had drift→`cusum`, step→`page_hinkley`, plus `csd`/`page_hinkley` Holm wins in fading_flame max-drift, max-step, and medium-drift. Decoupled has drift→`cusum`, step→`cusum`; only fading_flame drift cells at max/medium retain Holm-surviving wins for `csd`/`page_hinkley`. Therefore the old pure-null strawman is still false at cell level, but no deployable detector displaces CUSUM overall on the decoupled track.
 - **R4 ETA (decoupled) — HEADLINE:** per band, gp_ard vs analytic_required_rate vs gp_plus_analytic
   (coverage / MAE-days / sharpness); **paired-Holm vs gp_ard survives?** = … ; cold-start (R4a) = … ;
   reference-line (R4b) = done/deferred.
@@ -86,7 +100,7 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 - R2 result tracking follows existing repo convention: `research/results/calibration_decoupled/calibration_results.json` exists locally but is ignored by `.gitignore` via `research/results/`; committed evidence is in `SCRATCHPAD.md` and `VERIFICATION.md`.
 
 ## 7. Blockers / open risks
-- R2 is 🟡 awaiting reviewer sign-off. R3/R4 remain independent next phases on the same decoupled dataset and must use separate result dirs.
+- R3 is 🟡 awaiting reviewer sign-off. R4 remains the next independent phase on the same decoupled dataset and must use a separate result dir.
 - Baseline test suite has 2 pre-existing failures in `research/comparison/tests/test_closed_loop.py`, both from `py_roadmap_engine` rejecting `RoadmapInput(materials=[])` during closed-loop regeneration.
 
 ---
@@ -137,3 +151,12 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 - **Results / numbers:** decoupled context prediction = `enriched_shrink` and `enriched_dual_prior` both 12/12 held-out Holm-win cells; recovery = both 8/12 Holm-win cells, with one Holm-significant loss at `band=max|archetype=night_owl`; P0b default calibration result mtime remained `2026-06-30 11:48:07`; focused tests `21 passed`.
 - **Deviations / decisions:** No code changes and no new tests required by PLAN R2. D-12 resolves OQ-1: partials remain included; no fallback run because the partial-included decoupled result did not degrade transfer evidence relative to P0b.
 - **Left off at / next:** R2 is 🟡 awaiting reviewer sign-off. Next independent phase: R3 detection or R4 ETA benchmark; use separate out-dirs and keep the P0b default dirs untouched.
+
+### 2026-06-30 16:45 IST — session 5 — Codex
+- **Goal this session:** Execute R3 detection regression on the reviewer-verified decoupled dataset and leave R3 at 🟡 for review.
+- **Did:** Committed the pending reviewer prompt-doc update first (`a9c3e70`); verified R3 detection anchors against live code (`active/planned` active series, first-active-at-or-after-onset mapping, train-archetype-only CUSUM tuning, paired-Holm vs `cusum`); ran n108 smoke detection, full n5400 decoupled detection to a separate out-dir, focused detection tests, and a full-dataset active-axis mapping sanity check.
+- **Files changed:** `SCRATCHPAD.md`; `VERIFICATION.md`. Generated ignored result on disk: `research/results/detection_decoupled/detection_results.json`.
+- **Commit SHA:** `14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de`.
+- **Results / numbers:** decoupled winner by shift type is `cusum` for both drift and step; cell-level Holm wins vs `cusum` are 3 total (`page_hinkley` max/fading_flame/drift, `csd` medium/fading_flame/drift, `page_hinkley` medium/fading_flame/drift); no step-cell Holm win survives. Active-axis mapping check: `1720/1720` shifts mapped, `0` bad.
+- **Deviations / decisions:** No R3 code change and no new test were needed; existing train-only tuning test passed and the dataset-level mapping check showed the active-axis ordering did not change.
+- **Left off at / next:** R3 is 🟡 awaiting reviewer sign-off. Next independent phase: R4 ETA benchmark; implement/register analytic/composite candidates and run projection to `research/results/projection_decoupled`.
