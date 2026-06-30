@@ -20,7 +20,7 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** R3 detection regression is implemented and awaiting reviewer sign-off. The decoupled result is on disk in a separate result dir; frozen P0b default-dir detection results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de` (R3 docs/evidence); Step-0 reviewer-doc commit before R3/R4 was `a9c3e70`.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `96368dea5f72ef41eb439ba1fbf434046a2da9aa` (R3 docs/evidence); Step-0 reviewer-doc commit before R3/R4 was `a9c3e70`.
 - **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
@@ -156,7 +156,7 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 - **Goal this session:** Execute R3 detection regression on the reviewer-verified decoupled dataset and leave R3 at 🟡 for review.
 - **Did:** Committed the pending reviewer prompt-doc update first (`a9c3e70`); verified R3 detection anchors against live code (`active/planned` active series, first-active-at-or-after-onset mapping, train-archetype-only CUSUM tuning, paired-Holm vs `cusum`); ran n108 smoke detection, full n5400 decoupled detection to a separate out-dir, focused detection tests, and a full-dataset active-axis mapping sanity check.
 - **Files changed:** `SCRATCHPAD.md`; `VERIFICATION.md`. Generated ignored result on disk: `research/results/detection_decoupled/detection_results.json`.
-- **Commit SHA:** `14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de`.
+- **Commit SHA:** `96368dea5f72ef41eb439ba1fbf434046a2da9aa`.
 - **Results / numbers:** decoupled winner by shift type is `cusum` for both drift and step; cell-level Holm wins vs `cusum` are 3 total (`page_hinkley` max/fading_flame/drift, `csd` medium/fading_flame/drift, `page_hinkley` medium/fading_flame/drift); no step-cell Holm win survives. Active-axis mapping check: `1720/1720` shifts mapped, `0` bad.
 - **Deviations / decisions:** No R3 code change and no new test were needed; existing train-only tuning test passed and the dataset-level mapping check showed the active-axis ordering did not change.
 - **Left off at / next:** R3 is 🟡 awaiting reviewer sign-off. Next independent phase: R4 ETA benchmark; implement/register analytic/composite candidates and run projection to `research/results/projection_decoupled`.

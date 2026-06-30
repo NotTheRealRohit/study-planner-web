@@ -508,7 +508,7 @@ recovery weak-cell (present on both lineages) is worth a one-line caveat. **R2 d
 
 **Developer notes:**
 R3 implemented by Codex on 2026-06-30. Evidence/docs commit:
-`14dd9d54f5f746b3995c0d7fa3cd492f5f0a48de`.
+`96368dea5f72ef41eb439ba1fbf434046a2da9aa`.
 
 Files changed for committed R3 evidence:
 - `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
