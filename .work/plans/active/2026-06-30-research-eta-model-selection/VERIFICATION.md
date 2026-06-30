@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: p0-complete-p0b-frozen-baseline-snapshotted · R1-ready
+status: p0-✅ · R1-✅ (decoupled dataset verified) · R2/R3/R4-ready
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -273,7 +273,7 @@ forward). **R1 is cleared to start.**
 
 ---
 
-## R1 — `decoupled` generator regime  🟡
+## R1 — `decoupled` generator regime  ✅ (reviewer-verified — invariants re-checked over full 5400-learner dataset)
 **Acceptance criteria**
 - [ ] New dataset `synthetic-decoupled-<hash>-seed0-n5400` created; **A-series + reality datasets
       untouched** (list `research/datasets/` before/after — both unchanged).
@@ -353,7 +353,38 @@ Deviation/reviewer flag: the first full decoupled dataset validation found 82 ro
 the material denominator and active minutes at 12-decimal precision; regeneration then produced
 `bad_ratio=0`. This is a serialization precision fix, not a latent-pace math change.
 
-**Reviewer findings:**
+**Reviewer findings (2026-06-30 · Cowork/planner): ✅ VERIFIED — all six R1 acceptance criteria met.**
+Independently re-checked against the repo and the generated data (not just the dev's reported numbers):
+
+*Provenance & protection ✅*
+- New dataset `synthetic-decoupled-9e6d48db2da8-seed0-n5400`: regime `decoupled`, `generator_version=0.2.0`,
+  `base_params_version_hash=21c2cdabfa91` + `decoupled_params_hash=a99216b83551`, 9 archetypes × 3 bands ×
+  200 = 5400. Dataset hash is **reproducible**: `sha256("21c2cdabfa91:a99216b83551")[:12] = 9e6d48db2da8`
+  (matches PLAN D-01).
+- `research/datasets/` diff = only the decoupled dir added; all frozen + reality datasets intact. Frozen P0
+  baseline result JSONs untouched (default dirs). `PARAMS_VERSION_HASH` source unchanged;
+  `calibration.py:49-50` reference ids unchanged.
+- Commit `36f2718` touched **no** `pace.py`/`regimes.py`/`materials.py`/`reality.py` → latent-pace core
+  preserved; `generate_decoupled_learner` reuses `latent_base`.
+
+*Independent invariant sweep over ALL 5400 learners / 346,394 events → ZERO violations:*
+- `len(r_star)==len(sessions)` (D-03): 0 bad. `all(duration>0)` (D-03): 0 bad.
+- `active/planned == r_star` at 1e-6 **including partials** (D-02, the transfer-critical one): 0 bad.
+- partials `0<plannedMinutes<materialChunkMinutes`: 0 bad; complete `plannedMinutes==chunk`: 0 bad.
+- ad-hoc sessions fall on weekdays **outside** `study_days`: 0 bad. All four new `GroundTruth` fields
+  present on every learner.
+- Rates in-family: ad-hoc ≈ 0.150 (target U(0.10,0.20)); partials ≈ 0.228 of active events / 0.200 of all
+  events (target interruption U(0.15,0.25)). (The dev's 0.2004 used total-events as denominator, mine 0.228
+  used active — same data, different denominator; no discrepancy.)
+- `SessionEvent` extended with all five fields **plus** a bonus `materialChunkMinutes` (sound addition —
+  makes the partial-bounds invariant directly checkable). `face_validity.json` carries the new dists.
+- Tests (`test_generator.py`, 14→ passed) assert the D-02/D-03 invariants + separate-hash/manifest/
+  face-validity. The serialization-precision fix (12-dp) that cleared the 82 rounding drifts is an honest,
+  correct fix — re-verified `bad_ratio=0` independently above.
+
+OQ-2 resolved & frozen in the pre-reg doc + D-11. **R1 is done. R2/R3/R4 are cleared** (decoupled dataset,
+separate `--out-dir`s, compare to the frozen P0 baseline; use `enriched_dual_prior`; R3 vs the
+drift→cusum/step→page_hinkley baseline). Process note honored: marker left at 🟡 for me to flip — good.
 
 ---
 

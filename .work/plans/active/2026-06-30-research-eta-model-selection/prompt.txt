@@ -8,19 +8,29 @@ reviewer signs each phase off.
 =================================================================================================
 RESUME STATE — READ THIS FIRST (where the work stands as of 2026-06-30)
 =================================================================================================
-- P0 is COMPLETE and reviewer-✅ (including the corrective P0b). Do NOT redo it. Evidence in
-  VERIFICATION.md (P0 section + "Reviewer sign-off — P0b").
-- Plan docs are already committed; STEP 0 (commit-the-plan) is DONE — do not repeat it.
-- The authoritative A-series PARITY BASELINE is now on disk in the DEFAULT result dirs
+- P0 is COMPLETE and reviewer-✅ (including the corrective P0b). Do NOT redo it.
+- R1 is COMPLETE and reviewer-✅ (2026-06-30). The decoupled dataset exists and was invariant-verified
+  over all 5400 learners: `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400`
+  (regime `decoupled`, generator_version 0.2.0, base hash 21c2cdabfa91 + decoupled hash a99216b83551,
+  9 archetypes × 3 bands × 200 = 5400). This is the dataset R2/R3/R4 run on. Do NOT regenerate it.
+- The authoritative A-series PARITY BASELINE is on disk in the DEFAULT result dirs
   (research/results/{calibration,detection,projection}/*.json), regenerated with current code from the
   frozen dataset `research/datasets/synthetic-21c2cdabfa91-seed0-n5400` (9 archetypes × 3 bands × 200 =
-  5400; 5-train/4-held). **D-09 supersedes D-08** (the earlier reality-lineage parity target is dead).
-  These default-dir results are your COMPARISON ANCHOR for R2/R4/R5 — do not clobber them.
+  5400; 5-train/4-held). **D-09 supersedes D-08.** These default-dir results are your COMPARISON ANCHOR
+  for R2/R4/R5 — do NOT clobber them (decoupled runs go to SEPARATE `--out-dir`s).
 - A safe baseline-completion code fix already landed: `_index_to_date()` in
-  research/comparison/src/research_comparison/baselines/projection.py now clamps non-finite / out-of-range
+  research/comparison/src/research_comparison/baselines/projection.py clamps non-finite / out-of-range
   day offsets to date.min/date.max (with a regression test). Keep it; the R4 analytic candidate relies on it.
 
->>> YOUR NEXT PHASE IS R1 (the `decoupled` generator regime). It is cleared to start. <<<
+START-OF-SESSION STEP 0 (do this BEFORE any R2 work): the reviewer left uncommitted doc changes in the
+working tree (R1 flipped to ✅ in VERIFICATION.md, status line, and this prompt.txt). COMMIT them first so
+the history is clean before you begin R2, e.g.:
+  git add .work/plans/active/2026-06-30-research-eta-model-selection/
+  git commit -m "docs(research): record R1 reviewer sign-off; point prompt at R2"
+(Commit ONLY the plan-dir docs; leave the other unrelated dirty working-tree items alone.)
+
+>>> YOUR NEXT PHASE IS R2 (calibration regression). R3 and R4 are also cleared (independent of each
+    other; any order). It is cleared to start. <<<
 
 TWO REVIEW CARRY-FORWARDS you MUST honor (from the P0b sign-off):
 1. NAME: the dual-prior calibrator is registered as `enriched_dual_prior` (NOT `dual_prior` as some PLAN
@@ -102,22 +112,35 @@ For EACH phase, run these steps in order:
 7. Pause for reviewer sign-off if the next phase depends on this one; otherwise proceed to an
    independent phase.
 
-IMMEDIATE NEXT ACTIONS — R1 (`decoupled` generator regime; see PLAN R1 for the full spec)
-a. Read PLAN R1 + the Decisions log D-01 (new regime / namespace), D-02 (partial chunk keeps
-   active/planned==pace), D-03 (one r_star per event, duration>0), D-06 (dial field generated only).
-b. Verify the generator anchors against live code before editing: generator/types.py, generate.py,
-   capacity.py, materials.py, manifest.py (GENERATOR_VERSION), params.py (PARAMS_VERSION_HASH).
-c. Author college/scope/decoupled-session-preregistration.md freezing the new params (study-days/week,
-   interruption_rate, adhoc_rate, adherence_bias distribution — OQ-2 recommended ranges in PLAN R1);
-   derive DECOUPLED_PARAMS_HASH from it; bump GENERATOR_VERSION to "0.2.0".
-d. Write generator tests FIRST (D-02/D-03 invariants), then implement the `decoupled` regime + new
-   SessionEvent / GroundTruth fields; add `--regime decoupled` to the generate CLI.
-e. Generate: smoke `--regime decoupled --seeds 4`, then full `--seeds 200` →
-   synthetic-decoupled-<hash>-seed0-n5400. Confirm research/datasets/ A-series + reality datasets are
-   unchanged (list before/after) and PARAMS_VERSION_HASH + calibration.py:49-50 ids are untouched.
-f. Commit, fill VERIFICATION R1 Developer notes, flip R1 →🟡, update SCRATCHPAD, post results to the
-   reviewer. Then start R2/R3/R4 (each: DECOUPLED dataset, SEPARATE --out-dir, compared to the frozen
-   P0 baseline in the default result dirs).
+IMMEDIATE NEXT ACTIONS — R2 (calibration regression; see PLAN R2 for the full spec)
+0. START-OF-SESSION STEP 0 above: commit the pending reviewer plan-dir docs first.
+a. Read PLAN R2 + Decisions D-02 (the active/planned==pace invariant that makes calibration transfer) and
+   D-06. Note: R2 needs NO code change if D-02 holds (it does — R1 verified it); you just re-run the
+   calibration track on the decoupled dataset and compare to the frozen P0 baseline.
+b. Update SCRATCHPAD §2 "Next actions" for R2.
+c. Run the calibration track on the DECOUPLED dataset with a SEPARATE out-dir (never the default dir):
+     uv run --package research-comparison python -m research_comparison.runners.calibration \
+       --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
+       --out-dir research/results/calibration_decoupled --seeds 200 --quiet
+d. Record the held-out + Holm verdict for `enriched_shrink` and `enriched_dual_prior` (NOT `dual_prior`)
+   vs `hierarchical_bayes` from the new JSON's `mc_correction` (`survives_holm_win` on `recovery_mae`
+   AND `context_pred_mae`), and compare to the frozen P0 baseline (research/results/calibration/) where
+   BOTH currently survive. Put the real numbers in SCRATCHPAD §5.
+e. OQ-1 fallback: if the win DEGRADES on decoupled data because of partial-chunk points, re-run with
+   partials down-weighted or excluded (calibration-local view only), record BOTH runs + the chosen
+   inclusion policy + rationale in SCRATCHPAD §4. Report Holm-surviving improvements ONLY as "wins."
+f. Add/extend any calibration tests the PLAN's acceptance lists; run what the sandbox allows; record
+   run-vs-authored-only in SCRATCHPAD §3.
+g. Commit, fill VERIFICATION R2 Developer notes, flip R2 →🟡 (NOT ✅), append SCRATCHPAD §8, post a
+   results message to the reviewer.
+
+After R2 (independent — any order): R3 (detection) and R4 (ETA, the headline) on the same decoupled
+dataset, each to its own separate out-dir:
+  R3 → --out-dir research/results/detection_decoupled   (verdict vs the P0b baseline: drift→cusum,
+       step→page_hinkley — NOT a pure-null strawman)
+  R4 → --out-dir research/results/projection_decoupled  (register `analytic_required_rate` +
+       `gp_plus_analytic` per PLAN R4; analytic in actual-minutes currency, no tf double-count;
+       paired-Holm vs `gp_ard`)
 
 DO / DON'T (task-specific traps — each with its why)
 - DO keep `activeMinutes/plannedMinutes == latent pace` for every active event including partials
