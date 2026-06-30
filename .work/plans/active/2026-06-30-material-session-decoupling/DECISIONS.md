@@ -327,19 +327,36 @@ study-day to the deadline" from option B.) Generation is pure counting — `ceil
 per-day capacity)` study-days laid onto the soonest study-days — **no material-to-day assignment**, so
 the `/onboarding/3` packing bug cannot recur.
 
-### D14 — Onboarding page-3 LEFT panel: organising many materials (🟡 choosing via mocks)
+### D14 — Onboarding page-3 LEFT panel: grouped-by-type material organisation ✅
 Problem: the current flat vertical stack of full edit-cards (`MaterialRow`) grows unbounded — many
-materials = endless ugly scroll. Two mocked options (`mocks/proposed/onboarding-3-left-options.html`),
-both built on a shared **compact, expand-on-edit row** (icon · title · length · role tag; click to
-reveal fields; drag-grip to reorder; incomplete rows auto-open):
-- **Option 1 — flat compact accordion list:** all materials in one slim scroll-capped list. Simplest;
-  least chrome.
-- **Option 2 — grouped by type:** collapsible sections **Videos / Playlists / Links & articles /
-  Manual**, each with a count + total; same compact rows inside. Scales best for large libraries.
-- **Material types to support (Rohit):** YouTube **video**, YouTube **playlist** (nested,
-  selectable videos — new `pl` purple icon), **external URL/article**, **manual/book**. Playlist row
-  expands to its video checklist.
-- Open sub-points: reorder/drag persistence; whether grouping auto-engages only past N items (hybrid).
+materials = endless ugly scroll. **Chosen = Option 2 (grouped by type)** from two mocked options in
+`mocks/proposed/onboarding-3-left-options.html` (Option 1 flat accordion rejected; kept for record).
+Now folded into the locked `mocks/proposed/onboarding-3.html`. Shape:
+- **Compact, expand-on-edit row** is the atom: one slim line (type icon · title · length · role tag ·
+  chevron); click reveals the inline edit fields; incomplete rows auto-open.
+- **Collapsible sections by type:** **Videos / Playlists / Links & articles / Manual**, each with a
+  count + total time; collapse finished buckets. Only non-empty sections render.
+- **Material types supported:** YouTube **video** (`yt`), YouTube **playlist** (`pl`, new purple icon),
+  **external URL/article** (`art`), **manual/book** (`bk`). Mirrors the four real `material-icon`
+  colour classes already in `components.css`.
+- **Playlist interaction (Rohit, D14a):** a playlist row **opens the existing `PlaylistPickerPopup`
+  modal** (search + per-video checkboxes + bulk select + pagination + confirm) — **kept as-is from the
+  current app**, *not* an inline checklist. Non-playlist rows still expand inline to edit. Modal
+  reproduced faithfully in the mock from `onboarding/components/PlaylistPickerPopup.tsx`.
+- **Open sub-points (defer to plan):** drag-reorder persistence; whether grouping should auto-engage
+  only past N items (kept always-grouped for simplicity); empty-section handling on first add.
+
+### ✅ PAGE 3 — UI AGREED (visual contract)
+Onboarding page 3 design is **agreed and frozen as a visual contract**:
+**`mocks/proposed/onboarding-3.html`** is canonical — the eventual `PLAN.md` and the implementer build
+to match it. Covers D13 (summary + expandable multi-month calendar), D13a (book-to-exhaustion + buffer),
+D14 (grouped-by-type materials, compact expand-on-edit rows), D14a (playlist → existing picker modal).
+Baseline "before" = `mocks/baseline/onboarding-3.html`. Explored-but-rejected option mocks retained under
+`mocks/proposed/onboarding-3-*` for provenance. Implementation notes to carry into the plan: ETA/finish
+elements provisional pending R4; reuse real classes (`onboarding.css`, `roadmap-calendar-shell`,
+`material-icon`, `playlist-picker-*`); new `pl` (purple) icon already exists in `components.css`.
+
+---
 
 <!-- append D15+ here as the grill resolves them -->
 
@@ -367,6 +384,13 @@ reveal fields; drag-grip to reorder; incomplete rows auto-open):
   extend the generator, regression-test calibration/detection, **benchmark the ETA composite (R4)** on the
   existing `research/comparison/` harness with A-series rigour, guard circularity via Phase-5 real data.
   #3 composite is now 🟡 gated on R4.
+- **2026-06-30 (grill session 2)** — **D14a:** playlist row keeps the existing `PlaylistPickerPopup`
+  modal (not inline checklist) — reproduced in the mock. **Page 3 UI AGREED** — `mocks/proposed/onboarding-3.html`
+  is the frozen visual contract. Moving on to **Home**.
+- **2026-06-30 (grill session 2)** — **D14 locked:** left-panel materials reorganised **grouped-by-type**
+  (Videos/Playlists/Links/Manual, collapsible, count+total) with compact expand-on-edit rows + playlist
+  video checklist; folded into `mocks/proposed/onboarding-3.html`. Onboarding page 3 now fully designed
+  (left + right). Next: Home.
 - **2026-06-30 (grill session 2)** — Mock-driven workflow set up under `mocks/` (verbatim design-system
   CSS in `mocks/css/`; frozen `baseline/`, evolving `proposed/`). Onboarding-3 baseline mocked + fidelity
   confirmed by Rohit. Three preview options rendered (A summary / B booking-list / C calendar). **D13 +

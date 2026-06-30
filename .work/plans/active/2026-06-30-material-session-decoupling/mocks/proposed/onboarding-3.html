@@ -51,6 +51,32 @@
   .mini-cal .roadmap-bubble-minutes { font-size: 10px; }
   .cal-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:10px; font-size:12px; color: var(--text-secondary); }
   .cal-legend .sw { width:12px; height:12px; border-radius:3px; display:inline-block; vertical-align:-1px; margin-right:5px; }
+
+  /* --- Materials grouped by type (D14 · Option 2) ----------------------- */
+  .mgroup { background: var(--surface-card); border:1px solid var(--border-subtle); border-radius: var(--radius-md); overflow:hidden; margin-bottom:10px; }
+  .mgroup-head { display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer; background: var(--surface-card); }
+  .mgroup-head:hover { background: var(--surface-recessed); }
+  .mgroup-head .ttl { font-weight:500; font-size:14px; flex:1; }
+  .mgroup-head .ghead-ico { width:24px; height:24px; }
+  .mgroup-head .chev { transition: transform var(--duration-2) var(--ease-out); color: var(--text-tertiary); }
+  .mgroup.collapsed .mgroup-head .chev { transform: rotate(-90deg); }
+  .mgroup.collapsed .mgroup-body { display:none; }
+  .count-pill { font-family: var(--font-mono); font-size:10px; letter-spacing:.06em; padding:1px 7px; border-radius:999px; background: var(--surface-recessed); color: var(--text-secondary); }
+  .mat2-list { border-top:1px solid var(--border-subtle); }
+  .mat2 { display:flex; align-items:center; gap:10px; padding:9px 12px; cursor:pointer; transition: background var(--duration-1) var(--ease-out); }
+  .mat2 + .mat2 { border-top:1px solid var(--border-subtle); }
+  .mat2:hover { background: var(--surface-recessed); }
+  .mat2-body { flex:1; min-width:0; }
+  .mat2-body .material-title { margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mat2-body .material-meta { margin-top:2px; }
+  .mat2 .chev { transition: transform var(--duration-2) var(--ease-out); color: var(--text-tertiary); flex-shrink:0; }
+  .mat2.open .chev { transform: rotate(180deg); }
+  .mat2-edit { display:none; padding: 2px 12px 14px 54px; background: var(--surface-recessed); }
+  .mat2.open + .mat2-edit { display:block; }
+  #plRow { cursor: pointer; }
+  /* playlist-picker modal: force viewport overlay + hidden by default (real modal renders conditionally) */
+  #plModal { position: fixed; display: none; }
+  #plModal.show { display: flex; }
 </style>
 </head>
 <body>
@@ -84,28 +110,30 @@
           Add manually
         </button>
         <div class="mono-caps onboarding-materials-count">3 added · ~5h 20m</div>
-        <div class="material-list">
-          <div class="material-row"><div class="material-icon yt">YT</div>
-            <div class="material-body"><div style="display:flex;flex-direction:column;gap:10px;">
-              <input class="field" type="text" value="Linear Algebra — full playlist" />
-              <div style="display:flex;gap:8px;"><div class="field-with-suffix" style="flex:1;"><input class="field" type="number" value="240"/><span class="field-with-suffix-text">min</span></div>
-              <select class="field" style="flex:1;"><option>Main reading</option><option>Foundations</option><option>Practice</option></select></div></div>
-              <div class="material-meta" style="margin-top:6px;">~4h · Main reading</div></div>
-            <button class="material-row-action"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-          <div class="material-row"><div class="material-icon art">ART</div>
-            <div class="material-body"><div style="display:flex;flex-direction:column;gap:10px;">
-              <input class="field" type="text" value="Strang — Notes on Eigenvalues" />
-              <div style="display:flex;gap:8px;"><div class="field-with-suffix" style="flex:1;"><input class="field" type="number" value="35"/><span class="field-with-suffix-text">min</span></div>
-              <select class="field" style="flex:1;"><option selected>Foundations</option><option>Main reading</option><option>Practice</option></select></div></div>
-              <div class="material-meta" style="margin-top:6px;">~35min · Foundations</div></div>
-            <button class="material-row-action"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
-          <div class="material-row"><div class="material-icon bk">BK</div>
-            <div class="material-body"><div style="display:flex;flex-direction:column;gap:10px;">
-              <input class="field" type="text" value="Problem set 4 — practice" />
-              <div style="display:flex;gap:8px;"><div class="field-with-suffix" style="flex:1;"><input class="field" type="number" value="45"/><span class="field-with-suffix-text">min</span></div>
-              <select class="field" style="flex:1;"><option selected>Practice</option><option>Main reading</option><option>Foundations</option></select></div></div>
-              <div class="material-meta" style="margin-top:6px;">~45min · Practice</div></div>
-            <button class="material-row-action"><svg class="icon icon-sm" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <!-- Materials grouped by type (D14 · Option 2). Compact rows expand to edit. -->
+        <div class="mgroups">
+          <div class="mgroup">
+            <div class="mgroup-head"><div class="material-icon pl ghead-ico">PL</div><span class="ttl">Playlists</span><span class="count-pill">1 · 4h</span><svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <div class="mgroup-body"><div class="mat2-list">
+              <div class="mat2" id="plRow"><div class="material-icon pl">PL</div><div class="mat2-body"><div class="material-title">Linear Algebra — full playlist</div><div class="material-meta">12 videos · ~4h · 12 selected · Main reading</div></div><span class="tag tag-sm">Main</span><svg class="icon icon-sm" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg></div>
+            </div></div>
+          </div>
+
+          <div class="mgroup">
+            <div class="mgroup-head"><div class="material-icon art ghead-ico">◆</div><span class="ttl">Links &amp; articles</span><span class="count-pill">1 · 35m</span><svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <div class="mgroup-body"><div class="mat2-list">
+              <div class="mat2"><div class="material-icon art">ART</div><div class="mat2-body"><div class="material-title">Strang — Notes on Eigenvalues</div><div class="material-meta">~35m · Foundations</div></div><span class="tag tag-sm">Found.</span><svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="mat2-edit"><input class="field" type="text" value="Strang — Notes on Eigenvalues"/><div class="row" style="display:flex;gap:8px;margin-top:8px;"><div class="field-with-suffix" style="flex:1;"><input class="field" type="number" value="35"/><span class="field-with-suffix-text">min</span></div><select class="field" style="flex:1;"><option selected>Foundations</option><option>Main reading</option><option>Practice</option></select></div></div>
+            </div></div>
+          </div>
+
+          <div class="mgroup">
+            <div class="mgroup-head"><div class="material-icon bk ghead-ico">BK</div><span class="ttl">Manual</span><span class="count-pill">1 · 45m</span><svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <div class="mgroup-body"><div class="mat2-list">
+              <div class="mat2"><div class="material-icon bk">BK</div><div class="mat2-body"><div class="material-title">Problem set 4 — practice</div><div class="material-meta">~45m · Practice</div></div><span class="tag tag-sm">Practice</span><svg class="icon icon-sm chev" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+              <div class="mat2-edit"></div>
+            </div></div>
+          </div>
         </div>
       </div>
 
@@ -186,6 +214,42 @@
   </div>
 </div>
 
+<!-- Playlist picker modal (kept as-is from current app: PlaylistPickerPopup) -->
+<div class="modal-overlay playlist-picker-overlay" id="plModal" aria-hidden="true">
+  <div class="modal-card playlist-picker-modal" id="plModalCard">
+    <div class="playlist-picker-header">
+      <div class="modal-eyebrow">Playlist</div>
+      <div class="modal-title">Linear Algebra — full playlist</div>
+      <input type="text" class="field playlist-picker-search" placeholder="Search videos…" />
+      <div class="playlist-picker-toolbar">
+        <button class="btn btn-secondary btn-sm">Deselect all</button>
+        <span class="playlist-picker-count">12 in playlist</span>
+      </div>
+    </div>
+    <div class="playlist-picker-list-wrap">
+      <div class="playlist-picker-list">
+        <div class="playlist-picker-row"><div class="checkbox-box checked"></div><div class="playlist-picker-thumb-fallback"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,2 12,7 3,12" fill="currentColor"/></svg></div><div class="playlist-picker-content"><div class="playlist-picker-title">Lec 1 — The geometry of linear equations</div><div class="playlist-picker-author">MIT OpenCourseWare</div></div><span class="playlist-picker-duration">16 min</span></div>
+        <div class="playlist-picker-row"><div class="checkbox-box checked"></div><div class="playlist-picker-thumb-fallback"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,2 12,7 3,12" fill="currentColor"/></svg></div><div class="playlist-picker-content"><div class="playlist-picker-title">Lec 2 — Elimination with matrices</div><div class="playlist-picker-author">MIT OpenCourseWare</div></div><span class="playlist-picker-duration">18 min</span></div>
+        <div class="playlist-picker-row"><div class="checkbox-box checked"></div><div class="playlist-picker-thumb-fallback"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,2 12,7 3,12" fill="currentColor"/></svg></div><div class="playlist-picker-content"><div class="playlist-picker-title">Lec 3 — Multiplication and inverse matrices</div><div class="playlist-picker-author">MIT OpenCourseWare</div></div><span class="playlist-picker-duration">21 min</span></div>
+        <div class="playlist-picker-row deselected"><div class="checkbox-box"></div><div class="playlist-picker-thumb-fallback"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,2 12,7 3,12" fill="currentColor"/></svg></div><div class="playlist-picker-content"><div class="playlist-picker-title">Lec 4 — Factorization into A = LU</div><div class="playlist-picker-author">MIT OpenCourseWare</div></div><span class="playlist-picker-duration">20 min</span></div>
+        <div class="playlist-picker-row"><div class="checkbox-box checked"></div><div class="playlist-picker-thumb-fallback"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="3,2 12,7 3,12" fill="currentColor"/></svg></div><div class="playlist-picker-content"><div class="playlist-picker-title">Lec 5 — Transposes, permutations, spaces</div><div class="playlist-picker-author">MIT OpenCourseWare</div></div><span class="playlist-picker-duration">24 min</span></div>
+      </div>
+      <div class="playlist-picker-pagination">
+        <button class="btn btn-ghost btn-sm" disabled>Back</button>
+        <span class="playlist-picker-page-indicator">1 of 2</span>
+        <button class="btn btn-ghost btn-sm">Next</button>
+      </div>
+    </div>
+    <div class="playlist-picker-footer">
+      <span class="playlist-picker-summary">11 selected · 3h 48m</span>
+      <div class="playlist-picker-actions">
+        <button class="btn btn-secondary btn-sm" id="plCancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="plConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
   // --- Plan data (illustrative) -----------------------------------------
   const TODAY = '2026-06-30';     // Tuesday
@@ -261,6 +325,25 @@
   document.getElementById('calNext').addEventListener('click', (e) => { e.stopPropagation(); step(1); });
 
   renderMonth(cur.y, cur.m);
+
+  // Materials: compact-row accordion + group collapse (D14 · Option 2)
+  const plModal = document.getElementById('plModal');
+  const setPl = (open) => { plModal.classList.toggle('show', open); plModal.setAttribute('aria-hidden', String(!open)); };
+  document.querySelectorAll('.mat2').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('input, select, button')) return;
+      if (row.id === 'plRow') { setPl(true); return; }   // playlist → modal (kept as-is)
+      row.classList.toggle('open');                       // others → inline edit
+    });
+  });
+  document.querySelectorAll('.mgroup-head').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed'));
+  });
+  // Modal close: overlay click, Cancel, Confirm
+  plModal.addEventListener('click', e => { if (e.target === plModal) setPl(false); });
+  document.getElementById('plCancel').addEventListener('click', () => setPl(false));
+  document.getElementById('plConfirm').addEventListener('click', () => setPl(false));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setPl(false); });
 </script>
 </body>
 </html>
