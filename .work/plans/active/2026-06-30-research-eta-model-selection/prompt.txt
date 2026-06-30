@@ -12,7 +12,10 @@ RESUME STATE — READ THIS FIRST (where the work stands as of 2026-06-30)
 - R1 is COMPLETE and reviewer-✅ (2026-06-30). The decoupled dataset exists and was invariant-verified
   over all 5400 learners: `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400`
   (regime `decoupled`, generator_version 0.2.0, base hash 21c2cdabfa91 + decoupled hash a99216b83551,
-  9 archetypes × 3 bands × 200 = 5400). This is the dataset R2/R3/R4 run on. Do NOT regenerate it.
+  9 archetypes × 3 bands × 200 = 5400). This is the dataset R3/R4 run on. Do NOT regenerate it.
+- R2 is COMPLETE and reviewer-✅ (2026-06-30). Calibration win TRANSFERS on decoupled data with partials
+  included (context-pred 12/12 Holm wins, recovery 8/12) — result in `research/results/calibration_decoupled/`.
+  Do NOT redo R2.
 - The authoritative A-series PARITY BASELINE is on disk in the DEFAULT result dirs
   (research/results/{calibration,detection,projection}/*.json), regenerated with current code from the
   frozen dataset `research/datasets/synthetic-21c2cdabfa91-seed0-n5400` (9 archetypes × 3 bands × 200 =
@@ -22,15 +25,15 @@ RESUME STATE — READ THIS FIRST (where the work stands as of 2026-06-30)
   research/comparison/src/research_comparison/baselines/projection.py clamps non-finite / out-of-range
   day offsets to date.min/date.max (with a regression test). Keep it; the R4 analytic candidate relies on it.
 
-START-OF-SESSION STEP 0 (do this BEFORE any R2 work): the reviewer left uncommitted doc changes in the
-working tree (R1 flipped to ✅ in VERIFICATION.md, status line, and this prompt.txt). COMMIT them first so
-the history is clean before you begin R2, e.g.:
+START-OF-SESSION STEP 0 (do this BEFORE any R3/R4 work): the reviewer left uncommitted doc changes in the
+working tree (R2 flipped to ✅ in VERIFICATION.md, status line, and this prompt.txt). COMMIT them first so
+the history is clean before you begin, e.g.:
   git add .work/plans/active/2026-06-30-research-eta-model-selection/
-  git commit -m "docs(research): record R1 reviewer sign-off; point prompt at R2"
+  git commit -m "docs(research): record R2 reviewer sign-off; point prompt at R3/R4"
 (Commit ONLY the plan-dir docs; leave the other unrelated dirty working-tree items alone.)
 
->>> YOUR NEXT PHASE IS R2 (calibration regression). R3 and R4 are also cleared (independent of each
-    other; any order). It is cleared to start. <<<
+>>> YOUR NEXT PHASES ARE R3 (detection regression) and R4 (ETA benchmark — the headline). They are
+    INDEPENDENT (either order; R3 is a quick re-run, R4 is the substantive one). Both cleared to start. <<<
 
 TWO REVIEW CARRY-FORWARDS you MUST honor (from the P0b sign-off):
 1. NAME: the dual-prior calibrator is registered as `enriched_dual_prior` (NOT `dual_prior` as some PLAN

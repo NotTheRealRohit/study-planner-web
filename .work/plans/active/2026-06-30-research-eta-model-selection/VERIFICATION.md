@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: p0-✅ · R1-✅ (decoupled dataset verified) · R2/R3/R4-ready
+status: p0-✅ · R1-✅ · R2-✅ (calibration transfer confirmed) · R3/R4-ready
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -388,7 +388,7 @@ drift→cusum/step→page_hinkley baseline). Process note honored: marker left a
 
 ---
 
-## R2 — Calibration regression (transfer → re-confirm)  🟡
+## R2 — Calibration regression (transfer → re-confirm)  ✅ (reviewer-verified — Holm counts re-derived from both JSONs)
 **Acceptance criteria**
 - [ ] Ran on the decoupled dataset with a **separate `--out-dir`** (A-series `research/results/calibration/`
       not clobbered). Out path: `__________`
@@ -467,7 +467,34 @@ throughput points**, because the decoupled partial-included run improved or pres
 Holm-surviving evidence compared with the frozen baseline. Reporting is cell-level only: only
 Holm-surviving improvements are called wins; `max/night_owl` recovery is explicitly a loss/caveat.
 
-**Reviewer findings:**
+**Reviewer findings (2026-06-30 · Cowork/planner): ✅ VERIFIED — the calibration win TRANSFERS (and
+strengthens) on the decoupled data with partial-chunk points included.** I re-derived every Holm count
+directly from both result JSONs (not from the dev's summary):
+
+*Decoupled (`research/results/calibration_decoupled/`, dataset `synthetic-decoupled-9e6d48db2da8-seed0-n5400`,
+held_out, full candidate registry incl. `enriched_shrink` + `enriched_dual_prior`):*
+- `context_pred_mae`: `enriched_shrink` **12/12** Holm wins, 0 losses; `enriched_dual_prior` **12/12**, 0
+  losses.
+- `recovery_mae`: both **8/12** Holm wins, **1** Holm-significant loss — `band=max|archetype=night_owl`.
+
+*Frozen P0b baseline (`research/results/calibration/`), re-counted for comparison:*
+- `context_pred_mae`: both 11/12 wins, 1 loss (`small|night_owl`).
+- `recovery_mae`: `enriched_shrink` 6/12 wins / 6 sig-losses; `enriched_dual_prior` 2/12 / 6 sig-losses.
+
+→ Net: context-pred 11/12 → **12/12**; recovery `enriched_shrink` 6 → **8**, `enriched_dual_prior` 2 → **8**
+(and recovery sig-losses drop from 6 → 1). The transfer is confirmed and at least as strong. All dev-reported
+numbers match exactly.
+
+*Protection & method ✅:* ran to a SEPARATE out-dir; frozen anchor untouched (still 6/12 & 2/12, i.e. not
+re-run/clobbered); no code change (pure re-run, correct per D-02); calibration reference ids unchanged;
+21 calibration-track tests pass. OQ-1 resolved: **include** partials (the win improved, so no down-weight
+fallback needed) — honest, and the `max/night_owl` recovery loss is reported as a caveat, not buried.
+
+*Forward note for R5 / claims-ledger (not an R2 defect):* frame this as "the win **transfers and holds**,"
+NOT "decoupling improves calibration" — the decoupled run is a different DGP (partials add data per
+learner), so the apparent strengthening should be reported conservatively. The persistent `night_owl`
+recovery weak-cell (present on both lineages) is worth a one-line caveat. **R2 done; R3 and R4 remain
+(independent, either order).**
 
 ---
 
