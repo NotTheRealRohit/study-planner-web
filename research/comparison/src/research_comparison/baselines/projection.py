@@ -7,6 +7,8 @@ from typing import Any
 
 from py_progress import fit_burn_up_gp, run_kalman_on_phase
 
+COLD_START_N = 5
+
 
 def _parse(day: str) -> date:
     return date.fromisoformat(day)
@@ -96,6 +98,99 @@ def _finish_index_from_rate(
 ) -> float:
     safe_slope = max(slope, 1e-6)
     return max(minimum_index, (total_minutes - intercept) / safe_slope)
+
+
+def _daily_actual_totals(sessions: list[dict[str, Any]]) -> list[float]:
+    if not sessions:
+        return []
+    start = _parse(str(sessions[0]["date"]))
+    end = _parse(str(sessions[-1]["date"]))
+    totals: dict[str, float] = {}
+    for session in sessions:
+        totals[str(session["date"])] = totals.get(str(session["date"]), 0.0) + _duration_minutes(
+            session
+        )
+    return [
+        totals.get((start + timedelta(days=offset)).isoformat(), 0.0)
+        for offset in range((end - start).days + 1)
+    ]
+
+
+def forecast_analytic_required_rate(
+    sessions: list[dict[str, Any]],
+    total_minutes: float,
+    start_date: str | None = None,
+    horizon_end_date: str | None = None,
+) -> dict[str, Any]:
+    del horizon_end_date
+    points = cumulative_points(sessions)
+    if not points:
+        today = date.today().isoformat()
+        return {
+            "candidate": "analytic_required_rate",
+            "predicted_finish_date": today,
+            "interval_low": today,
+            "interval_high": today,
+            "sharpness_days": 0.0,
+        }
+
+    start = start_date or str(points[0]["date"])
+    first = str(points[0]["date"])
+    last = str(points[-1]["date"])
+    first_index = _date_to_index(first, start)
+    last_index = _date_to_index(last, start)
+    elapsed_days = max(1.0, float(last_index - first_index + 1))
+    consumed_actual = float(points[-1]["minutes"])
+    effective_daily = max(consumed_actual / elapsed_days, 1e-6)
+    remaining_actual = max(0.0, float(total_minutes) - consumed_actual)
+    days_left = remaining_actual / effective_daily
+    predicted_index = max(float(last_index), float(last_index) + days_left)
+
+    daily_totals = _daily_actual_totals(sessions)
+    recent = daily_totals[-min(14, len(daily_totals)) :]
+    rate_std = statistics.stdev(recent) if len(recent) > 1 else effective_daily
+    width_days = max(
+        1.0,
+        1.96
+        * max(rate_std, 1e-6)
+        / effective_daily
+        * math.sqrt(max(days_left, 1.0) / elapsed_days),
+    )
+    low_index = max(float(last_index), predicted_index - width_days)
+    high_index = predicted_index + width_days
+    return {
+        "candidate": "analytic_required_rate",
+        "predicted_finish_date": _index_to_date(predicted_index, start),
+        "interval_low": _index_to_date(low_index, start),
+        "interval_high": _index_to_date(high_index, start),
+        "sharpness_days": max(1.0, round(high_index - low_index, 3)),
+    }
+
+
+def forecast_gp_plus_analytic_finish(
+    sessions: list[dict[str, Any]],
+    total_minutes: float,
+    start_date: str | None = None,
+    horizon_end_date: str | None = None,
+) -> dict[str, Any]:
+    analytic = forecast_analytic_required_rate(
+        sessions,
+        total_minutes,
+        start_date=start_date,
+        horizon_end_date=horizon_end_date,
+    )
+    if len(sessions) < COLD_START_N:
+        return {**analytic, "candidate": "gp_plus_analytic"}
+
+    gp = forecast_gp_finish(
+        sessions,
+        total_minutes,
+        start_date=start_date,
+        horizon_end_date=horizon_end_date,
+    )
+    if horizon_end_date and _parse(str(gp["predicted_finish_date"])) >= _parse(horizon_end_date):
+        return {**analytic, "candidate": "gp_plus_analytic"}
+    return {**gp, "candidate": "gp_plus_analytic"}
 
 
 def _estimate_lag1_autocorrelation(values: list[float]) -> float:

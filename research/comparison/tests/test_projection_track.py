@@ -7,7 +7,9 @@ from datetime import date, timedelta
 from py_progress import gp_regression
 from research_comparison.baselines.projection import (
     conformal_abs_residual_quantile,
+    forecast_analytic_required_rate,
     forecast_gp_finish,
+    forecast_gp_plus_analytic_finish,
     forecast_kalman_finish,
     forecast_linear_finish,
 )
@@ -73,6 +75,66 @@ def test_linear_forecast_caps_pathological_far_future_dates():
     assert forecast["interval_high"] >= forecast["predicted_finish_date"]
 
 
+def test_analytic_required_rate_forecast_uses_actual_minutes_currency():
+    sessions = _sessions([50.0, 50.0, 50.0, 50.0])
+
+    forecast = forecast_analytic_required_rate(
+        sessions,
+        total_minutes=500.0,
+        start_date="2026-03-01",
+        horizon_end_date="2026-03-31",
+    )
+
+    assert forecast["candidate"] == "analytic_required_rate"
+    assert forecast["predicted_finish_date"] == "2026-03-10"
+    assert forecast["interval_low"] <= forecast["predicted_finish_date"]
+    assert forecast["interval_high"] >= forecast["predicted_finish_date"]
+    assert forecast["sharpness_days"] >= 1.0
+
+
+def test_gp_plus_analytic_uses_analytic_for_cold_start():
+    sessions = _sessions([50.0, 50.0, 50.0, 50.0])
+
+    analytic = forecast_analytic_required_rate(
+        sessions,
+        total_minutes=500.0,
+        start_date="2026-03-01",
+        horizon_end_date="2026-03-31",
+    )
+    composite = forecast_gp_plus_analytic_finish(
+        sessions,
+        total_minutes=500.0,
+        start_date="2026-03-01",
+        horizon_end_date="2026-03-31",
+    )
+
+    assert composite["candidate"] == "gp_plus_analytic"
+    assert composite["predicted_finish_date"] == analytic["predicted_finish_date"]
+    assert composite["interval_low"] == analytic["interval_low"]
+    assert composite["interval_high"] == analytic["interval_high"]
+
+
+def test_gp_plus_analytic_rescues_gp_non_crossing_horizon():
+    sessions = _sessions([1.0, 1.0, 1.0, 1.0, 1.0])
+
+    composite = forecast_gp_plus_analytic_finish(
+        sessions,
+        total_minutes=1000.0,
+        start_date="2026-03-01",
+        horizon_end_date="2026-03-07",
+    )
+    analytic = forecast_analytic_required_rate(
+        sessions,
+        total_minutes=1000.0,
+        start_date="2026-03-01",
+        horizon_end_date="2026-03-07",
+    )
+
+    assert composite["candidate"] == "gp_plus_analytic"
+    assert composite["predicted_finish_date"] == analytic["predicted_finish_date"]
+    assert composite["predicted_finish_date"] > "2026-03-07"
+
+
 def test_kalman_forecast_handles_negative_early_trend_without_date_overflow():
     sessions = _sessions([121.522702, 44.232158, 13.082674, 41.55206, 17.799342])
 
@@ -109,7 +171,13 @@ def test_projection_runner_reports_coverage_sharpness_and_error():
 def test_a1_projection_candidates_are_registered_without_removing_gp_incumbent():
     names = {candidate.name for candidate in projection_candidates()}
 
-    assert {"gp_ard", "conformal", "gp_hetero_t"}.issubset(names)
+    assert {
+        "gp_ard",
+        "analytic_required_rate",
+        "gp_plus_analytic",
+        "conformal",
+        "gp_hetero_t",
+    }.issubset(names)
 
 
 def test_conformal_quantile_math_matches_finite_sample_rank():

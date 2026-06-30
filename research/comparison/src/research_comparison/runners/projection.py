@@ -9,11 +9,14 @@ from pathlib import Path
 from typing import Any
 
 from research_comparison.baselines.projection import (
+    COLD_START_N,
     _date_to_index,
     conformal_abs_residual_quantile,
+    forecast_analytic_required_rate,
     forecast_conformal_finish,
     forecast_gp_finish,
     forecast_gp_hetero_t_finish,
+    forecast_gp_plus_analytic_finish,
     forecast_kalman_finish,
     forecast_linear_finish,
 )
@@ -53,6 +56,24 @@ def projection_candidates(
             ),
         ),
         ProjectionCandidate(
+            "analytic_required_rate",
+            lambda sessions, total, start, end: forecast_analytic_required_rate(
+                sessions,
+                total,
+                start_date=start,
+                horizon_end_date=end,
+            ),
+        ),
+        ProjectionCandidate(
+            "gp_plus_analytic",
+            lambda sessions, total, start, end: forecast_gp_plus_analytic_finish(
+                sessions,
+                total,
+                start_date=start,
+                horizon_end_date=end,
+            ),
+        ),
+        ProjectionCandidate(
             "linear",
             lambda sessions, total, _start, _end: forecast_linear_finish(sessions, total),
         ),
@@ -83,7 +104,7 @@ def projection_candidates(
 
 
 def default_t_grid(n_sessions: int) -> list[int]:
-    base = [5, 8, 13, 21, 34, 55, 89, n_sessions]
+    base = [3, 5, 8, 13, 21, 34, 55, 89, n_sessions]
     return sorted({value for value in base if 2 <= value <= n_sessions})
 
 
@@ -144,6 +165,7 @@ def run_projection_for_learner(
                     "seed": learner["seed"],
                     "candidate": candidate.name,
                     "t": t,
+                    "true_finish_date": true_finish_date,
                     **forecast,
                 }
             )
@@ -177,6 +199,7 @@ def run_projection_for_learner(
                 "seed": learner["seed"],
                 "candidate": "oracle_projection",
                 "t": t,
+                "true_finish_date": true_finish_date,
                 **forecast,
             }
         )
@@ -236,6 +259,76 @@ def _max_finish_residual_days(
         for t in grid
     ]
     return max(residuals) if residuals else None
+
+
+def _forecast_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    usable = [
+        row
+        for row in rows
+        if row.get("predicted_finish_date")
+        and row.get("interval_low")
+        and row.get("interval_high")
+        and row.get("true_finish_date")
+    ]
+    if not usable:
+        return {
+            "n_forecasts": 0,
+            "coverage": 0.0,
+            "mean_abs_error_days": 0.0,
+            "mean_sharpness_days": 0.0,
+        }
+
+    covered = 0
+    errors: list[float] = []
+    sharpness: list[float] = []
+    for row in usable:
+        true_date = date.fromisoformat(str(row["true_finish_date"]))
+        low = date.fromisoformat(str(row["interval_low"]))
+        high = date.fromisoformat(str(row["interval_high"]))
+        predicted = date.fromisoformat(str(row["predicted_finish_date"]))
+        if low <= true_date <= high:
+            covered += 1
+        errors.append(float(abs((predicted - true_date).days)))
+        sharpness.append(float(max(0, (high - low).days)))
+    return {
+        "n_forecasts": len(usable),
+        "coverage": covered / len(usable),
+        "mean_abs_error_days": sum(errors) / len(errors),
+        "mean_sharpness_days": sum(sharpness) / len(sharpness),
+    }
+
+
+def cold_start_eval_block(
+    forecasts: list[dict[str, Any]],
+    cold_start_n: int = COLD_START_N,
+) -> dict[str, Any]:
+    candidates = {"gp_ard", "analytic_required_rate", "gp_plus_analytic"}
+    selected = [
+        row
+        for row in forecasts
+        if row.get("split") == "held_out"
+        and str(row.get("candidate")) in candidates
+        and int(row.get("t", 0)) < cold_start_n
+    ]
+    bands = sorted({str(row["band"]) for row in selected})
+    by_band: dict[str, dict[str, Any]] = {}
+    for band in bands:
+        by_band[band] = {
+            candidate: _forecast_summary(
+                [
+                    row
+                    for row in selected
+                    if row["band"] == band and row["candidate"] == candidate
+                ]
+            )
+            for candidate in sorted(candidates)
+        }
+    return {
+        "method": "held_out_forecasts_with_t_below_cold_start_n",
+        "cold_start_n": cold_start_n,
+        "t_values": sorted({int(row["t"]) for row in selected}),
+        "by_band": by_band,
+    }
 
 
 def calibrate_across_learner_conformal_widths(
@@ -317,6 +410,7 @@ def run_projection_track(
 
     dataset_archetypes = {str(learner["archetype"]) for learner in learners}
     annotate_archetype_split(rows, archetypes=dataset_archetypes)
+    annotate_archetype_split(forecasts, archetypes=dataset_archetypes)
     for row in rows:
         if row["candidate"] == "conformal":
             row["conformal_width_days"] = conformal_widths.get(str(row["band"]))
@@ -357,6 +451,15 @@ def run_projection_track(
         "winner_by_band": winner_by_band(scored_rows),
         "paired_vs_incumbent": paired,
         "paired_by_cell": paired_cells,
+        "cold_start_eval": cold_start_eval_block(forecasts),
+        "reference_line_eval": {
+            "status": "deferred",
+            "reason": (
+                "R4 prioritized candidate selection and cold-start scoring; linear-to-deadline "
+                "vs capacity-shaped reference-line evaluation is lower-priority per PLAN D-07."
+            ),
+            "options": ["linear_to_deadline", "capacity_shaped"],
+        },
         "mc_correction": mc_correction_block(
             paired_cells,
             metric="comparison_score",
