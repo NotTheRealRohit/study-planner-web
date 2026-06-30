@@ -115,35 +115,51 @@ For EACH phase, run these steps in order:
 7. Pause for reviewer sign-off if the next phase depends on this one; otherwise proceed to an
    independent phase.
 
-IMMEDIATE NEXT ACTIONS — R2 (calibration regression; see PLAN R2 for the full spec)
+IMMEDIATE NEXT ACTIONS — R3 (detection regression; see PLAN R3) — quick, no code change expected
 0. START-OF-SESSION STEP 0 above: commit the pending reviewer plan-dir docs first.
-a. Read PLAN R2 + Decisions D-02 (the active/planned==pace invariant that makes calibration transfer) and
-   D-06. Note: R2 needs NO code change if D-02 holds (it does — R1 verified it); you just re-run the
-   calibration track on the decoupled dataset and compare to the frozen P0 baseline.
-b. Update SCRATCHPAD §2 "Next actions" for R2.
-c. Run the calibration track on the DECOUPLED dataset with a SEPARATE out-dir (never the default dir):
-     uv run --package research-comparison python -m research_comparison.runners.calibration \
+a. Read PLAN R3. The detector reads `active/planned` directly (data-driven) → NO code change unless the
+   series construction must change. Update SCRATCHPAD §2 for R3.
+b. Run on the DECOUPLED dataset with a SEPARATE out-dir (never the default dir):
+     uv run --package research-comparison python -m research_comparison.runners.detection \
        --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
-       --out-dir research/results/calibration_decoupled --seeds 200 --quiet
-d. Record the held-out + Holm verdict for `enriched_shrink` and `enriched_dual_prior` (NOT `dual_prior`)
-   vs `hierarchical_bayes` from the new JSON's `mc_correction` (`survives_holm_win` on `recovery_mae`
-   AND `context_pred_mae`), and compare to the frozen P0 baseline (research/results/calibration/) where
-   BOTH currently survive. Put the real numbers in SCRATCHPAD §5.
-e. OQ-1 fallback: if the win DEGRADES on decoupled data because of partial-chunk points, re-run with
-   partials down-weighted or excluded (calibration-local view only), record BOTH runs + the chosen
-   inclusion policy + rationale in SCRATCHPAD §4. Report Holm-surviving improvements ONLY as "wins."
-f. Add/extend any calibration tests the PLAN's acceptance lists; run what the sandbox allows; record
-   run-vs-authored-only in SCRATCHPAD §3.
-g. Commit, fill VERIFICATION R2 Developer notes, flip R2 →🟡 (NOT ✅), append SCRATCHPAD §8, post a
-   results message to the reviewer.
+       --out-dir research/results/detection_decoupled --seeds 200 --quiet
+c. Record from the new JSON: `paired_vs_incumbent` / `mc_correction` vs `cusum` (`survives_holm_win` by
+   shift_type/band). State the verdict EXPLICITLY against the P0b baseline shape — drift→`cusum`,
+   step→`page_hinkley`, with `csd`/`page_hinkley` Holm-surviving on `fading_flame` cells — i.e. say whether
+   that pattern HOLDS or CHANGED under the new (noisier, ad-hoc/partial) cadence. NOT a pure-null strawman.
+d. Sanity-check the regime-onset→active-axis mapping under the new cadence (add a focused test if the
+   ordering changed). Confirm CUSUM tuning stayed train-archetypes-only (no leakage).
+e. Commit, fill VERIFICATION R3 Developer notes, flip R3 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
 
-After R2 (independent — any order): R3 (detection) and R4 (ETA, the headline) on the same decoupled
-dataset, each to its own separate out-dir:
-  R3 → --out-dir research/results/detection_decoupled   (verdict vs the P0b baseline: drift→cusum,
-       step→page_hinkley — NOT a pure-null strawman)
-  R4 → --out-dir research/results/projection_decoupled  (register `analytic_required_rate` +
-       `gp_plus_analytic` per PLAN R4; analytic in actual-minutes currency, no tf double-count;
-       paired-Holm vs `gp_ard`)
+IMMEDIATE NEXT ACTIONS — R4 (ETA benchmark; see PLAN R4) — THE HEADLINE; requires code
+a. Read PLAN R4 fully + Decisions D-04. Verify the projection anchors against live code first:
+   baselines/projection.py (forecast_* fns, cumulative_points, _index_to_date — note the clamp from P0b),
+   runners/projection.py `projection_candidates()` (lines ~42-82), metrics/projection.py.
+b. Add two forecasters to baselines/projection.py with the SAME signature + return shape as the existing
+   ones (`(sessions, total_minutes, start_date, horizon_end_date) -> {candidate, predicted_finish_date,
+   interval_low, interval_high, sharpness_days}`):
+   - `analytic_required_rate` — in ACTUAL-MINUTES currency: effective_daily = consumed_actual/elapsed_days;
+     days_left = remaining_actual/effective_daily; finish = last_date + days_left. DO NOT multiply by a
+     throughput factor (the target is already actual-minutes — no tf double-count). Interval per PLAN R4.
+   - `gp_plus_analytic` — composite: if len(sessions) < COLD_START_N (recommend 5) → analytic; elif GP
+     predicted finish >= horizon_end (didn't cross) → analytic rescue; else GP point+CI.
+   Register BOTH in `projection_candidates()`.
+c. Write tests in tests/test_projection_track.py: forecaster shape, cold-start switch, non-crossing rescue.
+   Run them (and the focused projection subset) before the full run.
+d. Run on the DECOUPLED dataset with a SEPARATE out-dir:
+     uv run --package research-comparison python -m research_comparison.runners.projection \
+       --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
+       --out-dir research/results/projection_decoupled --seeds 200 --quiet
+e. Scoring is automatic. Record per band: coverage / MAE-days / sharpness for `gp_ard`,
+   `analytic_required_rate`, `gp_plus_analytic`, and the paired-Holm verdict vs `gp_ard`
+   (`survives_holm_win`). State the HEADLINE verdict sentence: does the composite (and/or analytic) beat
+   `gp_ard` under held-out + Holm, on which bands? Put real numbers in SCRATCHPAD §5.
+f. R4a: cold-start eval at small t (extend default_t_grid base to include 3, or a dedicated probe);
+   record composite-vs-gp_ard at small t. R4b: reference-line (linear vs capacity-shaped) — do it OR log
+   it explicitly as deferred (don't drop silently). Oracles stay upper bounds, never reported as wins.
+g. Commit, fill VERIFICATION R4 Developer notes, flip R4 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
+
+After R3 + R4 both ✅: R5 (rigour parity + claims-ledger) then R6 (N=1 real-data guard).
 
 DO / DON'T (task-specific traps — each with its why)
 - DO keep `activeMinutes/plannedMinutes == latent pace` for every active event including partials
