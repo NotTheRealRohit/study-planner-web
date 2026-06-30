@@ -8,7 +8,7 @@ purpose: >-
   the reviewer can reconstruct exactly what happened. Update at the START of every work session
   (set "Next actions") and at the END (append a Session-log entry). NEVER delete history — append.
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
-last_updated: "2026-06-30 16:45 IST — Codex"
+last_updated: "2026-06-30 17:29 IST — Codex"
 ---
 
 # Scratchpad
@@ -19,18 +19,14 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 > next step — enough that a fresh session (or the reviewer) can resume with zero extra context.
 
 ## 1. Current status (one-liner + phase board)
-- **Now:** R3 detection regression is implemented and awaiting reviewer sign-off. The decoupled result is on disk in a separate result dir; frozen P0b default-dir detection results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `96368dea5f72ef41eb439ba1fbf434046a2da9aa` (R3 docs/evidence); Step-0 reviewer-doc commit before R3/R4 was `a9c3e70`.
-- **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 ☐ · R5 ☐ · R6 ☐
+- **Now:** R4 ETA benchmark is implemented and awaiting reviewer sign-off. Decoupled projection results are on disk in a separate result dir; frozen P0b default-dir projection results were not clobbered.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa` (R4 code/tests); R4 evidence docs pending commit.
+- **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 🟡 · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
-1. R4:
-   - Verify projection anchors against live code: `baselines/projection.py`, `runners/projection.py::projection_candidates()`, and `metrics/projection.py`.
-   - Add/register `analytic_required_rate` and `gp_plus_analytic`; analytic stays in actual-minutes currency with no throughput-factor double-count.
-   - Add focused projection tests for forecaster shape, cold-start switch, and GP non-crossing rescue.
-   - Smoke with a small decoupled run before the full `research/results/projection_decoupled --seeds 200` benchmark.
-   - Record per-band coverage / MAE-days / sharpness for `gp_ard`, `analytic_required_rate`, and `gp_plus_analytic`, plus paired-Holm verdict vs `gp_ard`, R4a cold-start, and R4b done/deferred.
-2. Continue carrying forward: use `enriched_dual_prior` (not `dual_prior`), keep default A-series result dirs untouched for decoupled runs, and report only Holm-surviving improvements as wins.
+1. Await reviewer sign-off for R3 and R4. Do not start R5 until both are reviewer-✅.
+2. After R3 + R4 are ✅, start R5 rigour parity + claims ledger: compare frozen vs decoupled headline numbers, update the claims ledger conservatively, and state #3 as small-band-only if the reviewer accepts this R4 result.
+3. Continue carrying forward: use `enriched_dual_prior` (not `dual_prior`), keep default A-series result dirs untouched for decoupled runs, and report only Holm-surviving improvements as wins.
 
 ## 3. Environment / run notes
 - What runs in this sandbox vs authored-only (record the arm64/dep status the first time you hit it): the full research comparison pytest suite runs with escalated permissions for uv cache access; baseline result is `92 passed, 2 failed`.
@@ -53,6 +49,10 @@ last_updated: "2026-06-30 16:45 IST — Codex"
   - `uv run --package research-comparison python -m research_comparison.runners.detection --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 --out-dir research/results/detection_decoupled --seeds 200 --quiet` → `research/results/detection_decoupled/detection_results.json`.
   - `uv run --package research-comparison pytest research/comparison/tests/test_detection_track.py -q` → `8 passed in 0.93s`.
   - Active-axis mapping sanity check over the full decoupled dataset → `raw_shifts=1720`, `mapped_shifts=1720`, `unmapped_tail_shifts=0`, `bad_mappings=0`.
+  - `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q -k 'analytic_required_rate or gp_plus_analytic or projection_candidates'` → red first on missing imports, then green `4 passed, 9 deselected`.
+  - `uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q` → `13 passed in 97.47s`.
+  - `uv run --package research-comparison python -m research_comparison.runners.projection --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 --out-dir /private/tmp/study-r4-projection-smoke --seeds 4 --quiet` → `/private/tmp/study-r4-projection-smoke/projection_results.json`.
+  - `uv run --package research-comparison python -m research_comparison.runners.projection --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 --out-dir research/results/projection_decoupled --seeds 200 --quiet` → `research/results/projection_decoupled/projection_results.json`.
 - New decoupled dataset id once generated: `synthetic-decoupled-9e6d48db2da8-seed0-n5400` → `research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400`
 
 ## 4. Decisions made during execution (continue PLAN §2's D-xx numbering)
@@ -62,6 +62,7 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 - **D-10 — Projection date overflow guard is part of P0b baseline hygiene.** The reviewer-specified frozen projection command exposed a deterministic `OverflowError: date value out of range` in the linear baseline when pathological low progress forecasted an impossible far-future date. `_index_to_date()` now clamps non-finite/out-of-range day offsets to Python's supported `date` bounds before serialization. — *why:* this preserves result generation for extreme but observed baseline paths without changing normal forecast currency or candidate registration. — *date:* 2026-06-30
 - **D-11 — OQ-2 frozen decoupled cadence/adherence params.** R1 freezes 3-6 study days/week with weights `{3:0.20,4:0.35,5:0.30,6:0.15}`, target ad-hoc fraction `Uniform(0.10,0.20)`, target interruption fraction `Uniform(0.15,0.25)`, partial fraction `Uniform(0.25,0.70)`, and dial/adherence bias `LogNormal(mu=0,sigma=0.12)` clipped to `[0.85,1.20]`; `DECOUPLED_PARAMS_HASH=a99216b83551` and combined dataset hash `9e6d48db2da8`. — *why:* matches PLAN R1's recommended OQ-2 ranges while making the new regime reproducible and distinct from `PARAMS_VERSION_HASH`. — *date:* 2026-06-30
 - **D-12 — OQ-1 partial inclusion policy stays include-partials for calibration.** The R2 decoupled calibration run with partial throughput points included improves or preserves the key Holm evidence relative to the frozen P0b baseline: context-prediction improves to 12/12 Holm-win cells for both `enriched_shrink` and `enriched_dual_prior`, and recovery improves to 8/12 Holm-win cells for both candidates. There is a recovery caveat/loss in `band=max|archetype=night_owl`, so reporting must stay cell-level and call only Holm-surviving cells wins. No down-weight/exclude fallback was run because the partial-included result did not degrade the transfer evidence. — *date:* 2026-06-30
+- **D-13 — OQ-3 cold-start threshold + analytic interval recipe.** R4 implements `COLD_START_N=5`, extends the default projection grid to include `t=3`, and writes `cold_start_eval` for held-out forecasts with `t < 5`. The analytic interval uses recent calendar-day actual-minute totals, including zero-study days between first and last observed session, with a 14-day recent window, Gaussian `1.96 * std/effective_daily * sqrt(days_left/elapsed_days)` scaling, and a 1-day floor. — *why:* this follows PLAN D-04's recommended threshold and interval recipe while staying in actual-minutes currency. — *date:* 2026-06-30
 - (OQ resolutions go here too: OQ-1 partial inclusion policy, OQ-2 cadence params, OQ-3 COLD_START_N +
   interval recipe, OQ-4 A-series parity config.)
 
@@ -88,8 +89,14 @@ last_updated: "2026-06-30 16:45 IST — Codex"
   - Cell-level Holm-surviving wins vs `cusum`: `page_hinkley` at `band=max|archetype=fading_flame|shift_type=drift` (delta `-0.906571126069164`, p `7.977878181339604E-8`); `csd` at `band=medium|archetype=fading_flame|shift_type=drift` (delta `-2.74707349251134`, p `3.6834168178369585E-29`); `page_hinkley` at `band=medium|archetype=fading_flame|shift_type=drift` (delta `-1.9542051530171258`, p `2.0362612193628E-27`). No step-cell Holm win survives on decoupled data; the P0b `max/fading_flame/step` wins changed to non-wins, with `page_hinkley` a Holm-significant loss there.
   - Verdict against the P0b baseline shape: **changed but more CUSUM-favoring under decoupled cadence**. P0b had drift→`cusum`, step→`page_hinkley`, plus `csd`/`page_hinkley` Holm wins in fading_flame max-drift, max-step, and medium-drift. Decoupled has drift→`cusum`, step→`cusum`; only fading_flame drift cells at max/medium retain Holm-surviving wins for `csd`/`page_hinkley`. Therefore the old pure-null strawman is still false at cell level, but no deployable detector displaces CUSUM overall on the decoupled track.
 - **R4 ETA (decoupled) — HEADLINE:** per band, gp_ard vs analytic_required_rate vs gp_plus_analytic
-  (coverage / MAE-days / sharpness); **paired-Holm vs gp_ard survives?** = … ; cold-start (R4a) = … ;
-  reference-line (R4b) = done/deferred.
+  - Result file `research/results/projection_decoupled/projection_results.json` (`132M`, mtime 2026-06-30 17:25), provenance `dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`, `generator_version=0.2.0`, `params_version_hash=9e6d48db2da8`, `seed_count=200`, `n_learners=5400`, `scored_split=held_out`, formula `9 archetypes x 3 bands x 200 seeds`; train archetypes `crammer,marathon_runner,morning_lark,steady,steady_improver`; held-out `deadline_sprinter,fading_flame,night_owl,weekend_warrior`.
+  - Frozen P0b projection anchor was not clobbered: `research/results/projection/projection_results.json` remained `74M` at `2026-06-30 12:28`.
+  - Per-band metrics (coverage / MAE-days / sharpness): max `gp_ard=0.18305555555555553 / 39.53 / 7.955416666666666`, `analytic_required_rate=0.16652777777777777 / 53.18875 / 6.948472222222222`, `gp_plus_analytic=0.1948611111111111 / 52.10486111111111 / 10.707083333333333`; medium `gp_ard=0.2765178571428571 / 15.331294642857141 / 4.715133928571428`, `analytic_required_rate=0.2524330357142857 / 17.462477678571428 / 4.786852678571428`, `gp_plus_analytic=0.2912053571428571 / 17.099375 / 6.221741071428571`; small `gp_ard=0.49370833333333336 / 2.3605625 / 1.6494375`, `analytic_required_rate=0.5541875 / 2.6165208333333334 / 2.5414375000000002`, `gp_plus_analytic=0.5516041666666667 / 2.1386041666666666 / 2.2782291666666667`.
+  - Band-level paired deltas vs `gp_ard`: max analytic delta `13.813958333333332` (p `1.497639506256032E-18`) and composite delta `12.484322222222222` (p `1.6136722359015614E-15`) = both worse; medium analytic delta `2.3727484375` (p `6.367674123357731E-9`) and composite delta `1.6362714285714284` (p `0.00001775162459571553`) = both worse; small analytic delta `-0.22866333333333327` (p `0.12866069027806384`) = not significant, composite delta `-0.72837875` (p `6.345483612505526E-28`) = better.
+  - Holm verdict: `gp_plus_analytic` survives as a Holm win in all four small-band held-out archetypes (`deadline_sprinter`, `fading_flame`, `night_owl`, `weekend_warrior`), with deltas from `-0.6304708333333333` to `-0.8604408333333333`; `analytic_required_rate` has no Holm-surviving wins. Both new candidates have Holm-significant losses on all max cells; analytic has Holm-significant losses in 3/4 medium cells and composite has non-significant worse deltas in all medium cells.
+  - **HEADLINE verdict:** `gp_plus_analytic` beats `gp_ard` under held-out + Holm on the **small** band only. It does **not** beat `gp_ard` on medium or max; `analytic_required_rate` does not beat `gp_ard` under Holm on any band. The #3 ETA composite can be claimed only as a small-band cold-start/short-plan improvement unless R5/R6 add further constraints.
+  - R4a cold-start (`t=3`, held-out only): max `gp_ard=0.0125 / 57.73375 / 1.03125`, composite/analytic `0.07 / 82.22625 / 14.70875` = worse MAE but better coverage; medium `gp_ard=0.03375 / 26.845 / 1.18875`, composite/analytic `0.13375 / 30.7325 / 9.3375` = worse MAE but better coverage; small `gp_ard=0.185 / 5.095 / 1.4425`, composite/analytic `0.43875 / 4.075 / 4.2525` = better MAE and coverage with wider intervals.
+  - R4b reference-line eval is explicitly deferred in the payload with options `linear_to_deadline` and `capacity_shaped`; reason: R4 prioritized candidate selection and cold-start scoring, and PLAN D-07 marks reference-line eval lower priority. Oracles remain upper bounds only.
 - **R6 N=1:** partial-throughput in-family? = … ; ETA-on-real descriptive error = …
 
 ## 6. Deviations from PLAN (what + why + reviewer-flagged?)
@@ -100,7 +107,7 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 - R2 result tracking follows existing repo convention: `research/results/calibration_decoupled/calibration_results.json` exists locally but is ignored by `.gitignore` via `research/results/`; committed evidence is in `SCRATCHPAD.md` and `VERIFICATION.md`.
 
 ## 7. Blockers / open risks
-- R3 is 🟡 awaiting reviewer sign-off. R4 remains the next independent phase on the same decoupled dataset and must use a separate result dir.
+- R3 and R4 are 🟡 awaiting reviewer sign-off. R5 depends on both being reviewer-✅.
 - Baseline test suite has 2 pre-existing failures in `research/comparison/tests/test_closed_loop.py`, both from `py_roadmap_engine` rejecting `RoadmapInput(materials=[])` during closed-loop regeneration.
 
 ---
@@ -160,3 +167,12 @@ last_updated: "2026-06-30 16:45 IST — Codex"
 - **Results / numbers:** decoupled winner by shift type is `cusum` for both drift and step; cell-level Holm wins vs `cusum` are 3 total (`page_hinkley` max/fading_flame/drift, `csd` medium/fading_flame/drift, `page_hinkley` medium/fading_flame/drift); no step-cell Holm win survives. Active-axis mapping check: `1720/1720` shifts mapped, `0` bad.
 - **Deviations / decisions:** No R3 code change and no new test were needed; existing train-only tuning test passed and the dataset-level mapping check showed the active-axis ordering did not change.
 - **Left off at / next:** R3 is 🟡 awaiting reviewer sign-off. Next independent phase: R4 ETA benchmark; implement/register analytic/composite candidates and run projection to `research/results/projection_decoupled`.
+
+### 2026-06-30 17:29 IST — session 6 — Codex
+- **Goal this session:** Execute R4 ETA benchmark: add/select analytic/composite ETA candidates, run the full decoupled projection track, and leave R4 at 🟡 for review.
+- **Did:** Verified R4 projection anchors against live code; wrote red tests for the new forecasters; implemented `analytic_required_rate` and `gp_plus_analytic`; registered both candidates; extended default projection grid with `t=3`; added `cold_start_eval` and explicit deferred `reference_line_eval` payload blocks; ran focused/full projection tests, smoke projection, and the full n5400 decoupled projection benchmark.
+- **Files changed:** `research/comparison/src/research_comparison/baselines/projection.py`; `research/comparison/src/research_comparison/runners/projection.py`; `research/comparison/tests/test_projection_track.py`; `SCRATCHPAD.md`; `VERIFICATION.md`. Generated ignored result on disk: `research/results/projection_decoupled/projection_results.json`.
+- **Commit SHA:** R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`; R4 evidence docs pending commit.
+- **Results / numbers:** `gp_plus_analytic` beats `gp_ard` under held-out + Holm on small only (4/4 small held-out cells); no medium/max wins. `analytic_required_rate` has no Holm wins. R4a small cold-start improves MAE and coverage (`gp_ard 5.095 days/0.185 coverage` vs composite `4.075 days/0.43875 coverage`) but medium/max cold-start worsen MAE while widening coverage. R4b deferred explicitly.
+- **Deviations / decisions:** OQ-3 resolved as `COLD_START_N=5` with recent daily actual-minute interval recipe; R4b reference-line eval deferred per PLAN D-07 lower-priority allowance. Full benchmark was long (`~36` minutes Python CPU) because `gp_plus_analytic` currently performs its own GP non-crossing check.
+- **Left off at / next:** R4 is 🟡 awaiting reviewer sign-off. Do not begin R5 until R3 and R4 are reviewer-✅.

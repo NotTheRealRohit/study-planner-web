@@ -592,7 +592,7 @@ track, and no step-cell Holm win survives.
 
 ---
 
-## R4 — ETA benchmark (HEADLINE)  ☐
+## R4 — ETA benchmark (HEADLINE)  🟡
 **Acceptance criteria**
 - [ ] `forecast_analytic_required_rate` + `forecast_gp_plus_analytic` added to `baselines/projection.py`
       (correct signature + return shape); both registered in `projection_candidates()` (runners/projection.py).
@@ -608,6 +608,111 @@ track, and no step-cell Holm win survives.
 - [ ] New-forecaster tests added (shape, cold-start switch, non-crossing rescue).
 
 **Developer notes:**
+R4 implemented by Codex on 2026-06-30. Code/tests commit:
+`7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`.
+
+Files changed for R4 code/tests:
+- `research/comparison/src/research_comparison/baselines/projection.py`
+- `research/comparison/src/research_comparison/runners/projection.py`
+- `research/comparison/tests/test_projection_track.py`
+
+Files changed for committed R4 evidence:
+- `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
+- `.work/plans/active/2026-06-30-research-eta-model-selection/VERIFICATION.md`
+
+Generated result file on disk, ignored by existing repo convention:
+- `research/results/projection_decoupled/projection_results.json` (`132M`, mtime `2026-06-30 17:25`)
+
+Commands run:
+```
+uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q \
+  -k 'analytic_required_rate or gp_plus_analytic or projection_candidates'
+uv run --package research-comparison pytest research/comparison/tests/test_projection_track.py -q
+uv run --package research-comparison python -m research_comparison.runners.projection \
+  --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 \
+  --out-dir /private/tmp/study-r4-projection-smoke --seeds 4 --quiet
+uv run --package research-comparison python -m research_comparison.runners.projection \
+  --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
+  --out-dir research/results/projection_decoupled --seeds 200 --quiet
+```
+
+The focused test command was red first at collection because the new forecaster imports were not yet
+implemented, then green after implementation: `4 passed, 9 deselected`. Full projection tests passed:
+`13 passed in 97.47s`. Smoke projection wrote
+`/private/tmp/study-r4-projection-smoke/projection_results.json`. The full benchmark wrote
+`research/results/projection_decoupled/projection_results.json`.
+
+R4 implementation notes:
+- Added `forecast_analytic_required_rate(...)` in actual-minutes currency:
+  `consumed_actual / elapsed_days` for effective daily rate and `remaining_actual / effective_daily`
+  for days left. No throughput-factor multiplication is applied.
+- Added `forecast_gp_plus_analytic_finish(...)`: cold-start fallback when `len(sessions) < COLD_START_N`,
+  GP non-crossing rescue when the GP predicted finish reaches `horizon_end_date`, otherwise GP point + CI.
+- Registered `analytic_required_rate` and `gp_plus_analytic` in `projection_candidates()`.
+- Set `COLD_START_N=5` and extended `default_t_grid` with `t=3`; the payload now includes
+  `cold_start_eval`.
+- `reference_line_eval` is present with `status="deferred"` and options
+  `linear_to_deadline` / `capacity_shaped` per PLAN D-07's lower-priority allowance.
+
+R4 provenance:
+`dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`; `scored_split=held_out`;
+`generator_version=0.2.0`; `params_version_hash=9e6d48db2da8`; `seed_count=200`;
+`n_learners=5400`; `bands=[small, medium, max]`; train archetypes
+`crammer, marathon_runner, morning_lark, steady, steady_improver`; held-out archetypes
+`deadline_sprinter, fading_flame, night_owl, weekend_warrior`.
+
+Protection check: frozen P0b projection anchor was not clobbered:
+`research/results/projection/projection_results.json` remains `74M`, mtime `2026-06-30 12:28`.
+
+Per-band held-out metrics (coverage / MAE-days / sharpness):
+- max: `gp_ard=0.18305555555555553 / 39.53 / 7.955416666666666`;
+  `analytic_required_rate=0.16652777777777777 / 53.18875 / 6.948472222222222`;
+  `gp_plus_analytic=0.1948611111111111 / 52.10486111111111 / 10.707083333333333`.
+- medium: `gp_ard=0.2765178571428571 / 15.331294642857141 / 4.715133928571428`;
+  `analytic_required_rate=0.2524330357142857 / 17.462477678571428 / 4.786852678571428`;
+  `gp_plus_analytic=0.2912053571428571 / 17.099375 / 6.221741071428571`.
+- small: `gp_ard=0.49370833333333336 / 2.3605625 / 1.6494375`;
+  `analytic_required_rate=0.5541875 / 2.6165208333333334 / 2.5414375000000002`;
+  `gp_plus_analytic=0.5516041666666667 / 2.1386041666666666 / 2.2782291666666667`.
+
+Band-level paired deltas vs `gp_ard`:
+- max: analytic delta `13.813958333333332` (p `1.497639506256032E-18`), composite delta
+  `12.484322222222222` (p `1.6136722359015614E-15`) — both worse.
+- medium: analytic delta `2.3727484375` (p `6.367674123357731E-9`), composite delta
+  `1.6362714285714284` (p `0.00001775162459571553`) — both worse.
+- small: analytic delta `-0.22866333333333327` (p `0.12866069027806384`) — not significant;
+  composite delta `-0.72837875` (p `6.345483612505526E-28`) — better.
+
+Cell-level Holm verdict vs `gp_ard`:
+- `gp_plus_analytic` survives as a Holm win in all four small held-out cells:
+  `small|deadline_sprinter` delta `-0.6706508333333332` (p `3.102292811909608E-7`),
+  `small|fading_flame` delta `-0.6304708333333333` (p `6.697666051794205E-8`),
+  `small|night_owl` delta `-0.8604408333333333` (p `4.817884368561571E-10`),
+  `small|weekend_warrior` delta `-0.7519525` (p `7.192617306070427E-10`).
+- `analytic_required_rate` has no Holm-surviving wins. Its small-band deltas are directionally better but
+  non-significant; max is worse in all four cells, and medium has three Holm-significant losses.
+- `gp_plus_analytic` has Holm-significant losses in all max cells and non-significant worse deltas in all
+  medium cells.
+
+Explicit headline verdict: **`gp_plus_analytic` beats `gp_ard` under held-out + Holm on the small band
+only. It does not beat `gp_ard` on medium or max. `analytic_required_rate` does not beat `gp_ard` under
+Holm on any band.** Oracles remain upper bounds only and are not reported as method wins.
+
+R4a cold-start (`t=3`, held-out only):
+- max: `gp_ard=coverage 0.0125, MAE 57.73375, sharpness 1.03125`;
+  composite/analytic `coverage 0.07, MAE 82.22625, sharpness 14.70875`.
+- medium: `gp_ard=coverage 0.03375, MAE 26.845, sharpness 1.18875`;
+  composite/analytic `coverage 0.13375, MAE 30.7325, sharpness 9.3375`.
+- small: `gp_ard=coverage 0.185, MAE 5.095, sharpness 1.4425`;
+  composite/analytic `coverage 0.43875, MAE 4.075, sharpness 4.2525`.
+
+R4b reference-line eval: explicitly deferred in the payload with reason
+`R4 prioritized candidate selection and cold-start scoring; linear-to-deadline vs capacity-shaped
+reference-line evaluation is lower-priority per PLAN D-07.`
+
+Deviation/reviewer flag: full R4 benchmark was long (`~36` minutes Python CPU) because the composite
+currently calls GP independently to determine non-crossing instead of reusing the already-computed
+`gp_ard` forecast for the same learner/t. This affects runtime only; tests and full benchmark completed.
 
 **Reviewer findings:**
 
