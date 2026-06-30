@@ -133,7 +133,7 @@ last_updated: "2026-06-30 15:20 IST — Codex"
 - **Goal this session:** Execute R2 calibration regression on the reviewer-verified decoupled dataset and leave R2 at 🟡 for review.
 - **Did:** Committed the pending R1 reviewer docs first (`b68efec`); verified R2 calibration anchors against live code (`active/planned` reader and protected reference ids); ran an n108 smoke calibration, the full n5400 decoupled calibration to a separate out-dir, and focused calibration tests; extracted held-out means and Holm flags vs `hierarchical_bayes`; resolved OQ-1 to keep partial throughput points included.
 - **Files changed:** `SCRATCHPAD.md`; `VERIFICATION.md`. Generated ignored result on disk: `research/results/calibration_decoupled/calibration_results.json`.
-- **Commit SHA:** pending.
+- **Commit SHA:** `51a5d4087d7353bdd4e33060a3048252fa50d415`.
 - **Results / numbers:** decoupled context prediction = `enriched_shrink` and `enriched_dual_prior` both 12/12 held-out Holm-win cells; recovery = both 8/12 Holm-win cells, with one Holm-significant loss at `band=max|archetype=night_owl`; P0b default calibration result mtime remained `2026-06-30 11:48:07`; focused tests `21 passed`.
 - **Deviations / decisions:** No code changes and no new tests required by PLAN R2. D-12 resolves OQ-1: partials remain included; no fallback run because the partial-included decoupled result did not degrade transfer evidence relative to P0b.
 - **Left off at / next:** R2 is 🟡 awaiting reviewer sign-off. Next independent phase: R3 detection or R4 ETA benchmark; use separate out-dirs and keep the P0b default dirs untouched.
