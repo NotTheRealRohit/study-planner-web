@@ -20,7 +20,7 @@ last_updated: "2026-06-30 10:41 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** P0 baseline evidence is implemented and awaiting reviewer sign-off.
-- **Branch / last commit:** `project/phase-1` @ `5a3eec91bdb05de177428f597543869c113d110f`
+- **Branch / latest phase evidence commit:** `project/phase-1` @ `5a3eec91bdb05de177428f597543869c113d110f`
 - **Phase board:** P0 🟡 · R1 ☐ · R2 ☐ · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
