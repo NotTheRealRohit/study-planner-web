@@ -388,7 +388,7 @@ drift→cusum/step→page_hinkley baseline). Process note honored: marker left a
 
 ---
 
-## R2 — Calibration regression (transfer → re-confirm)  ☐
+## R2 — Calibration regression (transfer → re-confirm)  🟡
 **Acceptance criteria**
 - [ ] Ran on the decoupled dataset with a **separate `--out-dir`** (A-series `research/results/calibration/`
       not clobbered). Out path: `__________`
@@ -400,6 +400,72 @@ drift→cusum/step→page_hinkley baseline). Process note honored: marker left a
 - [ ] Only **Holm-surviving** improvements reported as "wins."
 
 **Developer notes:**
+R2 implemented by Codex on 2026-06-30. Evidence/docs commit:
+`749e87947c395f84d1e1c4cf3b5b8809d4bfd004`.
+
+Files changed for committed R2 evidence:
+- `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
+- `.work/plans/active/2026-06-30-research-eta-model-selection/VERIFICATION.md`
+
+Generated result file on disk, ignored by existing repo convention:
+- `research/results/calibration_decoupled/calibration_results.json` (`103M`, mtime `2026-06-30 15:02:39`)
+
+Commands run:
+```
+uv run --package research-comparison python -m research_comparison.runners.calibration \
+  --dataset-dir /private/tmp/study-r1-decoupled-smoke/synthetic-decoupled-9e6d48db2da8-seed0-n108 \
+  --out-dir /private/tmp/study-r2-calibration-smoke --seeds 4 --quiet
+uv run --package research-comparison python -m research_comparison.runners.calibration \
+  --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
+  --out-dir research/results/calibration_decoupled --seeds 200 --quiet
+uv run --package research-comparison pytest research/comparison/tests/test_calibration_track.py -q
+```
+The first uv attempt hit the known sandbox cache restriction at `/Users/rsaji/.cache/uv`; escalated reruns
+completed. Focused calibration tests passed: `21 passed in 1.76s`.
+
+R2 provenance:
+`dataset_id=synthetic-decoupled-9e6d48db2da8-seed0-n5400`; `scored_split=held_out`;
+`generator_version=0.2.0`; `params_version_hash=9e6d48db2da8`; `seed_count=200`;
+`n_learners=5400`; `bands=[small, medium, max]`; train archetypes
+`crammer, marathon_runner, morning_lark, steady, steady_improver`; held-out archetypes
+`deadline_sprinter, fading_flame, night_owl, weekend_warrior`.
+
+Protection check: frozen P0b calibration anchor was not clobbered:
+`research/results/calibration/calibration_results.json` remains `102M`, mtime `2026-06-30 11:48:07`.
+The protected calibration reference ids in `runners/calibration.py` remain
+`synthetic-21c2cdabfa91-seed0-n5400` and `synthetic-reality-c545404bcacf-seed0-n5400`.
+
+Headline held-out means from the decoupled result:
+- `recovery_mae`: max `hierarchical_bayes=0.053781208921856095`,
+  `enriched_shrink=0.05796821240533966`, `enriched_dual_prior=0.05796821240533963`;
+  medium `hierarchical_bayes=0.06282626722706933`, `enriched_shrink=0.0464706622090255`,
+  `enriched_dual_prior=0.046470662209025446`; small `hierarchical_bayes=0.07298248820655219`,
+  `enriched_shrink=0.041654466222238236`, `enriched_dual_prior=0.041654466222238166`.
+- `context_pred_mae`: max `hierarchical_bayes=0.0637788512190975`,
+  `enriched_shrink=0.0330672740666157`, `enriched_dual_prior=0.033067274066615714`;
+  medium `hierarchical_bayes=0.06772464999821183`, `enriched_shrink=0.0409602186967752`,
+  `enriched_dual_prior=0.040960218696775214`; small `hierarchical_bayes=0.07099182097701337`,
+  `enriched_shrink=0.05645622275279758`, `enriched_dual_prior=0.0564562227527976`.
+
+Holm verdict vs `hierarchical_bayes`:
+- `context_pred_mae`: `enriched_shrink` and `enriched_dual_prior` both survive as Holm wins in all
+  12 held-out band/archetype cells.
+- `recovery_mae`: both survive as Holm wins in 8/12 cells, have one Holm-significant loss
+  (`band=max|archetype=night_owl`), and three non-winning/non-significant cells. Win cells are
+  max/fading_flame, max/weekend_warrior, medium/fading_flame, medium/weekend_warrior, and all four small-band
+  held-out archetypes.
+
+Comparison to the frozen P0b baseline:
+- P0b `context_pred_mae` had 11/12 Holm-win cells for each enriched candidate and one small/night_owl
+  Holm-significant loss; decoupled improves this to 12/12 wins.
+- P0b `recovery_mae` had `enriched_shrink` 6/12 Holm-win cells and `enriched_dual_prior` 2/12; decoupled
+  improves both to 8/12. Therefore the partial-included decoupled run does not degrade the transfer
+  evidence relative to P0b.
+
+OQ-1 resolution / fallback: no fallback run was executed. The inclusion policy remains **include partial
+throughput points**, because the decoupled partial-included run improved or preserved the relevant
+Holm-surviving evidence compared with the frozen baseline. Reporting is cell-level only: only
+Holm-surviving improvements are called wins; `max/night_owl` recovery is explicitly a loss/caveat.
 
 **Reviewer findings:**
 
