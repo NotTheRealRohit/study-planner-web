@@ -1,7 +1,7 @@
 ---
 title: study-planner-web — STATUS (read-first index)
 status: active living document
-last_updated: 2026-06-27
+last_updated: 2026-06-30
 location_note: >
   This is .work/STATUS.md — the single read-first index, living at the root of .work/ (inside the
   repo, tracked on purpose so git clean can't delete it). Paths below are relative to .work/ (non-.work
@@ -37,6 +37,7 @@ update_protocol: >
 - **[APP] enriched_shrink production integration.** ✅ Cowork-verified. Immediate: record the Phase-0 dual-prior small-band caveat in the claims ledger. → [`plans/active/2026-06-20-enriched-shrink-production-integration/`](plans/active/2026-06-20-enriched-shrink-production-integration/PLAN.md)
 - **[RESEARCH] Phase 5 — N=1 real-data validation.** Log own sessions → export → harness → face-validity overlay + case study (circularity guard).
 - **[RESEARCH] Phase 6 — report wiring.** `make figs` → `\input` generated tables/figures into `main.tex`; provenance stamps; reproducibility gate.
+- **[APP][RESEARCH] Material ↔ session decoupling redesign (design phase).** 🟡 Grilling session 2026-06-30 — retire the prescriptive dated-slot packer (root cause of the `/onboarding/3?new=1` bug); materials become a browsable directory, sessions decouple into a **session-booking** model (engine lays out blank bookings = date + estimated duration, capacity-only; user attaches/soft-suggested material; pick & confirm via the dial). **Decisions D1–D11 locked** — throughput calibration preserves Pillar A (verified against the synthetic generator: `planned`=material chunk, `active=planned×pace`); dial UX prototype `SessionDial.jsx`; partial/interrupt auto-log; pace-first recommendation (Q3); progress material-based w/ partial position; legacy via **read-time adapter** + bookings as first-class `SessionBooked`/`BookingEdited`/`BookingCleared` events. **#3 ETA composite proposed, gated on research R4.** Two handoffs out — research model-selection (→ Opus) + UI planning. → decisions [`plans/active/2026-06-30-material-session-decoupling/DECISIONS.md`](plans/active/2026-06-30-material-session-decoupling/DECISIONS.md) · handovers [`research`](handovers/2026-06-30-research-eta-model-selection.md) · [`UI`](handovers/2026-06-30-ui-planning-handoff.md)
 
 ## Queued
 

@@ -243,6 +243,34 @@ Projection-run deviation and fix:
 
 Per reviewer instruction, P0 is flipped to ✅ because P0b's frozen baseline is on disk and snapshotted.
 
+**Reviewer sign-off — P0b (2026-06-30 · Cowork/planner): ✅ RATIFIED. P0 is genuinely complete.**
+Independently re-verified against the repo:
+- All three on-disk result JSONs now stamp `synthetic-21c2cdabfa91-seed0-n5400` — **9 archetypes × 3 bands
+  × 200 = 5400**, frozen hash `21c2cdabfa91`, held-out split 5-train/4-held (matches
+  `DEFAULT_HELDOUT_TRAIN_ARCHETYPES`). Correct A-series anchor. ✅
+- Calibration registry now includes `enriched_shrink` + `enriched_dual_prior` (+ `archetype_router_hard`,
+  `archetype_soft`). The dual-prior win R2 must test **is present** on this baseline: `enriched_shrink` and
+  `enriched_dual_prior` are Holm survivors vs `hierarchical_bayes` on **both** `recovery_mae` and
+  `context_pred_mae`. So R2 has a genuine win to re-confirm transfers. ✅
+- The "overflow fix" (`_index_to_date` clamp to `date.min/max` + non-finite guard) is **safe and
+  legitimate** — it round-trips in-range dates identically and only tames pathological far-future indices
+  (the frozen `max` band's long horizons trigger it; it will also matter for the R4 analytic candidate).
+  Regression test added. Accepted into scope as a necessary baseline-completion fix.
+
+Two findings to carry forward (not P0 defects — context for later phases):
+1. **Detection baseline is NOT a pure robust-null on this lineage.** Current code gives `cusum` wins
+   `drift` but **`page_hinkley` wins `step`**, and `csd`+`page_hinkley` Holm-survive vs `cusum` on the
+   `fading_flame` cells. This matches the **A4** result, not the simpler "nothing beats CUSUM" framing.
+   **R3 must state its verdict against THIS baseline** (drift→cusum, step→page_hinkley), not against a
+   pure-null strawman.
+2. **Name reconciliation:** the dual-prior candidate is registered as **`enriched_dual_prior`** (not
+   `dual_prior` as the PLAN prose says). R2/R4/R5 must use `enriched_dual_prior` in all paired comparisons
+   and write-ups.
+
+Process note for future phases: leave the phase marker at **🟡** when you finish and let the reviewer flip
+🟡→✅ (you pre-set ✅ here; substance was correct so I ratified, but keep the gate one-directional going
+forward). **R1 is cleared to start.**
+
 ---
 
 ## R1 — `decoupled` generator regime  ☐
@@ -270,8 +298,9 @@ Per reviewer instruction, P0 is flipped to ✅ because P0b's frozen baseline is 
 **Acceptance criteria**
 - [ ] Ran on the decoupled dataset with a **separate `--out-dir`** (A-series `research/results/calibration/`
       not clobbered). Out path: `__________`
-- [ ] Held-out + Holm verdict for `enriched_shrink` / `dual_prior` vs `hierarchical_bayes` recorded
-      (`survives_holm_win`), compared to the P0 baseline.
+- [ ] Held-out + Holm verdict for `enriched_shrink` / `enriched_dual_prior` (the registered dual-prior
+      name — see P0b sign-off) vs `hierarchical_bayes` recorded (`survives_holm_win`), compared to the P0
+      baseline (both survive on the frozen baseline; goal is to confirm they still do on decoupled data).
 - [ ] If degraded by partials: fallback run (down-weight/exclude) recorded; chosen inclusion policy +
       justification documented (OQ-1).
 - [ ] Only **Holm-surviving** improvements reported as "wins."
