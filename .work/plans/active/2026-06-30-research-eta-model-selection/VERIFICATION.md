@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: awaiting-execution
+status: p0-implemented-awaiting-review
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -15,16 +15,68 @@ legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-
 
 ---
 
-## P0 — Baseline, environment, commit-the-plan  ☐
+## P0 — Baseline, environment, commit-the-plan  🟡
 **Acceptance criteria**
-- [ ] Planning docs committed before any code (Step-0). SHA: `__________`
-- [ ] Harness test status recorded (ran: `__/__` pass; or blocked with reason): `__________`
-- [ ] A-series projection provenance recorded from `research/results/projection/projection_results.json`:
-      `dataset_id=____`, `seeds=____`, `bands=____`, `n_learners=____`, `scored_split=____`.
-- [ ] Baseline headline numbers snapshotted: calibration winner/Holm survivors; detection robust-null;
+- [x] Planning docs committed before any code (Step-0). SHA: `17bb1af4b2ca8b85430aa94bfd50fe1e79e277d1`
+- [x] Harness test status recorded (ran: `92/94` pass; or blocked with reason): `2 failed in research/comparison/tests/test_closed_loop.py; both fail because closed-loop regeneration passes RoadmapInput(materials=[]) into py_roadmap_engine, which raises ValueError("at least one material required"). Initial sandbox run was blocked by uv cache permission at /Users/rsaji/.cache/uv; escalated uv run completed.`
+- [x] A-series projection provenance recorded from `research/results/projection/projection_results.json`:
+      `dataset_id=synthetic-reality-3b404c903563-seed0-n3600`, `seeds=200`, `bands=small,medium,max`, `n_learners=3600`, `scored_split=held_out`.
+- [x] Baseline headline numbers snapshotted: calibration winner/Holm survivors; detection robust-null;
       projection coverage/MAE/sharpness per band.
 
-**Developer notes:** _(files, SHA, what ran vs authored-only, deviations)_
+**Developer notes:** P0 implemented by Codex on 2026-06-30. Step-0 planning-doc commit:
+`17bb1af4b2ca8b85430aa94bfd50fe1e79e277d1`. P0 evidence commit:
+`21a08de5eb71e0108a062b30166cb5b06234868d`.
+
+Files changed for P0 evidence: `SCRATCHPAD.md`, `VERIFICATION.md` only.
+
+Commands run:
+- `uv run --package research-comparison pytest research/comparison/tests -q`
+  - sandbox attempt failed before tests: `Failed to initialize cache at /Users/rsaji/.cache/uv`.
+  - escalated rerun completed: `92 passed, 2 failed in 81.80s`.
+  - failing tests: `test_closed_loop_run_regenerates_when_shift_is_detected` and
+    `test_closed_vs_open_metrics_include_adherence_and_finish_drift`.
+  - failure root at baseline: `packages/py-roadmap-engine/src/py_roadmap_engine/engine.py:294`
+    raises `ValueError("at least one material required")` after
+    `research_comparison.runners.closed_loop.run_closed_loop_for_scenario(...)` calls
+    `regenerate_roadmap(...)` with `RoadmapInput(materials=[])`.
+- `jq` extraction commands over:
+  - `research/results/projection/projection_results.json`
+  - `research/results/calibration/calibration_results.json`
+  - `research/results/detection/detection_results.json`
+
+Projection provenance actually on disk:
+`dataset_id=synthetic-reality-3b404c903563-seed0-n3600`; `seed_count=200`;
+`bands=[small, medium, max]`; `n_learners=3600`; formula `6 archetypes x 3 bands x 200 seeds`;
+`scored_split=held_out`; `generator_version=0.1.0`; `params_version_hash=3b404c903563`;
+train archetypes `marathon_runner,morning_lark,steady`; held-out archetypes
+`deadline_sprinter,fading_flame,weekend_warrior`.
+
+Baseline headline snapshot:
+- Calibration: on-disk candidate set is legacy-only
+  (`covariate_bayes, eb_partial_pool, ewma, hierarchical_bayes, kalman, oracle_calibration,
+  pooled_bayes, sma`); `enriched_shrink` and `dual_prior` are not present in this P0 JSON.
+  m_global winners are `oracle_calibration` for max/medium/small; non-oracle
+  `hierarchical_bayes` MAE is max `0.1529828211272382`, medium `0.11212833534127313`,
+  small `0.11001981825580294`. Context-pred Holm survivors vs `hierarchical_bayes` are
+  `ewma`, `sma`, and `oracle_calibration`; recovery-mae Holm survivor is `oracle_calibration` only.
+- Detection: robust-null holds in this baseline. `cusum` wins drift and step; no non-oracle detector has
+  `survives_holm_win=true`. Drift: latency `4.13731380394727`, false alarm `0.18408558783043402`,
+  missed `168.0`, score `16808.73945349971`. Step: latency `2.5582565598190596`, false alarm
+  `0.20726369989319746`, missed `285.0`, score `28507.73984905715`.
+- Projection: `gp_ard` by band: max coverage `0.13083333333333333`, MAE `30.236875`,
+  sharpness `9.068541666666667`; medium coverage `0.2674206349206349`, MAE `13.002420634920634`,
+  sharpness `8.738333333333333`; small coverage `0.31152777777777774`, MAE `6.320277777777777`,
+  sharpness `7.710277777777779`. Holm survivors vs `gp_ard`: `conformal` 9 cells,
+  `gp_hetero_t` 9 cells, `kalman` 3 cells, `linear` 3 cells, `oracle_projection` 9 cells. Treat oracle
+  as an upper bound only.
+
+Deviation/reviewer flag: PLAN expected the D-05 parity target may be the frozen
+`synthetic-21c2cdabfa91-seed0-n5400` / 9-archetype lineage, but the only on-disk projection result is
+`synthetic-reality-3b404c903563-seed0-n3600` / 6 archetypes. PLAN D-05 says to match the current on-disk
+projection result rather than guessing, so SCRATCHPAD D-08 resolves OQ-4 to the current stamped JSON.
+Reviewer should either accept this parity target or request a regenerated A-series baseline before R1/R5
+parity is relied on.
 
 **Reviewer findings:** _(verdict, ✅/❌, date)_
 
