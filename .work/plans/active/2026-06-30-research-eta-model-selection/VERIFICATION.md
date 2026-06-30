@@ -26,7 +26,7 @@ legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-
 
 **Developer notes:** P0 implemented by Codex on 2026-06-30. Step-0 planning-doc commit:
 `17bb1af4b2ca8b85430aa94bfd50fe1e79e277d1`. P0 evidence commit:
-`21a08de5eb71e0108a062b30166cb5b06234868d`.
+`5a3eec91bdb05de177428f597543869c113d110f`.
 
 Files changed for P0 evidence: `SCRATCHPAD.md`, `VERIFICATION.md` only.
 

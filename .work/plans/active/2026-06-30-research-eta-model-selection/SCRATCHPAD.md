@@ -20,7 +20,7 @@ last_updated: "2026-06-30 10:41 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** P0 baseline evidence is implemented and awaiting reviewer sign-off.
-- **Branch / last commit:** `project/phase-1` @ `21a08de5eb71e0108a062b30166cb5b06234868d`
+- **Branch / last commit:** `project/phase-1` @ `5a3eec91bdb05de177428f597543869c113d110f`
 - **Phase board:** P0 🟡 · R1 ☐ · R2 ☐ · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
@@ -67,7 +67,7 @@ last_updated: "2026-06-30 10:41 IST — Codex"
 - **Goal this session:** Execute P0: Step-0 commit, harness baseline, provenance/headline extraction, and verification maintenance.
 - **Did:** Committed the four plan docs verbatim as Step 0; ran the full research comparison pytest suite with uv cache escalation; extracted projection/calibration/detection provenance and headline baselines from stamped result JSONs.
 - **Files changed:** `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`; `.work/plans/active/2026-06-30-research-eta-model-selection/VERIFICATION.md`.
-- **Commit SHA:** Step-0 plan commit `17bb1af4b2ca8b85430aa94bfd50fe1e79e277d1`; P0 evidence commit `21a08de5eb71e0108a062b30166cb5b06234868d`.
+- **Commit SHA:** Step-0 plan commit `17bb1af4b2ca8b85430aa94bfd50fe1e79e277d1`; P0 evidence commit `5a3eec91bdb05de177428f597543869c113d110f`.
 - **Results / numbers:** Harness baseline `92 passed, 2 failed`; projection provenance `synthetic-reality-3b404c903563-seed0-n3600`, `seed_count=200`, `n_learners=3600`, `scored_split=held_out`; headline numbers copied into §5.
 - **Deviations / decisions:** D-08 resolves OQ-4 against the current on-disk projection result; deviations logged in §6.
 - **Left off at / next:** P0 is 🟡 awaiting reviewer sign-off. Do not start dependent R1 until reviewer accepts P0 or gives the requested correction.
