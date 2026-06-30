@@ -11,9 +11,15 @@ import numpy as np
 
 from research_comparison.generator.adherence import attempt_probability, choose_source
 from research_comparison.generator.archetypes import archetype_config
-from research_comparison.generator.capacity import PlannedSlot, build_capacity_plan
+from research_comparison.generator.capacity import (
+    DecoupledBooking,
+    PlannedSlot,
+    build_capacity_plan,
+    build_decoupled_bookings,
+    sample_study_days,
+)
 from research_comparison.generator.effects import delta_deadline, phi_fatigue, trend_multiplier
-from research_comparison.generator.materials import Material, sample_material_mix
+from research_comparison.generator.materials import Material, sample_chunk_minutes, sample_material_mix
 from research_comparison.generator.noise import apply_lognormal_ar1
 from research_comparison.generator.pace import latent_base
 from research_comparison.generator.reality import (
@@ -36,6 +42,17 @@ from research_comparison.params import (
     MANUAL_FRACTION,
     PARAMS_VERSION_HASH,
     ROLE_RHO,
+)
+from research_comparison.params_decoupled import (
+    ADHERENCE_BIAS_CLIP,
+    ADHERENCE_BIAS_LOG_SIGMA,
+    ADHOC_RATE_RANGE,
+    DECOUPLED_DATASET_HASH,
+    DECOUPLED_PARAMS_HASH,
+    DECOUPLED_REGIME,
+    INTERRUPTION_RATE_RANGE,
+    PARTIAL_POSITION_FRACTION_RANGE,
+    STUDY_DAY_COUNT_WEIGHTS,
 )
 from research_comparison.progress_log import ProgressLogger
 
@@ -139,6 +156,98 @@ def _event_for_slot(
     if source == "active":
         base["plannedMinutes"] = round(slot.planned_minutes, 6)
         base["activeMinutes"] = round(slot.planned_minutes * ratio, 6)
+    return base
+
+
+def _bounded_count(target_sessions: int, target_rate: float, low: float, high: float) -> int:
+    lower = int(np.ceil(target_sessions * low))
+    upper = int(np.floor(target_sessions * high))
+    if upper < lower:
+        upper = lower
+    count = int(round(target_sessions * target_rate))
+    return max(lower, min(upper, count))
+
+
+def _interruption_indices(
+    target_sessions: int,
+    target_rate: float,
+    rng: np.random.Generator,
+) -> set[int]:
+    if target_sessions <= 0:
+        return set()
+    count = _bounded_count(
+        target_sessions,
+        target_rate,
+        INTERRUPTION_RATE_RANGE[0],
+        INTERRUPTION_RATE_RANGE[1],
+    )
+    count = min(target_sessions, count)
+    return {int(value) for value in rng.choice(np.arange(target_sessions), size=count, replace=False)}
+
+
+def _material_for_progress(
+    materials: list[Material],
+    progress_by_material: dict[str, float],
+    fallback_index: int,
+) -> Material:
+    for material in materials:
+        if progress_by_material[material.material_id] < material.total_minutes - 1e-6:
+            return material
+    return materials[fallback_index % len(materials)]
+
+
+def _true_finish_date_from_events(
+    sessions: list[SessionEvent],
+    materials: list[Material],
+    r_star: list[float],
+) -> str:
+    target_minutes = sum(material.total_minutes for material in materials)
+    cumulative = 0.0
+    for event, latent in zip(sessions, r_star, strict=True):
+        planned = event.get("plannedMinutes")
+        consumed_estimate = float(planned) if planned is not None else float(event["duration"])
+        cumulative += consumed_estimate * latent
+        if cumulative >= target_minutes:
+            return str(event["date"])
+    return str(sessions[-1]["date"])
+
+
+def _event_for_decoupled_booking(
+    archetype: str,
+    band: str,
+    seed: int,
+    index: int,
+    booking: DecoupledBooking,
+    material: Material,
+    source: str,
+    ratio: float,
+    planned_material_minutes: float,
+    material_chunk_minutes: float,
+    planned_session_minutes: float,
+    material_position: float,
+    resolution: str,
+) -> SessionEvent:
+    planned_value = round(planned_material_minutes, 12)
+    active_minutes = planned_value * ratio
+    duration = active_minutes if source == "active" else planned_material_minutes
+    base: SessionEvent = {
+        "date": booking.date.isoformat(),
+        "source": source,  # type: ignore[typeddict-item]
+        "duration": round(duration, 12),
+        "materialRole": material.role,
+        "materialId": material.material_id,
+        "materialChunkMinutes": round(material_chunk_minutes, 12),
+        "plannedSessionMinutes": round(max(planned_session_minutes, 1e-6), 12),
+        "resolution": resolution,  # type: ignore[typeddict-item]
+        "materialPosition": round(material_position, 12),
+        "bookingId": booking.booking_id,
+        "isAdHoc": booking.is_adhoc,
+        "startedAt": booking.started_at,
+        "sessionId": f"{archetype}-{band}-{seed}-decoupled-{index:04d}",
+    }
+    if source == "active":
+        base["plannedMinutes"] = planned_value
+        base["activeMinutes"] = round(active_minutes, 12)
     return base
 
 
@@ -368,6 +477,174 @@ def generate_reality_matched_learner(
     return events, truth, metadata
 
 
+def generate_decoupled_learner(
+    archetype: str,
+    band: str,
+    seed: int,
+    overrides: dict[str, float] | None = None,
+) -> tuple[list[SessionEvent], GroundTruth, dict[str, Any]]:
+    selected_overrides = overrides or {}
+    rng = np.random.default_rng(seed)
+    config = archetype_config(archetype)
+    if "sigma_log" in selected_overrides:
+        config["sigma_log"] = float(selected_overrides["sigma_log"])
+    target_sessions = _target_sessions(band, rng)
+    materials = sample_material_mix(band, rng)
+    study_days = sample_study_days(rng, STUDY_DAY_COUNT_WEIGHTS)
+    target_adhoc_rate = float(rng.uniform(*ADHOC_RATE_RANGE))
+    target_interruption_rate = float(rng.uniform(*INTERRUPTION_RATE_RANGE))
+    adherence_bias = float(
+        np.clip(
+            rng.lognormal(mean=0.0, sigma=ADHERENCE_BIAS_LOG_SIGMA),
+            ADHERENCE_BIAS_CLIP[0],
+            ADHERENCE_BIAS_CLIP[1],
+        )
+    )
+    bookings = build_decoupled_bookings(
+        target_sessions,
+        rng,
+        study_days,
+        target_adhoc_rate,
+        start_date=date(2026, 1, 5),
+    )
+    regime, shifts = build_regime_series(
+        archetype,
+        band,
+        len(bookings),
+        rng,
+        step_magnitude=selected_overrides.get("step_mag"),
+        drift_total=selected_overrides.get("drift_total"),
+    )
+    interrupted_indices = _interruption_indices(
+        len(bookings),
+        target_interruption_rate,
+        rng,
+    )
+
+    progress_by_material = {material.material_id: 0.0 for material in materials}
+    planned_rows: list[dict[str, Any]] = []
+    for index, booking in enumerate(bookings):
+        material = _material_for_progress(materials, progress_by_material, index)
+        current_progress = progress_by_material[material.material_id]
+        remaining = max(0.0, material.total_minutes - current_progress)
+        raw_chunk = sample_chunk_minutes(material.material_type, rng)
+        material_chunk_minutes = raw_chunk if remaining <= 1e-6 else min(raw_chunk, remaining)
+        material_chunk_minutes = max(1e-6, float(material_chunk_minutes))
+        is_interrupted = index in interrupted_indices
+        if is_interrupted:
+            fraction = float(rng.uniform(*PARTIAL_POSITION_FRACTION_RANGE))
+            planned_material_minutes = max(1e-6, material_chunk_minutes * fraction)
+            resolution = "interrupted"
+            source = "active"
+        else:
+            fraction = 1.0
+            planned_material_minutes = material_chunk_minutes
+            resolution = "complete"
+            source = choose_source(
+                rng,
+                manual_fraction=float(selected_overrides.get("manual_fraction", MANUAL_FRACTION)),
+            )
+        if remaining > 1e-6:
+            progress_by_material[material.material_id] = min(
+                material.total_minutes,
+                current_progress + planned_material_minutes,
+            )
+        material_position = (
+            progress_by_material[material.material_id] / material.total_minutes
+            if material.total_minutes > 0
+            else 1.0
+        )
+        planned_rows.append(
+            {
+                "booking": booking,
+                "material": material,
+                "source": source,
+                "planned_material_minutes": planned_material_minutes,
+                "material_chunk_minutes": material_chunk_minutes,
+                "partial_fraction": fraction,
+                "resolution": resolution,
+                "material_position": min(1.0, material_position),
+            }
+        )
+
+    r_star: list[float] = []
+    for index, (row, regime_multiplier) in enumerate(zip(planned_rows, regime, strict=True)):
+        booking = row["booking"]
+        material = row["material"]
+        latent = (
+            latent_base(
+                float(config["m_global"]),
+                material.role,
+                booking.time_of_day,
+                booking.day_of_week,
+                config,
+            )
+            * regime_multiplier
+            * phi_fatigue(booking.same_day_count)
+            * delta_deadline(index, len(planned_rows), config)
+            * trend_multiplier(index, len(planned_rows), config)
+        )
+        r_star.append(round(float(latent), 6))
+
+    emitted_ratios = list(r_star)
+    clip_rate = 0.0
+    events = []
+    for index, row in enumerate(planned_rows):
+        ratio = emitted_ratios[index]
+        planned_session_minutes = row["material_chunk_minutes"] * ratio / adherence_bias
+        events.append(
+            _event_for_decoupled_booking(
+                archetype,
+                band,
+                seed,
+                index,
+                row["booking"],
+                row["material"],
+                row["source"],
+                ratio,
+                row["planned_material_minutes"],
+                row["material_chunk_minutes"],
+                planned_session_minutes,
+                row["material_position"],
+                row["resolution"],
+            )
+        )
+
+    observed_interruption_rate = sum(
+        1 for event in events if event.get("resolution") == "interrupted"
+    ) / max(1, len(events))
+    observed_adhoc_rate = sum(1 for event in events if event.get("isAdHoc")) / max(1, len(events))
+    truth = GroundTruth(
+        m_global=float(config["m_global"]),
+        role_multipliers=dict(ROLE_RHO),
+        context_multipliers=_context_multipliers(config),
+        regime_schedule=shifts,
+        r_star=r_star,
+        true_finish_date=_true_finish_date_from_events(events, materials, r_star),
+        is_faker=False,
+        clip_rate=round(float(clip_rate), 6),
+        study_days=study_days,
+        adherence_bias=round(adherence_bias, 6),
+        interruption_rate=round(float(observed_interruption_rate), 6),
+        adhoc_rate=round(float(observed_adhoc_rate), 6),
+    )
+    metadata = {
+        "generator_regime": DECOUPLED_REGIME,
+        "decoupled_params_hash": DECOUPLED_PARAMS_HASH,
+        "base_params_version_hash": PARAMS_VERSION_HASH,
+        "decoupled_targets": {
+            "adhoc_rate": round(target_adhoc_rate, 6),
+            "interruption_rate": round(target_interruption_rate, 6),
+            "adherence_bias": round(adherence_bias, 6),
+        },
+        "planned_horizon": {
+            "deadline": events[-1]["date"],
+            "planned_total_sessions": len(events),
+        },
+    }
+    return events, truth, metadata
+
+
 def generate_dataset(
     archetype_mix: dict[str, int] | None = None,
     bands: list[str] | None = None,
@@ -385,6 +662,10 @@ def generate_dataset(
     if generator_regime == FROZEN_REGIME:
         dataset_hash = PARAMS_VERSION_HASH
         dataset_id = f"synthetic-{PARAMS_VERSION_HASH}-seed{selected_seeds[0]}-n{n_learners}"
+        selected_moment_bounds = None
+    elif generator_regime == DECOUPLED_REGIME:
+        dataset_hash = DECOUPLED_DATASET_HASH
+        dataset_id = f"synthetic-decoupled-{dataset_hash}-seed{selected_seeds[0]}-n{n_learners}"
         selected_moment_bounds = None
     elif generator_regime == REALITY_REGIME:
         selected_moment_bounds = normalise_moment_bounds(moment_bounds)
@@ -416,6 +697,12 @@ def generate_dataset(
                                 learner_seed,
                                 moment_bounds=selected_moment_bounds,
                             )
+                        elif generator_regime == DECOUPLED_REGIME:
+                            sessions, truth, sidecar_extras = generate_decoupled_learner(
+                                archetype,
+                                band,
+                                learner_seed,
+                            )
                         else:
                             sessions, truth = generate_learner(archetype, band, learner_seed)
                         planned_horizon = sidecar_extras.pop("planned_horizon", None)
@@ -442,9 +729,14 @@ def generate_dataset(
                             )
                             + "\n"
                         )
+                        ground_truth = {
+                            key: value
+                            for key, value in asdict(truth).items()
+                            if value is not None
+                        }
                         sidecar_file.write(
                             json.dumps(
-                                {**metadata, "ground_truth": asdict(truth), **sidecar_extras},
+                                {**metadata, "ground_truth": ground_truth, **sidecar_extras},
                                 sort_keys=True,
                                 default=_json_default,
                             )
@@ -488,6 +780,11 @@ def generate_dataset(
             "proxy_mapping": selected_moment_bounds.get("proxy_mapping"),
             "bounds": selected_moment_bounds.get("bounds"),
         }
+    if generator_regime == DECOUPLED_REGIME:
+        manifest_dict["decoupled_params_hash"] = DECOUPLED_PARAMS_HASH
+        manifest_dict["decoupled_dataset_hash_source"] = (
+            "sha256(PARAMS_VERSION_HASH ':' DECOUPLED_PARAMS_HASH)[:12]"
+        )
     (dataset_dir / "manifest.json").write_text(
         json.dumps(manifest_dict, indent=2, sort_keys=True),
         encoding="utf-8",
@@ -505,6 +802,12 @@ def export_face_validity(dataset_dir: str) -> None:
     pace_ratio: list[float] = []
     duration: list[float] = []
     gaps_days: list[int] = []
+    planned_session_minutes: list[float] = []
+    material_position: list[float] = []
+    adherence_ratio: list[float] = []
+    partial_fraction: list[float] = []
+    is_adhoc: list[bool] = []
+    resolution: list[str] = []
     for line in (dataset_path / "learners.jsonl").read_text(encoding="utf-8").splitlines():
         learner = json.loads(line)
         previous_date: date | None = None
@@ -516,11 +819,33 @@ def export_face_validity(dataset_dir: str) -> None:
             duration.append(float(event["duration"]))
             if event["source"] == "active":
                 pace_ratio.append(float(event["activeMinutes"]) / float(event["plannedMinutes"]))
+                if event.get("plannedSessionMinutes"):
+                    adherence_ratio.append(
+                        float(event["activeMinutes"]) / float(event["plannedSessionMinutes"])
+                    )
+            if event.get("plannedSessionMinutes") is not None:
+                planned_session_minutes.append(float(event["plannedSessionMinutes"]))
+            if event.get("materialPosition") is not None:
+                material_position.append(float(event["materialPosition"]))
+            if event.get("isAdHoc") is not None:
+                is_adhoc.append(bool(event["isAdHoc"]))
+            if event.get("resolution") is not None:
+                resolution.append(str(event["resolution"]))
+            if event.get("resolution") == "interrupted" and event.get("materialChunkMinutes"):
+                partial_fraction.append(
+                    float(event["plannedMinutes"]) / float(event["materialChunkMinutes"])
+                )
 
     output = {
         "pace_ratio": pace_ratio,
         "duration": duration,
         "gaps_days": gaps_days,
+        "planned_session_minutes": planned_session_minutes,
+        "material_position": material_position,
+        "adherence_ratio": adherence_ratio,
+        "partial_fraction": partial_fraction,
+        "is_adhoc": is_adhoc,
+        "resolution": resolution,
     }
     (dataset_path / "face_validity.json").write_text(
         json.dumps(output, indent=2, sort_keys=True),
@@ -541,7 +866,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stub", action="store_true")
     parser.add_argument("--out-dir", default=None)
-    parser.add_argument("--regime", choices=[FROZEN_REGIME, REALITY_REGIME], default=FROZEN_REGIME)
+    parser.add_argument(
+        "--regime",
+        choices=[FROZEN_REGIME, REALITY_REGIME, DECOUPLED_REGIME],
+        default=FROZEN_REGIME,
+    )
     parser.add_argument("--moment-bounds-file", default=None)
     parser.add_argument("--seeds", type=int, default=None)
     parser.add_argument("--quiet", action="store_true", help="suppress progress output on stderr")

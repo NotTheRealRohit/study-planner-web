@@ -22,8 +22,20 @@ class PlannedSlot:
     same_day_count: int
 
 
+@dataclass(frozen=True)
+class DecoupledBooking:
+    booking_id: str
+    date: date
+    day_of_week: str
+    time_of_day: str
+    started_at: str
+    same_day_count: int
+    is_adhoc: bool
+
+
 _TIME_BY_SLOT = ["morning", "afternoon", "evening"]
 _HOUR_BY_TIME = {"morning": 8, "afternoon": 14, "evening": 19}
+_DAY_NAMES = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 
 
 def _iso_started_at(day: date, time_of_day: str) -> str:
@@ -66,3 +78,84 @@ def build_capacity_plan(
             )
         day_offset += 1
     return slots
+
+
+def sample_study_days(
+    rng: np.random.Generator,
+    count_weights: dict[int, float],
+) -> list[str]:
+    counts = np.array(sorted(count_weights), dtype=int)
+    weights = np.array([count_weights[int(count)] for count in counts], dtype=float)
+    probabilities = weights / weights.sum()
+    count = int(rng.choice(counts, p=probabilities))
+    selected = sorted(int(value) for value in rng.choice(np.arange(7), size=count, replace=False))
+    return [_DAY_NAMES[index] for index in selected]
+
+
+def _rate_count(target_sessions: int, target_rate: float, low: float, high: float) -> int:
+    if target_sessions <= 0:
+        return 0
+    lower = int(np.ceil(target_sessions * low))
+    upper = int(np.floor(target_sessions * high))
+    if upper < lower:
+        upper = lower
+    count = int(round(target_sessions * target_rate))
+    return max(lower, min(upper, count))
+
+
+def build_decoupled_bookings(
+    target_sessions: int,
+    rng: np.random.Generator,
+    study_days: list[str],
+    adhoc_rate: float,
+    start_date: date | None = None,
+) -> list[DecoupledBooking]:
+    if target_sessions <= 0:
+        return []
+    start = start_date or date(2026, 1, 5)
+    study_day_set = set(study_days)
+    adhoc_target = min(target_sessions - 1, _rate_count(target_sessions, adhoc_rate, 0.10, 0.20))
+    study_target = target_sessions - adhoc_target
+
+    study_offsets: list[int] = []
+    non_study_offsets: list[int] = []
+    day_offset = 0
+    while len(study_offsets) < study_target or len(non_study_offsets) < adhoc_target:
+        day = start + timedelta(days=day_offset)
+        day_name = day.strftime("%A").lower()
+        if day_name in study_day_set:
+            if len(study_offsets) < study_target:
+                study_offsets.append(day_offset)
+        elif len(non_study_offsets) < max(adhoc_target * 4, adhoc_target):
+            non_study_offsets.append(day_offset)
+        day_offset += 1
+
+    if adhoc_target > 0:
+        adhoc_offsets = sorted(
+            int(value) for value in rng.choice(non_study_offsets, size=adhoc_target, replace=False)
+        )
+    else:
+        adhoc_offsets = []
+    scheduled = sorted(
+        [(offset, False) for offset in study_offsets]
+        + [(offset, True) for offset in adhoc_offsets],
+        key=lambda row: (row[0], row[1]),
+    )
+
+    bookings: list[DecoupledBooking] = []
+    for index, (offset, is_adhoc) in enumerate(scheduled):
+        day = start + timedelta(days=offset)
+        time_of_day = _TIME_BY_SLOT[(offset + index) % len(_TIME_BY_SLOT)]
+        prefix = "adhoc" if is_adhoc else "booking"
+        bookings.append(
+            DecoupledBooking(
+                booking_id=f"{prefix}-{index:04d}",
+                date=day,
+                day_of_week=day.strftime("%A").lower(),
+                time_of_day=time_of_day,
+                started_at=_iso_started_at(day, time_of_day),
+                same_day_count=1,
+                is_adhoc=is_adhoc,
+            )
+        )
+    return bookings[:target_sessions]

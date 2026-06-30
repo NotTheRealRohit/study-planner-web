@@ -7,7 +7,9 @@ from datetime import date
 
 from py_progress import MIN_SESSIONS_PER_BUCKET, compute_hierarchical_model
 from research_comparison.generator.generate import (
+    DECOUPLED_REGIME,
     generate_dataset,
+    generate_decoupled_learner,
     generate_learner,
     generate_reality_matched_learner,
 )
@@ -16,10 +18,12 @@ from research_comparison.generator.effects import delta_deadline, trend_multipli
 from research_comparison.generator.oulad_moments import derive_oulad_moment_bounds
 from research_comparison.generator.pace import latent_base
 from research_comparison.params import ARCHETYPES, BANDS, PARAMS_VERSION_HASH
+from research_comparison.params_decoupled import DECOUPLED_PARAMS_HASH
 
 
 def _canonical(events, truth) -> str:
-    return json.dumps({"events": events, "truth": asdict(truth)}, sort_keys=True)
+    truth_dict = {key: value for key, value in asdict(truth).items() if value is not None}
+    return json.dumps({"events": events, "truth": truth_dict}, sort_keys=True)
 
 
 def _moment_bounds_fixture():
@@ -166,6 +170,76 @@ def test_generate_dataset_writes_manifest_sidecar_and_face_validity(tmp_path):
     assert len(learner_lines) == 2
     assert len(sidecar_lines) == 2
     assert face_validity["pace_ratio"]
+
+
+def test_decoupled_generator_preserves_throughput_and_event_invariants():
+    events, truth, metadata = generate_decoupled_learner("steady", "medium", 20260630)
+
+    assert events
+    assert metadata["generator_regime"] == DECOUPLED_REGIME
+    assert metadata["decoupled_params_hash"] == DECOUPLED_PARAMS_HASH
+    assert len(truth.r_star) == len(events)
+    assert 3 <= len(truth.study_days) <= 6
+    assert 0.10 <= truth.adhoc_rate <= 0.20
+    assert 0.15 <= truth.interruption_rate <= 0.25
+
+    active_pairs = [
+        (event, target)
+        for event, target in zip(events, truth.r_star, strict=True)
+        if event["source"] == "active"
+    ]
+    assert active_pairs
+    assert all(float(event["duration"]) > 0 for event in events)
+    assert all("plannedSessionMinutes" in event for event in events)
+    assert all("bookingId" in event for event in events)
+    assert all(0.0 <= float(event["materialPosition"]) <= 1.0 for event in events)
+
+    for event, target in active_pairs:
+        assert event["plannedMinutes"] > 0
+        assert event["activeMinutes"] > 0
+        assert abs((event["activeMinutes"] / event["plannedMinutes"]) - target) < 1e-6
+
+    partials = [event for event in events if event.get("resolution") == "interrupted"]
+    assert partials
+    for event in partials:
+        assert event["source"] == "active"
+        assert 0 < event["plannedMinutes"] < event["materialChunkMinutes"]
+
+    study_days = set(truth.study_days)
+    adhoc_events = [event for event in events if event.get("isAdHoc")]
+    assert adhoc_events
+    for event in adhoc_events:
+        day_name = date.fromisoformat(event["date"]).strftime("%A").lower()
+        assert day_name not in study_days
+
+
+def test_decoupled_dataset_uses_separate_hash_manifest_and_face_validity(tmp_path):
+    dataset_dir = generate_dataset(
+        archetype_mix={"steady": 1},
+        bands=["small"],
+        seeds=[1],
+        out_dir=str(tmp_path),
+        generator_regime=DECOUPLED_REGIME,
+    )
+
+    dataset_path = tmp_path / dataset_dir
+    manifest = json.loads((dataset_path / "manifest.json").read_text())
+    sidecar = json.loads((dataset_path / "sidecars.jsonl").read_text().splitlines()[0])
+    face_validity = json.loads((dataset_path / "face_validity.json").read_text())
+
+    assert dataset_dir.startswith("synthetic-decoupled-")
+    assert manifest["generator_regime"] == DECOUPLED_REGIME
+    assert manifest["generator_version"] == "0.2.0"
+    assert manifest["params_version_hash"] != PARAMS_VERSION_HASH
+    assert manifest["base_params_version_hash"] == PARAMS_VERSION_HASH
+    assert manifest["decoupled_params_hash"] == DECOUPLED_PARAMS_HASH
+    assert sidecar["generator_regime"] == DECOUPLED_REGIME
+    assert sidecar["ground_truth"]["study_days"]
+    assert face_validity["planned_session_minutes"]
+    assert face_validity["material_position"]
+    assert face_validity["adherence_ratio"]
+    assert face_validity["partial_fraction"]
+    assert face_validity["is_adhoc"]
 
 
 def test_oulad_moment_extractor_returns_bounds_not_point_fits(tmp_path):

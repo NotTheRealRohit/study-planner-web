@@ -5,7 +5,7 @@ from typing import Any
 
 from research_comparison.params import PARAMS_VERSION_HASH
 
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 
 
 @dataclass(frozen=True)

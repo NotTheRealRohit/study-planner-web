@@ -13,6 +13,13 @@ class SessionEvent(TypedDict, total=False):
     activeMinutes: float | None
     duration: float
     materialRole: MaterialRole
+    materialId: str
+    materialChunkMinutes: float
+    plannedSessionMinutes: float
+    resolution: Literal["complete", "interrupted"]
+    materialPosition: float
+    bookingId: str
+    isAdHoc: bool
     startedAt: str
     sessionId: str
 
@@ -36,3 +43,7 @@ class GroundTruth:
     true_finish_date: str
     is_faker: bool
     clip_rate: float
+    study_days: list[str] | None = None
+    adherence_bias: float | None = None
+    interruption_rate: float | None = None
+    adhoc_rate: float | None = None
