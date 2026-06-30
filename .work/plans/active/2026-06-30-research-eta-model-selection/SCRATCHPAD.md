@@ -20,7 +20,7 @@ last_updated: "2026-06-30 12:45 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** P0b frozen A-series baseline has been regenerated, snapshotted, and documented; per reviewer instruction P0 is ✅. Stop here before R1.
-- **Branch / latest phase evidence commit:** `project/phase-1` @ pending scoped P0b commit (previous P0 evidence `5a3eec91bdb05de177428f597543869c113d110f`)
+- **Branch / latest phase evidence commit:** `project/phase-1` @ `7c66d89` (previous P0 evidence `5a3eec91bdb05de177428f597543869c113d110f`)
 - **Phase board:** P0 ✅ · R1 ☐ · R2 ☐ · R3 ☐ · R4 ☐ · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
@@ -96,7 +96,7 @@ last_updated: "2026-06-30 12:45 IST — Codex"
 - **Goal this session:** Document and commit the completed P0b frozen-baseline correction, then stop before R1.
 - **Did:** Regenerated and snapshotted the frozen n5400 calibration, detection, and projection baselines; confirmed calibration includes `enriched_shrink` and `enriched_dual_prior`; recorded projection overflow bug/fix evidence.
 - **Files changed:** `SCRATCHPAD.md`, `VERIFICATION.md`, `research/comparison/src/research_comparison/baselines/projection.py`, `research/comparison/tests/test_projection_track.py`.
-- **Commit SHA:** pending scoped P0b commit.
+- **Commit SHA:** `7c66d89` (`fix(research): refresh frozen eta P0 baseline`).
 - **Results / numbers:** frozen baseline provenance and headline metrics copied into §5.
 - **Deviations / decisions:** D-09 supersedes D-08; D-10 records the projection date-overflow guard. Full `test_projection_track.py` run was attempted after focused passes but interrupted by user, so it is not counted as completed verification.
 - **Left off at / next:** Commit scoped P0b work only; start R1 in a later step.
