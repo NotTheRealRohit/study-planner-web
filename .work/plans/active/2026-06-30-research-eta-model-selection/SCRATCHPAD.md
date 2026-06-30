@@ -20,7 +20,7 @@ last_updated: "2026-06-30 17:29 IST — Codex"
 
 ## 1. Current status (one-liner + phase board)
 - **Now:** R4 ETA benchmark is implemented and awaiting reviewer sign-off. Decoupled projection results are on disk in a separate result dir; frozen P0b default-dir projection results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa` (R4 code/tests); R4 evidence docs pending commit.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `7d55bc1` (R4 evidence docs; R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`).
 - **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 🟡 · R5 ☐ · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
@@ -172,7 +172,7 @@ last_updated: "2026-06-30 17:29 IST — Codex"
 - **Goal this session:** Execute R4 ETA benchmark: add/select analytic/composite ETA candidates, run the full decoupled projection track, and leave R4 at 🟡 for review.
 - **Did:** Verified R4 projection anchors against live code; wrote red tests for the new forecasters; implemented `analytic_required_rate` and `gp_plus_analytic`; registered both candidates; extended default projection grid with `t=3`; added `cold_start_eval` and explicit deferred `reference_line_eval` payload blocks; ran focused/full projection tests, smoke projection, and the full n5400 decoupled projection benchmark.
 - **Files changed:** `research/comparison/src/research_comparison/baselines/projection.py`; `research/comparison/src/research_comparison/runners/projection.py`; `research/comparison/tests/test_projection_track.py`; `SCRATCHPAD.md`; `VERIFICATION.md`. Generated ignored result on disk: `research/results/projection_decoupled/projection_results.json`.
-- **Commit SHA:** R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`; R4 evidence docs pending commit.
+- **Commit SHA:** R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`; R4 evidence docs `7d55bc1`.
 - **Results / numbers:** `gp_plus_analytic` beats `gp_ard` under held-out + Holm on small only (4/4 small held-out cells); no medium/max wins. `analytic_required_rate` has no Holm wins. R4a small cold-start improves MAE and coverage (`gp_ard 5.095 days/0.185 coverage` vs composite `4.075 days/0.43875 coverage`) but medium/max cold-start worsen MAE while widening coverage. R4b deferred explicitly.
 - **Deviations / decisions:** OQ-3 resolved as `COLD_START_N=5` with recent daily actual-minute interval recipe; R4b reference-line eval deferred per PLAN D-07 lower-priority allowance. Full benchmark was long (`~36` minutes Python CPU) because `gp_plus_analytic` currently performs its own GP non-crossing check.
 - **Left off at / next:** R4 is 🟡 awaiting reviewer sign-off. Do not begin R5 until R3 and R4 are reviewer-✅.
