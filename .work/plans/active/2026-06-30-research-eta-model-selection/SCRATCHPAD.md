@@ -8,7 +8,7 @@ purpose: >-
   the reviewer can reconstruct exactly what happened. Update at the START of every work session
   (set "Next actions") and at the END (append a Session-log entry). NEVER delete history — append.
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
-last_updated: "2026-06-30 17:29 IST — Codex"
+last_updated: "2026-06-30 17:55 IST — Codex"
 ---
 
 # Scratchpad
@@ -19,14 +19,14 @@ last_updated: "2026-06-30 17:29 IST — Codex"
 > next step — enough that a fresh session (or the reviewer) can resume with zero extra context.
 
 ## 1. Current status (one-liner + phase board)
-- **Now:** R4 ETA benchmark is implemented and awaiting reviewer sign-off. Decoupled projection results are on disk in a separate result dir; frozen P0b default-dir projection results were not clobbered.
-- **Branch / latest phase implementation commit:** `project/phase-1` @ `7d55bc1` (R4 evidence docs; R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`).
-- **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 🟡 · R4 🟡 · R5 ☐ · R6 ☐
+- **Now:** R5 rigour parity + claims-ledger is implemented and awaiting reviewer sign-off. No new benchmarks were run; this phase was documentation, parity extraction, and conservative claim framing from stamped JSONs.
+- **Branch / latest phase implementation commit:** `project/phase-1` @ `4fc907b` (R3/R4 reviewer sign-off docs; R4 code/tests `7f97a3cb43be764e250ca5243d8dc7cfc4b295fa`).
+- **Phase board:** P0 ✅ · R1 ✅ · R2 ✅ · R3 ✅ · R4 ✅ · R5 🟡 · R6 ☐
 
 ## 2. Next actions (the immediate queue — keep this current)
-1. Await reviewer sign-off for R3 and R4. Do not start R5 until both are reviewer-✅.
-2. After R3 + R4 are ✅, start R5 rigour parity + claims ledger: compare frozen vs decoupled headline numbers, update the claims ledger conservatively, and state #3 as small-band-only if the reviewer accepts this R4 result.
-3. Continue carrying forward: use `enriched_dual_prior` (not `dual_prior`), keep default A-series result dirs untouched for decoupled runs, and report only Holm-surviving improvements as wins.
+1. Await reviewer sign-off for R5; do not flip R5 to ✅ yourself.
+2. After R5 review, start R6 with the availability gate first: read PLAN R6 + `college/scope/research-tasklist.md` Phase 5, then locate real N=1 logged sessions / `capture_evidence.py` output. If none exists, stop and ask Rohit; do not fabricate real data.
+3. If real data exists, compute partial-session throughput face-validity and run ETA candidates descriptively only. No synthetic parameter tuning and no algorithm-superiority claim from N=1.
 
 ## 3. Environment / run notes
 - What runs in this sandbox vs authored-only (record the arm64/dep status the first time you hit it): the full research comparison pytest suite runs with escalated permissions for uv cache access; baseline result is `92 passed, 2 failed`.
@@ -97,6 +97,12 @@ last_updated: "2026-06-30 17:29 IST — Codex"
   - **HEADLINE verdict:** `gp_plus_analytic` beats `gp_ard` under held-out + Holm on the **small** band only. It does **not** beat `gp_ard` on medium or max; `analytic_required_rate` does not beat `gp_ard` under Holm on any band. The #3 ETA composite can be claimed only as a small-band cold-start/short-plan improvement unless R5/R6 add further constraints.
   - R4a cold-start (`t=3`, held-out only): max `gp_ard=0.0125 / 57.73375 / 1.03125`, composite/analytic `0.07 / 82.22625 / 14.70875` = worse MAE but better coverage; medium `gp_ard=0.03375 / 26.845 / 1.18875`, composite/analytic `0.13375 / 30.7325 / 9.3375` = worse MAE but better coverage; small `gp_ard=0.185 / 5.095 / 1.4425`, composite/analytic `0.43875 / 4.075 / 4.2525` = better MAE and coverage with wider intervals.
   - R4b reference-line eval is explicitly deferred in the payload with options `linear_to_deadline` and `capacity_shaped`; reason: R4 prioritized candidate selection and cold-start scoring, and PLAN D-07 marks reference-line eval lower priority. Oracles remain upper bounds only.
+- **R5 parity + claims ledger:** protocol parity confirmed from the stamped JSONs and live rigour code.
+  - Frozen anchor: `synthetic-21c2cdabfa91-seed0-n5400`; decoupled anchor: `synthetic-decoupled-9e6d48db2da8-seed0-n5400`. Both stamp 200 seeds, 5400 learners, 9 archetypes, 3 bands, held-out scoring with train `crammer,marathon_runner,morning_lark,steady,steady_improver` and held-out `deadline_sprinter,fading_flame,night_owl,weekend_warrior`.
+  - Correction protocol confirmed from JSON/code: Holm primary, BH reported, bootstrap delta CIs present as `delta_ci_low` / `delta_ci_high` in correction and paired blocks.
+  - Claims ledger updated in `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`: calibration holds (not "decoupling improves"), partials included with R6 caveat, detection more CUSUM-favoring vs A4/P0b, ETA #3 qualified to small/cold-start only.
+  - Comparability doc written: `research/doc/2026-06-30-frozen-vs-decoupled-comparability.md`.
+  - Material/session DECISIONS updated: #3 is **🟡 QUALIFIED** as a cold-start / small-plan fallback layered on GP, not a GP replacement.
 - **R6 N=1:** partial-throughput in-family? = … ; ETA-on-real descriptive error = …
 
 ## 6. Deviations from PLAN (what + why + reviewer-flagged?)
@@ -107,7 +113,7 @@ last_updated: "2026-06-30 17:29 IST — Codex"
 - R2 result tracking follows existing repo convention: `research/results/calibration_decoupled/calibration_results.json` exists locally but is ignored by `.gitignore` via `research/results/`; committed evidence is in `SCRATCHPAD.md` and `VERIFICATION.md`.
 
 ## 7. Blockers / open risks
-- R3 and R4 are 🟡 awaiting reviewer sign-off. R5 depends on both being reviewer-✅.
+- R5 is 🟡 awaiting reviewer sign-off. R6 can begin after R5 because it depends on the honest R5 framing, but its availability gate must find real N=1 logged sessions before any analysis.
 - Baseline test suite has 2 pre-existing failures in `research/comparison/tests/test_closed_loop.py`, both from `py_roadmap_engine` rejecting `RoadmapInput(materials=[])` during closed-loop regeneration.
 
 ---
@@ -176,3 +182,12 @@ last_updated: "2026-06-30 17:29 IST — Codex"
 - **Results / numbers:** `gp_plus_analytic` beats `gp_ard` under held-out + Holm on small only (4/4 small held-out cells); no medium/max wins. `analytic_required_rate` has no Holm wins. R4a small cold-start improves MAE and coverage (`gp_ard 5.095 days/0.185 coverage` vs composite `4.075 days/0.43875 coverage`) but medium/max cold-start worsen MAE while widening coverage. R4b deferred explicitly.
 - **Deviations / decisions:** OQ-3 resolved as `COLD_START_N=5` with recent daily actual-minute interval recipe; R4b reference-line eval deferred per PLAN D-07 lower-priority allowance. Full benchmark was long (`~36` minutes Python CPU) because `gp_plus_analytic` currently performs its own GP non-crossing check.
 - **Left off at / next:** R4 is 🟡 awaiting reviewer sign-off. Do not begin R5 until R3 and R4 are reviewer-✅.
+
+### 2026-06-30 17:55 IST — session 7 — Codex
+- **Goal this session:** Execute R5 rigour parity + claims ledger after R3/R4 reviewer sign-off.
+- **Did:** Verified R2/R3/R4 protocol parity from stamped JSONs and live rigour code; appended the conservative R2/R3/R4 claims-ledger section; wrote the frozen-vs-decoupled comparability doc; updated material/session `DECISIONS.md` to mark #3 as 🟡 QUALIFIED instead of a GP replacement.
+- **Files changed:** `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`; `research/doc/2026-06-30-frozen-vs-decoupled-comparability.md`; `.work/plans/active/2026-06-30-material-session-decoupling/DECISIONS.md`; `SCRATCHPAD.md`; `VERIFICATION.md`.
+- **Commit SHA:** `ac52f9ff633203b67afd35200852e37e146dec51`.
+- **Results / numbers:** Protocol parity confirmed: frozen and decoupled tracks both stamp 200 seeds, 5400 learners, 9 archetypes, 3 bands, held-out 5/4 split, Holm primary, BH reported, and bootstrap delta CIs. R5 claim framing: calibration holds with partials included; detection becomes more CUSUM-favoring vs A4/P0b; ETA #3 is small/cold-start only.
+- **Deviations / decisions:** No benchmark or code change for R5. Left unrelated untracked UI mock files unstaged.
+- **Left off at / next:** R5 is 🟡 awaiting reviewer sign-off. Next phase is R6 availability gate for real N=1 data; stop and ask if no real sessions are available.

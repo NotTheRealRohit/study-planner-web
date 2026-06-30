@@ -219,11 +219,12 @@ The app is **event-sourced** (append-only, synced to Supabase, replayed) — so 
 - ~~**#2 — Replacement for `deriveSlotStatuses`.**~~ **RESOLVED → D9** (session-booking model).
   Derivations become: per-material ledger + per-day activity + booking-status by `bookingId`.
   Sub-forks in D9a.
-- **#3 — ETA / projection redefinition.** 🟡 **Proposed composite (pending R4 benchmark):** GP
-  extrapolation of the material-done curve → finish-date + CI; **analytic** `remaining × tf ÷ rate` →
-  the dial recommendation / required-rate; verdict = GP finish vs deadline; reference line = linear-to-
-  deadline (vs capacity-shaped); cold-start → analytic fallback. Currency = **material** (D3). **Not
-  locked — must be proven by R4** (see §5c). *Gates Home + Roadmap UI display.*
+- **#3 — ETA / projection redefinition.** 🟡 **QUALIFIED by R4:** GP extrapolation of the
+  material-done curve remains the finish-date base. The `gp_plus_analytic` composite is validated only as
+  a **small-plan / cold-start fallback layered on GP**: it beats `gp_ard` under held-out + Holm on the
+  small band only, is worse on max, and `analytic_required_rate` never wins. Do **not** claim this as a
+  general GP replacement. Reference-line eval is still deferred; conformal remains the coverage fix.
+  *Gates Home + Roadmap UI display with qualified copy.*
 - **Lower-priority / plan-time:**
   - ~~Migration of existing slot-based `RoadmapCreated` events.~~ **RESOLVED → D11** (read-time adapter;
     bookings as first-class events).
@@ -279,8 +280,9 @@ a candidate → auto-scored vs ground truth with paired-Holm vs incumbent. Proje
   the new event types are where external validity is weakest — validate partial-chunk throughput + the ETA
   on real logged sessions before claiming.
 
-**Consequence:** the **#3 ETA composite is a hypothesis (🟡), gated on R4** — design the UI to it, but the
-dissertation only claims it once R4 (+R6) back it.
+**Consequence:** the **#3 ETA composite is 🟡 QUALIFIED after R4** — design the UI to use it as a
+small-plan / cold-start fallback layered on GP, but the dissertation must not claim it as a general GP
+replacement. R6 still guards external validity on real N=1 data.
 
 ## 7. UI/UX & build-plan decisions (grill session 2 — 2026-06-30)
 
@@ -358,7 +360,26 @@ elements provisional pending R4; reuse real classes (`onboarding.css`, `roadmap-
 
 ---
 
-<!-- append D15+ here as the grill resolves them -->
+### D15 — Home stays a launcher; material confirm + dial move to a new pre-session page ✅ / 🟡
+**Home (D15, ✅):** stays exactly as today **except** the up-next/booking card labels its material as
+**"Suggested material"** (not a locked assignment). No dial on Home. "Start session" routes to `/session`.
+Mock: `mocks/proposed/home.html` (diff vs `baseline/home.html` = the card copy only).
+**New pre-session page (D15a, 🟡 choosing via mocks):** clicking Start lands on a **new setup step on the
+Session route, before the timer runs** — confirm/swap the material **+ set planned length on the dial**
+(D7) — then Start begins the existing running-session UI. Built faithful to `/session`
+(`.session-frame`, eyebrow→title→subtitle, `material-strip`, `session-actions`). Dial **re-skinned to
+Marginalia** (warm: ink knob, moss recommended, terracotta cap — the `SessionDial.jsx` prototype's
+teal/blue/purple clashed) and **reduced to "set planned length"** (no running ring/timer yet). Three
+variations in `mocks/proposed/session-presession-options.html`:
+- **V1 — Confirm card (stacked):** suggested material as the title, dial where the timer sits, Change +
+  Start. Closest to live session layout.
+- **V2 — Split:** material directory (suggested pre-selected) on the left, dial + Start on the right.
+  Material-choice-forward; stacks on mobile.
+- **V3 — Dial-forward (minimal):** dial is the hero, material a slim strip with a quiet "Change" link.
+Open: which variation; whether soft-cap/recommended copy is enough; the material picker UX (reusing a
+grouped directory + modal, shown as `#picker1`).
+
+<!-- append D16+ here as the grill resolves them -->
 
 ## 6. Change log
 
@@ -408,3 +429,8 @@ elements provisional pending R4; reuse real classes (`onboarding.css`, `roadmap-
   `BookingCleared` events — also closes D9a #4). UI planning handed off
   (`.work/handovers/2026-06-30-ui-planning-handoff.md`). Remaining open: replan contract; claims-ledger
   note; multi-roadmap lifecycle interaction; **#3 gated on R4**.
+- **2026-06-30** — R4 ETA benchmark result incorporated: **#3 is 🟡 QUALIFIED**, not generally proven.
+  `gp_plus_analytic` wins vs `gp_ard` under held-out + Holm on the small band only (cold-start /
+  low-data regime), loses on max, and `analytic_required_rate` never wins. Product framing may use the
+  composite as a cold-start fallback layered on GP; dissertation framing must not call it a GP
+  replacement. R6 real-data guard remains.

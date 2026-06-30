@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: p0-✅ · R1-✅ · R2-✅ · R3-✅ (CUSUM-favoring) · R4-✅ (composite wins small-band only) · R5/R6-ready
+status: p0-✅ · R1-✅ · R2-✅ · R3-✅ (CUSUM-favoring) · R4-✅ (composite wins small-band only) · R5-🟡 · R6-ready
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -762,7 +762,7 @@ eventually to justify the displayed ideal line. **R4 done. R5 (rigour parity + c
 
 ---
 
-## R5 — Rigour parity + claims ledger  ☐
+## R5 — Rigour parity + claims ledger  🟡
 **Acceptance criteria**
 - [ ] R2/R3/R4 protocol matches the A-series projection config recorded in P0 (D-05); provenance hashes
       stamped in each result JSON.
@@ -773,6 +773,64 @@ eventually to justify the displayed ideal line. **R4 done. R5 (rigour parity + c
 - [ ] DECISIONS.md change log updated: #3 flipped to locked-claimable **or** kept 🟡 per evidence.
 
 **Developer notes:**
+R5 implemented by Codex on 2026-06-30. Evidence/docs commit:
+`ac52f9ff633203b67afd35200852e37e146dec51`.
+
+Files changed for R5:
+- `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`
+- `research/doc/2026-06-30-frozen-vs-decoupled-comparability.md`
+- `.work/plans/active/2026-06-30-material-session-decoupling/DECISIONS.md`
+- `.work/plans/active/2026-06-30-research-eta-model-selection/SCRATCHPAD.md`
+- `.work/plans/active/2026-06-30-research-eta-model-selection/VERIFICATION.md`
+
+R5 is docs-only. No new benchmark was run and no code/test was authored for this phase.
+
+Protocol parity confirmed from stamped JSONs:
+- Frozen P0b anchor: `research/results/{calibration,detection,projection}/*_results.json` from
+  `synthetic-21c2cdabfa91-seed0-n5400`.
+- Decoupled R2/R3/R4 results:
+  `research/results/calibration_decoupled/calibration_results.json`,
+  `research/results/detection_decoupled/detection_results.json`, and
+  `research/results/projection_decoupled/projection_results.json`, all from
+  `synthetic-decoupled-9e6d48db2da8-seed0-n5400`.
+- All six result JSONs stamp the parity protocol: 200 seeds, 5400 learners, 9 archetypes, 3 bands,
+  `scored_split=held_out`, train archetypes `crammer, marathon_runner, morning_lark, steady,
+  steady_improver`, and held-out archetypes `deadline_sprinter, fading_flame, night_owl,
+  weekend_warrior`.
+- Live rigour anchors re-checked: `DEFAULT_SEED_COUNT=200`; held-out split uses the same 5 train
+  archetypes; `paired_metric_result(...)` writes bootstrap `delta_ci_low` / `delta_ci_high`; correction
+  blocks set `primary="holm_bonferroni"` and `reported="benjamini_hochberg"`.
+
+Claims-ledger updates:
+- Added `Material/session decoupling validation (R2-R4, 2026-06-30)` to
+  `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`.
+- Calibration framing: `planned` changed source (slot chunk -> material throughput), but signal shape is
+  identical; `enriched_shrink` and `enriched_dual_prior` transfer and hold with partials included
+  (`context_pred_mae` 12/12; `recovery_mae` 8/12). It explicitly avoids claiming that decoupling improves
+  calibration and records the `max|night_owl` recovery loss.
+- Detection framing: verdict stated against the A4/P0b shape, not a pure-null strawman. Decoupled is more
+  CUSUM-favoring: drift -> `cusum`, step -> `cusum`; only fading-flame drift cells retain non-CUSUM
+  Holm wins.
+- ETA framing: `gp_plus_analytic` is qualified to the small/cold-start regime only. It beats `gp_ard`
+  on small held-out cells, loses on max, and `analytic_required_rate` never wins. `gp_ard` / conformal
+  remain the data-rich-plan story, with conformal as the coverage fix.
+
+Comparability doc:
+- Wrote `research/doc/2026-06-30-frozen-vs-decoupled-comparability.md` with protocol table, frozen vs
+  decoupled headline numbers per track, and claim-discipline wording.
+
+DECISIONS update:
+- Updated material/session `DECISIONS.md` open question #3 and change log to mark #3 as **🟡 QUALIFIED**
+  rather than locked/proven as a GP replacement: small-plan / cold-start benefit proven, not a general win.
+
+Commands / checks run:
+- `jq` protocol/correction extraction over frozen and decoupled calibration/detection/projection JSONs.
+- `rg` / `sed` checks over `research/comparison/src/research_comparison/{runners,metrics}/rigour.py` and
+  result-writer/runner provenance call sites.
+- `git diff --check` → passed.
+- `git diff --cached --check` → passed.
+
+Deviation: none. This phase intentionally ran no new benchmark per the R5 instructions.
 
 **Reviewer findings:**
 

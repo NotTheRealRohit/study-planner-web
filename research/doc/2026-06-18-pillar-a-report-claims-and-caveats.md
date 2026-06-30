@@ -104,6 +104,58 @@
 
 **Evidence:** `research/doc/verification-runs/2026-06-18-a5-pillar-a/{SUMMARY.md,evidence.json,oulad_moment_bounds.json}`; current `research/results/{calibration,detection,projection,scheduling}/*.json` generated on `params_version_hash=3b404c903563`.
 
+## Material/session decoupling validation (R2-R4, 2026-06-30)
+
+The material/session redesign changes the data-generating process from dated
+slot chunks to material-throughput chunks with bookings, ad-hoc days, and
+interrupted partial sessions. It does **not** justify claiming that the new DGP
+improves any model by itself. Use the frozen A-series run as the comparison
+anchor and frame these results as transfer/re-validation under the new event
+shape.
+
+- **Protocol parity:** the frozen anchor is
+  `research/results/{calibration,detection,projection}/*_results.json` from
+  `synthetic-21c2cdabfa91-seed0-n5400`. The decoupled results are in
+  `research/results/{calibration_decoupled,detection_decoupled,projection_decoupled}/`
+  from `synthetic-decoupled-9e6d48db2da8-seed0-n5400`. Both use 200 seeds, 9
+  archetypes, 3 bands, held-out scoring with 5 train / 4 held-out archetypes,
+  bootstrap delta CIs, Holm as primary correction, and BH reported.
+- **Calibration:** the `planned` reference changed source from slot chunk to
+  material throughput, but the signal shape is identical:
+  `activeMinutes / plannedMinutes` still equals latent pace. With partial
+  throughput points included, `enriched_shrink` and `enriched_dual_prior` both
+  **hold** under decoupled data: context prediction improves from 11/12 frozen
+  Holm-win cells to 12/12, and recovery moves to 8/12 for both candidates
+  (`enriched_shrink` frozen 6/12; `enriched_dual_prior` frozen 2/12). Do not
+  phrase this as "decoupling improves calibration"; it is a different DGP.
+  Caveat: recovery still has a Holm-significant loss at `max|night_owl`.
+- **Partial-session policy:** interrupted partial chunks stay included. The R2
+  fallback to down-weight/exclude partials was not run because the
+  partial-included result did not degrade the declared transfer evidence.
+  This is still an external-validity caveat; R6/N=1 should sanity-check real
+  partial-throughput points.
+- **Detection:** state the R3 verdict against the A4/P0b baseline, not a pure
+  "nothing beats CUSUM" strawman. Frozen P0b was drift -> `cusum` and step ->
+  `page_hinkley`, with `csd`/`page_hinkley` Holm wins on `fading_flame` cells.
+  Under the decoupled cadence, the result is **more CUSUM-favoring**: drift ->
+  `cusum` and step -> `cusum`; only `fading_flame` drift cells retain
+  non-CUSUM Holm wins (`page_hinkley` max/drift, `csd` medium/drift, and
+  `page_hinkley` medium/drift). No step-cell non-CUSUM Holm win survives.
+- **ETA / projection (#3):** `gp_plus_analytic` is **qualified**, not a
+  general replacement for GP. It beats `gp_ard` under held-out + Holm on the
+  small band only (4/4 small held-out cells), is significantly worse on max,
+  and is not a medium-band win. `analytic_required_rate` never has a
+  Holm-surviving win. The defensible claim is: a cold-start / small-plan
+  fallback layered on GP is useful; `gp_ard` and conformal remain the
+  data-rich-plan story, with conformal as the coverage fix.
+
+**Evidence:** decoupled result JSONs under
+`research/results/calibration_decoupled/`,
+`research/results/detection_decoupled/`, and
+`research/results/projection_decoupled/`; frozen anchor JSONs under
+`research/results/{calibration,detection,projection}/`; verification commits
+`51a5d40` (R2), `96368de` (R3), `7f97a3c` + `7d55bc1` (R4).
+
 ## Changelog
 
 | Date | Entry | Source |
@@ -112,3 +164,4 @@
 | 2026-06-18 | A4 verified (`5aa4c2e`): replaced detection/scheduling placeholder with real findings — page_hinkley/csd vs cusum (bocpd/adwin worse); all schedulers beat greedy_incumbent; prereq-order 1.0; upper-bound framing. | VERIFICATION A4 reviewer findings; result JSONs. |
 | 2026-06-18 | A5 implemented (`68f4a121ed1ab6533db2f2949625f367258146d2`): added OULAD-bounded reality-matched generator and recorded mixed ranking-hold — projection/scheduling hold, detection partially holds, calibration structured-candidate story does not hold. | A5 verification-run evidence; result JSONs. |
 | 2026-06-19 | A6 implemented (`922c64e56975d639e4e22e70115a4663486c5c1f`): `enriched_shrink` is the recommended context-prediction candidate; archetype hard/soft variants do not earn their complexity over enriched shrinkage. | A6 final verification-run evidence. |
+| 2026-06-30 | Material/session decoupling R2-R4 verified: calibration holds with partials included, detection becomes more CUSUM-favoring than A4/P0b, and ETA #3 is qualified to small/cold-start only. | Research ETA model-selection VERIFICATION R2-R4; decoupled result JSONs. |
