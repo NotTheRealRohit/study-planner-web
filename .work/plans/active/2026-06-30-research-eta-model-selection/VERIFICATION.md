@@ -1,7 +1,7 @@
 ---
 title: "VERIFICATION — research ETA model selection + Pillar-A re-validation"
 companion: ./PLAN.md
-status: p0-✅ · R1-✅ · R2-✅ (calibration transfer confirmed) · R3/R4-ready
+status: p0-✅ · R1-✅ · R2-✅ · R3-✅ (CUSUM-favoring) · R4-✅ (composite wins small-band only) · R5/R6-ready
 legend: "☐ not started · 🟡 implemented, awaiting reviewer · ✅ reviewer-verified · ❌ failed/blocked"
 ---
 
@@ -498,7 +498,7 @@ recovery weak-cell (present on both lineages) is worth a one-line caveat. **R2 d
 
 ---
 
-## R3 — Detection regression (must re-run)  🟡
+## R3 — Detection regression (must re-run)  ✅ (reviewer-verified — winners + Holm cells re-derived)
 **Acceptance criteria**
 - [ ] Ran on the decoupled dataset, separate `--out-dir`. Out path: `__________`
 - [ ] `paired_vs_incumbent` / `mc_correction` vs `cusum` recorded; verdict stated: robust-null **holds** or
@@ -588,11 +588,22 @@ fading_flame drift cells at max/medium retain Holm-surviving `csd`/`page_hinkley
 strawman remains false at cell level, but no deployable detector displaces CUSUM overall on the decoupled
 track, and no step-cell Holm win survives.
 
-**Reviewer findings:**
+**Reviewer findings (2026-06-30 · Cowork/planner): ✅ VERIFIED.** Re-derived from
+`research/results/detection_decoupled/detection_results.json` (decoupled n5400, held_out):
+- `winner_by_shift_type`: drift→`cusum`, **step→`cusum`** (changed from P0b step→`page_hinkley`).
+- Holm-surviving deployable wins vs `cusum` = exactly **3 cells**: `page_hinkley` max/fading_flame/drift,
+  and `csd`+`page_hinkley` medium/fading_flame/drift. All other deployables ≤ cusum. Matches dev report.
+- Frozen P0b anchor intact (`research/results/detection/`, still drift→cusum/step→page_hinkley, hash
+  21c2cdabfa91). Separate out-dir used; CUSUM tuned train-archetypes-only
+  (`grid_search_train_archetypes_only`); active-axis onset mapping clean over all 5400 learners
+  (1720/1720 mapped, 0 bad). 8 detection-track tests pass.
+- Verdict accurate & honest: under the noisier decoupled cadence the result becomes **more
+  CUSUM-favoring** — the step-band `page_hinkley` edge from A4/P0b disappears; only the `fading_flame`
+  drift cells retain non-CUSUM Holm wins. Good framing for R5 (state vs A4/P0b, not vs a pure-null).
 
 ---
 
-## R4 — ETA benchmark (HEADLINE)  🟡
+## R4 — ETA benchmark (HEADLINE)  ✅ (reviewer-verified — Holm verdict + forecaster code re-checked)
 **Acceptance criteria**
 - [ ] `forecast_analytic_required_rate` + `forecast_gp_plus_analytic` added to `baselines/projection.py`
       (correct signature + return shape); both registered in `projection_candidates()` (runners/projection.py).
@@ -714,7 +725,40 @@ Deviation/reviewer flag: full R4 benchmark was long (`~36` minutes Python CPU) b
 currently calls GP independently to determine non-crossing instead of reusing the already-computed
 `gp_ard` forecast for the same learner/t. This affects runtime only; tests and full benchmark completed.
 
-**Reviewer findings:**
+**Reviewer findings (2026-06-30 · Cowork/planner): ✅ VERIFIED — headline result confirmed, honestly
+reported, no overclaim.** Re-derived from `research/results/projection_decoupled/projection_results.json`
+(decoupled n5400, held_out) and re-read the forecaster code (commit `7f97a3c`):
+
+*Holm verdict vs `gp_ard` (12 held-out band/archetype cells), independently counted:*
+- `gp_plus_analytic`: **4 Holm wins — all 4 SMALL-band cells** (deadline_sprinter, fading_flame, night_owl,
+  weekend_warrior); **4 significant losses (all max cells)**; medium not significant.
+- `analytic_required_rate`: **0 Holm wins anywhere; 7 significant losses.**
+- `winner_by_band` is `oracle_projection` on all bands (upper bound — correctly not claimed as a method win).
+All numbers match the dev's report.
+
+*Code ✅:* `forecast_analytic_required_rate` is pure actual-minutes
+(`days_left = remaining_actual / effective_daily`) — **no throughput-factor multiplication, no
+double-count** (PLAN R4 honored). Composite = cold-start(`<COLD_START_N=5`)→analytic, GP-non-crossing
+(`gp_finish >= horizon_end`)→analytic rescue, else GP. `default_t_grid` extended with `t=3`;
+`cold_start_eval` present; `reference_line_eval` present with `status="deferred"` (allowed per D-07, logged
+not dropped). New forecaster tests added; 13 projection-track tests pass. Separate out-dir; frozen
+projection anchor intact (hash 21c2cdabfa91, old candidate set).
+
+*HEADLINE VERDICT (decision-relevant — this is what #3 hinges on):* the proposed #3 ETA composite
+`gp_plus_analytic` **beats the `gp_ard` incumbent under held-out + Holm on the SMALL band only** (the
+low-data / cold-start regime — exactly where the analytic fallback is designed to help), and is
+**significantly worse on max**; the pure `analytic_required_rate` never wins. So #3 is **partially
+validated, not a general win.** Honest framing for R5/DECISIONS: keep #3 at 🟡→ "qualified" — the composite
+is justified as a **cold-start / small-plan fallback layered on GP**, NOT as a replacement for GP on
+data-rich plans (where `gp_ard`/`conformal` remain better; recall conformal is the coverage fix). The
+product can still ship the composite (GP everywhere + analytic at cold start), but the dissertation must
+state the benefit as regime-specific.
+
+*Non-blocking notes:* (1) runtime ~36 min because the composite recomputes GP independently instead of
+reusing the runner's `gp_ard` forecast — pure optimization opportunity if R4 is ever re-run, not a
+correctness issue. (2) R4b reference-line is deferred — fine for now, but R5/dissertation will want it
+eventually to justify the displayed ideal line. **R4 done. R5 (rigour parity + claims-ledger) and R6
+(N=1) remain.**
 
 ---
 

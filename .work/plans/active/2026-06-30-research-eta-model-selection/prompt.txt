@@ -16,6 +16,14 @@ RESUME STATE — READ THIS FIRST (where the work stands as of 2026-06-30)
 - R2 is COMPLETE and reviewer-✅ (2026-06-30). Calibration win TRANSFERS on decoupled data with partials
   included (context-pred 12/12 Holm wins, recovery 8/12) — result in `research/results/calibration_decoupled/`.
   Do NOT redo R2.
+- R3 is COMPLETE and reviewer-✅ (2026-06-30). Detection under the decoupled cadence is MORE CUSUM-favoring:
+  drift→cusum AND step→cusum (the A4/P0b step→page_hinkley edge disappears); only `fading_flame` drift
+  cells retain Holm-surviving `csd`/`page_hinkley` wins. Result in `research/results/detection_decoupled/`.
+- R4 is COMPLETE and reviewer-✅ (2026-06-30, the headline). VERDICT: the #3 composite `gp_plus_analytic`
+  beats `gp_ard` under held-out+Holm on the SMALL band ONLY (cold-start/low-data regime); it is worse on
+  max; `analytic_required_rate` never wins. So **#3 is QUALIFIED, not a general win** — a cold-start
+  fallback layered on GP, NOT a GP replacement (gp_ard/conformal stay better on data-rich plans; conformal
+  is the coverage fix). Result in `research/results/projection_decoupled/`. Do NOT redo R4.
 - The authoritative A-series PARITY BASELINE is on disk in the DEFAULT result dirs
   (research/results/{calibration,detection,projection}/*.json), regenerated with current code from the
   frozen dataset `research/datasets/synthetic-21c2cdabfa91-seed0-n5400` (9 archetypes × 3 bands × 200 =
@@ -25,15 +33,15 @@ RESUME STATE — READ THIS FIRST (where the work stands as of 2026-06-30)
   research/comparison/src/research_comparison/baselines/projection.py clamps non-finite / out-of-range
   day offsets to date.min/date.max (with a regression test). Keep it; the R4 analytic candidate relies on it.
 
-START-OF-SESSION STEP 0 (do this BEFORE any R3/R4 work): the reviewer left uncommitted doc changes in the
-working tree (R2 flipped to ✅ in VERIFICATION.md, status line, and this prompt.txt). COMMIT them first so
-the history is clean before you begin, e.g.:
+START-OF-SESSION STEP 0 (do this BEFORE any R5/R6 work): the reviewer left uncommitted doc changes in the
+working tree (R3 + R4 flipped to ✅ in VERIFICATION.md, status line, and this prompt.txt). COMMIT them
+first so the history is clean before you begin, e.g.:
   git add .work/plans/active/2026-06-30-research-eta-model-selection/
-  git commit -m "docs(research): record R2 reviewer sign-off; point prompt at R3/R4"
+  git commit -m "docs(research): record R3/R4 reviewer sign-off; point prompt at R5/R6"
 (Commit ONLY the plan-dir docs; leave the other unrelated dirty working-tree items alone.)
 
->>> YOUR NEXT PHASES ARE R3 (detection regression) and R4 (ETA benchmark — the headline). They are
-    INDEPENDENT (either order; R3 is a quick re-run, R4 is the substantive one). Both cleared to start. <<<
+>>> YOUR NEXT PHASES ARE R5 (rigour parity + claims-ledger) then R6 (N=1 real-data guard). Do R5 FIRST
+    (R6 builds on the honest framings R5 writes). Both are mostly docs — no new benchmarks. <<<
 
 TWO REVIEW CARRY-FORWARDS you MUST honor (from the P0b sign-off):
 1. NAME: the dual-prior calibrator is registered as `enriched_dual_prior` (NOT `dual_prior` as some PLAN
@@ -115,51 +123,45 @@ For EACH phase, run these steps in order:
 7. Pause for reviewer sign-off if the next phase depends on this one; otherwise proceed to an
    independent phase.
 
-IMMEDIATE NEXT ACTIONS — R3 (detection regression; see PLAN R3) — quick, no code change expected
+IMMEDIATE NEXT ACTIONS — R5 (rigour parity + claims-ledger; see PLAN R5) — docs, no new benchmark
 0. START-OF-SESSION STEP 0 above: commit the pending reviewer plan-dir docs first.
-a. Read PLAN R3. The detector reads `active/planned` directly (data-driven) → NO code change unless the
-   series construction must change. Update SCRATCHPAD §2 for R3.
-b. Run on the DECOUPLED dataset with a SEPARATE out-dir (never the default dir):
-     uv run --package research-comparison python -m research_comparison.runners.detection \
-       --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
-       --out-dir research/results/detection_decoupled --seeds 200 --quiet
-c. Record from the new JSON: `paired_vs_incumbent` / `mc_correction` vs `cusum` (`survives_holm_win` by
-   shift_type/band). State the verdict EXPLICITLY against the P0b baseline shape — drift→`cusum`,
-   step→`page_hinkley`, with `csd`/`page_hinkley` Holm-surviving on `fading_flame` cells — i.e. say whether
-   that pattern HOLDS or CHANGED under the new (noisier, ad-hoc/partial) cadence. NOT a pure-null strawman.
-d. Sanity-check the regime-onset→active-axis mapping under the new cadence (add a focused test if the
-   ordering changed). Confirm CUSUM tuning stayed train-archetypes-only (no leakage).
-e. Commit, fill VERIFICATION R3 Developer notes, flip R3 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
+a. Read PLAN R5. Update SCRATCHPAD §2 for R5.
+b. Parity check (D-05): confirm R2/R3/R4 decoupled runs used the SAME protocol as the frozen P0b baseline
+   — 200 seeds, 9 archetypes, 3 bands, held-out scoring (5 train / 4 held), Holm (primary) + BH (reported),
+   bootstrap Δ-CIs. The decoupled JSONs already stamp this; just confirm and record. (Parity is on the
+   PROTOCOL, not dataset identity — decoupled is its own DGP/hash by design.)
+c. Append a section to `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md` with these honest
+   framings, each tied to its result JSON (Holm-surviving only):
+   - CALIBRATION (R2): the `planned` reference changed source (slot chunk → material throughput) but the
+     SIGNAL SHAPE is identical (D8); the `enriched_shrink`/`enriched_dual_prior` win TRANSFERS and HOLDS
+     (context-pred 12/12, recovery 8/12). Frame as "holds," NOT "decoupling improves calibration" (different
+     DGP). Caveat: `max/night_owl` recovery loss; partials INCLUDED (D8a) → external-validity caveat.
+   - DETECTION (R3): under the decoupled cadence the result is MORE CUSUM-favoring vs A4/P0b — step's
+     `page_hinkley` edge disappears (step→cusum); only `fading_flame` drift retains non-CUSUM Holm wins.
+     State vs A4/P0b, NOT vs a pure-null.
+   - ETA (R4, headline): `gp_plus_analytic` beats `gp_ard` (held-out+Holm) on the SMALL band ONLY (cold
+     start); worse on max; `analytic_required_rate` never wins. So #3 is QUALIFIED — a cold-start fallback
+     layered on GP, NOT a GP replacement; `gp_ard`/`conformal` remain better on data-rich plans and
+     conformal is the coverage fix. Claim only to this strength.
+d. Write a short comparability doc under `research/doc/` (frozen vs decoupled headline numbers per track).
+e. Update the DECISIONS.md change log entry for #3: flip its status to **🟡 QUALIFIED** (cold-start /
+   small-plan benefit proven; NOT a general win) — do not mark it locked/proven as a GP replacement.
+f. Commit, fill VERIFICATION R5 Developer notes, flip R5 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
 
-IMMEDIATE NEXT ACTIONS — R4 (ETA benchmark; see PLAN R4) — THE HEADLINE; requires code
-a. Read PLAN R4 fully + Decisions D-04. Verify the projection anchors against live code first:
-   baselines/projection.py (forecast_* fns, cumulative_points, _index_to_date — note the clamp from P0b),
-   runners/projection.py `projection_candidates()` (lines ~42-82), metrics/projection.py.
-b. Add two forecasters to baselines/projection.py with the SAME signature + return shape as the existing
-   ones (`(sessions, total_minutes, start_date, horizon_end_date) -> {candidate, predicted_finish_date,
-   interval_low, interval_high, sharpness_days}`):
-   - `analytic_required_rate` — in ACTUAL-MINUTES currency: effective_daily = consumed_actual/elapsed_days;
-     days_left = remaining_actual/effective_daily; finish = last_date + days_left. DO NOT multiply by a
-     throughput factor (the target is already actual-minutes — no tf double-count). Interval per PLAN R4.
-   - `gp_plus_analytic` — composite: if len(sessions) < COLD_START_N (recommend 5) → analytic; elif GP
-     predicted finish >= horizon_end (didn't cross) → analytic rescue; else GP point+CI.
-   Register BOTH in `projection_candidates()`.
-c. Write tests in tests/test_projection_track.py: forecaster shape, cold-start switch, non-crossing rescue.
-   Run them (and the focused projection subset) before the full run.
-d. Run on the DECOUPLED dataset with a SEPARATE out-dir:
-     uv run --package research-comparison python -m research_comparison.runners.projection \
-       --dataset-dir research/datasets/synthetic-decoupled-9e6d48db2da8-seed0-n5400 \
-       --out-dir research/results/projection_decoupled --seeds 200 --quiet
-e. Scoring is automatic. Record per band: coverage / MAE-days / sharpness for `gp_ard`,
-   `analytic_required_rate`, `gp_plus_analytic`, and the paired-Holm verdict vs `gp_ard`
-   (`survives_holm_win`). State the HEADLINE verdict sentence: does the composite (and/or analytic) beat
-   `gp_ard` under held-out + Holm, on which bands? Put real numbers in SCRATCHPAD §5.
-f. R4a: cold-start eval at small t (extend default_t_grid base to include 3, or a dedicated probe);
-   record composite-vs-gp_ard at small t. R4b: reference-line (linear vs capacity-shaped) — do it OR log
-   it explicitly as deferred (don't drop silently). Oracles stay upper bounds, never reported as wins.
-g. Commit, fill VERIFICATION R4 Developer notes, flip R4 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
+IMMEDIATE NEXT ACTIONS — R6 (N=1 real-data circularity guard; see PLAN R6) — do AFTER R5
+a. Read PLAN R6 + `college/scope/research-tasklist.md` Phase 5. AVAILABILITY GATE FIRST: locate real N=1
+   logged sessions (candidate's own data / `research/comparison/scripts/capture_evidence.py` output). If
+   none exists, STOP and ask the user — do NOT fabricate real data. Update SCRATCHPAD §2.
+b. Compute the partial-session throughput `active/(position×chunk)` from the real data and overlay it on
+   the synthetic partial distribution (face-validity) — report in-family or flag.
+c. Run the ETA candidates on the real burn-up curve; report finish-date error DESCRIPTIVELY only (N=1 —
+   no significance, no algorithm-superiority claim).
+d. Descriptive bounds only — NO synthetic parameter tuned to real data (circularity guard).
+e. Write a short write-up stub under `research/doc/` (or college/) with EXPLICIT non-claims; check the
+   relevant P5 boxes in `college/scope/research-tasklist.md`.
+f. Commit, fill VERIFICATION R6 Developer notes, flip R6 →🟡 (NOT ✅), update SCRATCHPAD §5/§8, report.
 
-After R3 + R4 both ✅: R5 (rigour parity + claims-ledger) then R6 (N=1 real-data guard).
+After R5 + R6 both ✅: the plan's Definition of Done (§5) is met — post a final summary and stop.
 
 DO / DON'T (task-specific traps — each with its why)
 - DO keep `activeMinutes/plannedMinutes == latent pace` for every active event including partials
