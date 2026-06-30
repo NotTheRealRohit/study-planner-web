@@ -774,7 +774,7 @@ eventually to justify the displayed ideal line. **R4 done. R5 (rigour parity + c
 
 **Developer notes:**
 R5 implemented by Codex on 2026-06-30. Evidence/docs commit:
-`ac52f9ff633203b67afd35200852e37e146dec51`.
+`8ae07b4e0d614cc97d8e386478c1a561fbb36727`.
 
 Files changed for R5:
 - `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`

@@ -187,7 +187,7 @@ last_updated: "2026-06-30 17:55 IST — Codex"
 - **Goal this session:** Execute R5 rigour parity + claims ledger after R3/R4 reviewer sign-off.
 - **Did:** Verified R2/R3/R4 protocol parity from stamped JSONs and live rigour code; appended the conservative R2/R3/R4 claims-ledger section; wrote the frozen-vs-decoupled comparability doc; updated material/session `DECISIONS.md` to mark #3 as 🟡 QUALIFIED instead of a GP replacement.
 - **Files changed:** `research/doc/2026-06-18-pillar-a-report-claims-and-caveats.md`; `research/doc/2026-06-30-frozen-vs-decoupled-comparability.md`; `.work/plans/active/2026-06-30-material-session-decoupling/DECISIONS.md`; `SCRATCHPAD.md`; `VERIFICATION.md`.
-- **Commit SHA:** `ac52f9ff633203b67afd35200852e37e146dec51`.
+- **Commit SHA:** `8ae07b4e0d614cc97d8e386478c1a561fbb36727`.
 - **Results / numbers:** Protocol parity confirmed: frozen and decoupled tracks both stamp 200 seeds, 5400 learners, 9 archetypes, 3 bands, held-out 5/4 split, Holm primary, BH reported, and bootstrap delta CIs. R5 claim framing: calibration holds with partials included; detection becomes more CUSUM-favoring vs A4/P0b; ETA #3 is small/cold-start only.
 - **Deviations / decisions:** No benchmark or code change for R5. Left unrelated untracked UI mock files unstaged.
 - **Left off at / next:** R5 is 🟡 awaiting reviewer sign-off. Next phase is R6 availability gate for real N=1 data; stop and ask if no real sessions are available.
