@@ -10,11 +10,10 @@ import {
   startOfISOWeek,
 } from 'date-fns'
 import type {
-  DerivedSlot,
-  SlotStatus,
-  UnplannedSession,
+  BookingStatusDerivation,
+  DailyActivity,
+  DerivedBooking,
 } from '@study-tracker/progress'
-import type { RoadmapSlot } from '@study-tracker/progress'
 
 export interface CalendarDay {
   date: string
@@ -33,7 +32,7 @@ export interface MonthBounds {
   endMonth: string
 }
 
-export type CalendarBubbleStatus = SlotStatus | 'unplanned'
+export type CalendarBubbleStatus = 'done' | 'booked' | 'missed' | 'unplanned'
 
 export interface CalendarMaterial {
   title: string
@@ -54,7 +53,8 @@ export interface CalendarBubble {
   loggedMinutes?: number
   sessionIds: string[]
   sessionId?: string
-  slotRef?: RoadmapSlot
+  bookingId?: string
+  kind: 'booking' | 'activity'
 }
 
 export interface BoundCalendarDay extends CalendarDay {
@@ -145,83 +145,68 @@ function materialInfoById(
   return material
 }
 
-function firstMaterialTitle(
-  slot: RoadmapSlot,
-  materialsById: Map<string, string | CalendarMaterial>,
-): string | undefined {
-  const materialId = slot.candidateMaterialIds[0]
-  return materialInfoById(materialId, materialsById)?.title
-}
-
-function bubbleForSlot(
-  derived: DerivedSlot,
+function bubbleForBooking(
+  derived: DerivedBooking,
   materialsById: Map<string, string | CalendarMaterial>,
 ): CalendarBubble {
-  const materialId = derived.slot.candidateMaterialIds[0]
+  const materialId = derived.booking.materialId
   const materialInfo = materialInfoById(materialId, materialsById)
-  const materialTitle = firstMaterialTitle(derived.slot, materialsById)
-  const label =
-    derived.slot.sessionTitle?.trim() ||
-    materialTitle ||
-    (derived.slot.role ? `${derived.slot.role} session` : 'Study session')
+  const materialTitle = materialInfo?.title
+  const label = materialTitle ?? 'Session · pick at start'
 
   return {
-    id: `slot:${derived.slot.weekIndex}:${derived.slot.dayOfWeek}:${derived.slot.date}:${materialId ?? 'rest'}`,
-    date: derived.slot.date,
+    id: `booking:${derived.booking.id}`,
+    date: derived.booking.date,
     status: derived.status,
     label,
     materialTitle,
     materialUrl: materialInfo?.url,
     materialId,
-    sessionTitle: derived.slot.sessionTitle ?? null,
-    minutes: derived.loggedMinutes > 0 ? derived.loggedMinutes : derived.slot.plannedMinutes,
-    plannedMinutes: derived.slot.plannedMinutes,
+    sessionTitle: null,
+    minutes: derived.loggedMinutes > 0 ? derived.loggedMinutes : derived.booking.estimatedDuration,
+    plannedMinutes: derived.booking.estimatedDuration,
     loggedMinutes: derived.loggedMinutes,
     sessionIds: derived.sessionIds,
-    slotRef: derived.slot,
+    bookingId: derived.booking.id,
+    kind: 'booking',
   }
 }
 
-function bubbleForUnplanned(
-  session: UnplannedSession,
-  materialsById: Map<string, string | CalendarMaterial>,
+function bubbleForActivity(
+  activity: DailyActivity,
   index: number,
 ): CalendarBubble {
-  const materialInfo = materialInfoById(session.materialId, materialsById)
-  const materialTitle = materialInfo?.title
-
   return {
-    id: `unplanned:${session.sessionId ?? index}:${session.date}`,
-    date: session.date,
+    id: `activity:${activity.date}:${index}`,
+    date: activity.date,
     status: 'unplanned',
-    label: materialTitle ?? 'Unplanned session',
-    materialTitle,
-    materialUrl: materialInfo?.url,
-    materialId: session.materialId,
-    minutes: session.minutes,
-    sessionIds: session.sessionId ? [session.sessionId] : [],
-    sessionId: session.sessionId,
+    label: 'Unplanned activity',
+    minutes: activity.minutes,
+    loggedMinutes: activity.minutes,
+    sessionIds: activity.sessionIds,
+    sessionId: activity.sessionIds[0],
+    kind: 'activity',
   }
 }
 
 export function bindCells(
   grid: MonthGrid,
-  derivedSlots: DerivedSlot[],
-  unplanned: UnplannedSession[],
+  derivedBookings: DerivedBooking[],
+  unplannedActivity: BookingStatusDerivation['unplanned'] | DailyActivity[],
   materialsById: Map<string, string | CalendarMaterial>,
 ): BoundMonthGrid {
   const bubblesByDate = new Map<string, CalendarBubble[]>()
 
-  for (const derived of derivedSlots) {
-    const bubbles = bubblesByDate.get(derived.slot.date) ?? []
-    bubbles.push(bubbleForSlot(derived, materialsById))
-    bubblesByDate.set(derived.slot.date, bubbles)
+  for (const derived of derivedBookings) {
+    const bubbles = bubblesByDate.get(derived.booking.date) ?? []
+    bubbles.push(bubbleForBooking(derived, materialsById))
+    bubblesByDate.set(derived.booking.date, bubbles)
   }
 
-  unplanned.forEach((session, index) => {
-    const bubbles = bubblesByDate.get(session.date) ?? []
-    bubbles.push(bubbleForUnplanned(session, materialsById, index))
-    bubblesByDate.set(session.date, bubbles)
+  unplannedActivity.forEach((activity, index) => {
+    const bubbles = bubblesByDate.get(activity.date) ?? []
+    bubbles.push(bubbleForActivity(activity, index))
+    bubblesByDate.set(activity.date, bubbles)
   })
 
   return {

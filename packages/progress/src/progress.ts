@@ -13,6 +13,7 @@ import type {
 } from './types'
 import { calculateStreak, buildStreakGrid } from './streak'
 import { fitBurnUpGP } from './gp'
+import { projectFinish } from './projectFinish'
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -60,36 +61,6 @@ function buildActualCumulative(sessions: SessionEvent[]): CumulativePoint[] {
   })
 }
 
-function findProjectedFinish(
-  gpCurve: { date: string; mean: number; lower: number; upper: number }[],
-  totalPlanned: number,
-): { finishDate: string | null; confidenceInterval: [string, string] | null } {
-  if (gpCurve.length === 0 || totalPlanned <= 0) {
-    return { finishDate: null, confidenceInterval: null }
-  }
-
-  let finishDate: string | null = null
-  let ciLower: string | null = null
-  let ciUpper: string | null = null
-
-  for (const point of gpCurve) {
-    if (ciUpper === null && point.upper >= totalPlanned) {
-      ciUpper = point.date
-    }
-    if (finishDate === null && point.mean >= totalPlanned) {
-      finishDate = point.date
-    }
-    if (ciLower === null && point.lower >= totalPlanned) {
-      ciLower = point.date
-    }
-  }
-
-  const confidenceInterval: [string, string] | null =
-    ciUpper && ciLower ? [ciUpper, ciLower] : null
-
-  return { finishDate, confidenceInterval }
-}
-
 function computeVerdict(
   gpCurve: { date: string; mean: number; lower: number }[],
   plannedCumulative: CumulativePoint[],
@@ -126,6 +97,7 @@ function computeWeeklyStats(
   slots: RoadmapSlot[],
   today: string,
   roadmapStartDate: string,
+  roadmap?: RoadmapInput,
 ): WeeklyStats {
   const weekStart = getISOWeekStart(today)
   const weekEnd = new Date(weekStart)
@@ -153,18 +125,53 @@ function computeWeeklyStats(
       (7 * 24 * 60 * 60 * 1000),
   )
 
+  const plannedMinutesThisWeek = roadmap
+    ? capacityWeeklyTarget(roadmap, weekStart, weekSlots)
+    : weekSlots.reduce((s, slot) => s + slot.plannedMinutes, 0)
+
   return {
     weekIndex,
     weekStartDate: weekStart,
     sessionsThisWeek: weekSessions.length,
     minutesThisWeek: weekSessions.reduce((s, sess) => s + sess.duration, 0),
-    plannedMinutesThisWeek: weekSlots.reduce(
-      (s, slot) => s + slot.plannedMinutes,
-      0,
-    ),
+    plannedMinutesThisWeek,
     minutesByDay,
     materialsTouched: [...materialsTouched],
   }
+}
+
+function dayNameForISO(date: string): string {
+  const day = new Date(`${date}T00:00:00.000Z`).getUTCDay()
+  return (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const)[day]
+}
+
+function addDaysISO(date: string, days: number): string {
+  const value = new Date(`${date}T00:00:00.000Z`)
+  value.setUTCDate(value.getUTCDate() + days)
+  return value.toISOString().slice(0, 10)
+}
+
+function capacityWeeklyTarget(
+  roadmap: RoadmapInput,
+  weekStart: string,
+  fallbackSlots: RoadmapSlot[],
+): number {
+  if (
+    roadmap.selectedStudyDays === undefined ||
+    roadmap.weekdayHours === undefined ||
+    roadmap.weekendHours === undefined
+  ) {
+    return fallbackSlots.reduce((s, slot) => s + slot.plannedMinutes, 0)
+  }
+
+  let total = 0
+  for (let offset = 0; offset < 7; offset += 1) {
+    const date = addDaysISO(weekStart, offset)
+    const day = dayNameForISO(date)
+    if (!roadmap.selectedStudyDays.includes(day)) continue
+    total += (day === 'Sat' || day === 'Sun' ? roadmap.weekendHours : roadmap.weekdayHours) * 60
+  }
+  return Math.round(total)
 }
 
 export function computeProgress(
@@ -173,10 +180,11 @@ export function computeProgress(
   _calibration: CalibrationState,
   today: string,
 ): ProgressSnapshot {
-  const totalPlannedMinutes = roadmap.slots.reduce(
+  const slotPlannedMinutes = roadmap.slots.reduce(
     (s, slot) => s + slot.plannedMinutes,
     0,
   )
+  const totalPlannedMinutes = roadmap.materialTotalMinutes ?? slotPlannedMinutes
   const totalMinutes = sessions.reduce((s, sess) => s + sess.duration, 0)
   const completionPercentage =
     totalPlannedMinutes > 0
@@ -253,10 +261,18 @@ export function computeProgress(
   }
 
   // Projection
-  const { finishDate, confidenceInterval } = findProjectedFinish(
+  const projection = projectFinish({
+    sessionCount: sessions.length,
+    consumedActualMin: totalMinutes,
+    remainingActualMin: roadmap.materialRemainingMinutes ??
+      Math.max(0, totalPlannedMinutes - totalMinutes),
+    startDate: roadmap.startDate,
+    today,
+    horizonEnd: roadmap.deadline,
     gpCurve,
-    totalPlannedMinutes,
-  )
+    totalPlanned: totalPlannedMinutes,
+  })
+  const { finishDate } = projection
 
   // Verdict
   const verdict = computeVerdict(gpCurve, plannedCumulative, today)
@@ -270,7 +286,7 @@ export function computeProgress(
   const upNext = findUpNext(roadmap.slots, sessions, today)
 
   // Weekly stats
-  const weeklyStats = computeWeeklyStats(sessions, roadmap.slots, today, roadmap.startDate)
+  const weeklyStats = computeWeeklyStats(sessions, roadmap.slots, today, roadmap.startDate, roadmap)
 
   // Week summary for narrative
   const weekSummary: WeekSummaryForNarrative = {
@@ -306,7 +322,7 @@ export function computeProgress(
       grid: streakGrid,
     },
     burnUp,
-    projection: { finishDate, confidenceInterval },
+    projection,
     totalMinutes,
     totalPlannedMinutes,
     completionPercentage,

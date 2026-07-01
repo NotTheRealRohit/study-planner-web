@@ -20,16 +20,20 @@ async function signIn(page: Page, email: string, password: string): Promise<void
   await page.goto(`${APP_URL}/study/sign-in`);
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
-  await page.getByRole('button', { name: /Continue|Sign in/i }).click();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
   await page.waitForURL(/\/study\/(home|onboarding)/, { timeout: 10000 });
 }
 
 async function userDbName(page: Page): Promise<string> {
+  // The per-user Dexie DB is created in an effect after auth resolves, so poll.
   return page.evaluate(async () => {
-    const dbs = await indexedDB.databases();
-    const userDb = dbs.find((db) => db.name?.startsWith('StudyTracker_'));
-    if (!userDb?.name) throw new Error('No StudyTracker DB found');
-    return userDb.name;
+    for (let attempt = 0; attempt < 60; attempt += 1) {
+      const dbs = await indexedDB.databases();
+      const userDb = dbs.find((db) => db.name?.startsWith('StudyTracker_'));
+      if (userDb?.name) return userDb.name;
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    throw new Error('No StudyTracker DB found');
   });
 }
 
@@ -49,6 +53,30 @@ async function seedEvents(page: Page, events: Array<{ kind: string; payload: Rec
       request.onerror = () => reject(request.error);
     });
   }, { dbName, events });
+}
+
+async function readStoredEvents(page: Page): Promise<Array<{ kind: string; payload: Record<string, unknown>; createdAt: string }>> {
+  const dbName = await userDbName(page);
+  return page.evaluate(async (dbName) => {
+    const request = indexedDB.open(dbName);
+    return new Promise<Array<{ kind: string; payload: Record<string, unknown>; createdAt: string }>>((resolve, reject) => {
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction('events', 'readonly');
+        const getAll = tx.objectStore('events').getAll();
+        getAll.onsuccess = () => {
+          db.close();
+          resolve(getAll.result.map((row: any) => ({
+            kind: row.kind,
+            payload: row.payload,
+            createdAt: row.createdAt,
+          })));
+        };
+        getAll.onerror = () => reject(getAll.error);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }, dbName);
 }
 
 async function seedActiveSession(page: Page): Promise<void> {
@@ -130,6 +158,7 @@ function todayEvents() {
   const now = new Date().toISOString();
   const today = now.slice(0, 10);
   return [
+    { kind: 'OnboardingCompleted', payload: {}, createdAt: now },
     {
       kind: 'MaterialAdded',
       payload: {
@@ -168,6 +197,51 @@ function todayEvents() {
   ];
 }
 
+function roadmapBookingEvents() {
+  const now = new Date().toISOString();
+  const today = now.slice(0, 10);
+  const deadline = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return [
+    { kind: 'OnboardingCompleted', payload: {}, createdAt: now },
+    {
+      kind: 'MaterialAdded',
+      payload: {
+        materialId: 'mat-1',
+        title: 'Linear Algebra Lecture 4',
+        estimatedDuration: 120,
+        kind: 'manual',
+        role: 'anchor',
+      },
+      createdAt: now,
+    },
+    {
+      kind: 'RoadmapCreated',
+      payload: {
+        startDate: today,
+        deadline,
+        weeks: 4,
+        selectedStudyDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        weekdayHours: 2,
+        weekendHours: 0,
+        weeklyHours: 10,
+        materialIds: ['mat-1'],
+      },
+      createdAt: now,
+    },
+    {
+      kind: 'SessionBooked',
+      payload: {
+        roadmapCreatedAt: now,
+        bookingId: 'booking-editable',
+        date: today,
+        estimatedDuration: 60,
+        materialId: 'mat-1',
+      },
+      createdAt: now,
+    },
+  ];
+}
+
 test.describe('Material/session decoupling', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'app', 'app project only');
@@ -184,7 +258,7 @@ test.describe('Material/session decoupling', () => {
     await page.goto(`${APP_URL}/study/onboarding/3?new=1`);
     await expect(page.getByText('Projected finish')).toBeVisible();
     await expect(page.getByText('Your backlog fits your time')).toBeVisible();
-    await expect(page.getByText('Linear Algebra Lecture 4')).toBeVisible();
+    await expect(page.getByText('Linear Algebra Lecture 4').first()).toBeVisible();
     await expect(page.getByText('Pick one')).not.toBeVisible();
     await expect(page.getByText('Rest day')).not.toBeVisible();
   });
@@ -202,7 +276,7 @@ test.describe('Material/session decoupling', () => {
 
     await page.getByRole('button', { name: 'Start session' }).click();
     await expect(page.getByText('Ready to start')).toBeVisible();
-    await page.getByLabel('Planned session length').evaluate((element) => {
+    await page.getByRole('slider', { name: 'Planned session length' }).evaluate((element) => {
       const input = element as HTMLInputElement;
       input.value = '35';
       input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -245,10 +319,78 @@ test.describe('Material/session decoupling', () => {
     const password = 'TestPassword123!';
     await createTestUser(email, password);
     await signIn(page, email, password);
+    await seedEvents(page, [{ kind: 'OnboardingCompleted', payload: {}, createdAt: new Date().toISOString() }]);
     await seedActiveSession(page);
 
     await page.goto(`${APP_URL}/study/session`);
     await expect(page.getByText('Ready to start')).not.toBeVisible();
     await expect(page.locator('.session-timer-display')).toBeVisible();
+  });
+
+  test('Roadmap can add, edit, and remove bookings with booking events', async ({ page }) => {
+    const email = testEmail('decoupled-roadmap');
+    const password = 'TestPassword123!';
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await seedEvents(page, roadmapBookingEvents());
+
+    await page.goto(`${APP_URL}/study/roadmap`);
+    await expect(page.getByLabel('Projected finish')).toContainText('provisional');
+
+    // Add a session on an empty day via the radio-list material picker (D21).
+    await page.getByRole('button', { name: '+ add session' }).first().click();
+    const addDialog = page.getByRole('dialog', { name: 'Add session' });
+    await expect(addDialog).toBeVisible();
+    await addDialog.getByRole('button', { name: /Attach/ }).click();
+    const addPicker = page.getByRole('dialog', { name: 'Choose material' });
+    await addPicker.getByRole('button', { name: /Linear Algebra Lecture 4/ }).click();
+    await addPicker.getByRole('button', { name: 'Use this material' }).click();
+    await addDialog.getByRole('button', { name: 'Increase new session duration' }).click();
+    await addDialog.getByRole('button', { name: 'Add session' }).click();
+
+    // Edit the seeded booking: detach the material via the picker + bump the length.
+    await page.getByRole('button', { name: /Booked: Linear Algebra Lecture 4, 1h/ }).first().click();
+    const editDialog = page.getByRole('dialog', { name: 'Edit booking' });
+    await expect(editDialog).toBeVisible();
+    await editDialog.getByRole('button', { name: 'Change material' }).click();
+    const editPicker = page.getByRole('dialog', { name: 'Choose material' });
+    await editPicker.getByRole('button', { name: /No material · pick at start/ }).click();
+    await editPicker.getByRole('button', { name: 'Use this material' }).click();
+    await editDialog.getByRole('button', { name: 'Increase booking duration' }).click();
+    await editDialog.getByRole('button', { name: 'Done' }).click();
+
+    // Remove the now-blank booking.
+    await page.getByRole('button', { name: /Booked: Session .*pick at start, 1h 15m/ }).first().click();
+    await page.getByRole('dialog', { name: 'Edit booking' }).getByRole('button', { name: 'Remove booking' }).click();
+
+    // Mark material progress from the directory → MaterialProgressMarked (no SessionLogged).
+    await page.getByRole('button', { name: 'Mark progress' }).first().click();
+    const progressDialog = page.getByRole('dialog', { name: 'Mark material progress' });
+    await progressDialog.getByLabel('Material progress percent').evaluate((element) => {
+      const input = element as HTMLInputElement;
+      input.value = '50';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await progressDialog.getByRole('button', { name: 'Save progress' }).click();
+
+    const events = await readStoredEvents(page);
+    expect(events.some((event) => event.kind === 'SessionBooked' && event.payload.bookingId !== 'booking-editable')).toBeTruthy();
+    expect(events.some((event) =>
+      event.kind === 'BookingEdited' &&
+      event.payload.bookingId === 'booking-editable' &&
+      event.payload.materialId === null &&
+      event.payload.estimatedDuration === 75,
+    )).toBeTruthy();
+    expect(events.some((event) =>
+      event.kind === 'BookingCleared' &&
+      event.payload.bookingId === 'booking-editable',
+    )).toBeTruthy();
+    expect(events.some((event) =>
+      event.kind === 'MaterialProgressMarked' &&
+      event.payload.materialId === 'mat-1' &&
+      event.payload.source === 'directory',
+    )).toBeTruthy();
+    expect(events.some((event) => event.kind === 'SessionLogged')).toBeFalsy();
   });
 });

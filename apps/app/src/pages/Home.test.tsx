@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import type { CalibrationState, PromptDetail } from '@study-tracker/progress'
+import type { CalibrationState, ProgressSnapshot, PromptDetail } from '@study-tracker/progress'
 import { Home } from './Home'
 
 const mockProgressState = vi.hoisted(() => ({
   calibration: null as CalibrationState | null,
+  progress: null as ProgressSnapshot | null,
   promptDetail: null as PromptDetail | null,
 }))
 
@@ -37,7 +38,7 @@ vi.mock('../components/SyncIndicator', () => ({
 
 vi.mock('../progress', () => ({
   useCalibrationState: () => ({ calibration: mockProgressState.calibration, status: 'ready' }),
-  useProgressSnapshot: () => null,
+  useProgressSnapshot: () => mockProgressState.progress,
   usePromptDetail: () => mockProgressState.promptDetail,
 }))
 
@@ -52,11 +53,63 @@ vi.mock('dexie-react-hooks', () => ({
   },
 }))
 
+function makeProgressSnapshot(overrides: Partial<ProgressSnapshot> = {}): ProgressSnapshot {
+  return {
+    streak: { current: 2, longest: 3, grid: [] },
+    burnUp: {
+      planned: [],
+      actual: [],
+      gpCurve: [],
+      today: '2026-07-01',
+      deficit: 0,
+      dayNumber: 1,
+      totalDays: 30,
+    },
+    projection: {
+      finishDate: '2026-07-20',
+      confidenceInterval: null,
+      basis: 'analytic',
+      provisional: true,
+    },
+    totalMinutes: 90,
+    totalPlannedMinutes: 180,
+    completionPercentage: 50,
+    verdict: 'on-track',
+    driftPastDeadline: false,
+    upNext: null,
+    weeklyStats: {
+      weekIndex: 0,
+      weekStartDate: '2026-07-01',
+      sessionsThisWeek: 1,
+      minutesThisWeek: 90,
+      plannedMinutesThisWeek: 180,
+      minutesByDay: {},
+      materialsTouched: [],
+    },
+    weekSummaryForNarrative: {
+      weekStartDate: '2026-07-01',
+      sessionsLogged: 1,
+      hoursLogged: 1.5,
+      verdict: 'on-track',
+      daysWithActivity: 1,
+      materialsTouched: [],
+    },
+    replanContext: {
+      isPlanDrifted: false,
+      daysOverDeadline: null,
+      pinnedSlotCount: 0,
+      editableSlotCount: 0,
+    },
+    ...overrides,
+  }
+}
+
 describe('Home', () => {
   beforeEach(() => {
     mockEvents = []
     mockActiveSession = undefined
     mockProgressState.calibration = null
+    mockProgressState.progress = null
     mockProgressState.promptDetail = null
     mockLogEvent.mockClear()
   })
@@ -130,6 +183,37 @@ describe('Home', () => {
     expect(screen.getAllByText(/Study session/).length).toBeGreaterThan(0)
     expect(screen.getByText(/Suggested material/)).toBeInTheDocument()
     expect(screen.getByText('DDIA Chapter 1')).toBeInTheDocument()
+  })
+
+  it('labels projected finish as provisional', () => {
+    const roadmapCreatedAt = '2026-07-01T00:00:00.000Z'
+    mockProgressState.progress = makeProgressSnapshot()
+    mockEvents = [
+      {
+        id: 1,
+        kind: 'RoadmapCreated',
+        payload: {
+          startDate: '2026-07-01',
+          deadline: '2026-07-31',
+          weeks: 4,
+          selectedStudyDays: ['Mon', 'Wed', 'Fri'],
+          weekdayHours: 1,
+          weekendHours: 0,
+          weeklyHours: 3,
+          materialIds: [],
+        },
+        createdAt: roadmapCreatedAt,
+      },
+    ]
+
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <Home />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Projected finish · provisional')).toBeInTheDocument()
+    expect(screen.getByText('Jul 20')).toBeInTheDocument()
   })
 
   it('does not show the old up-next card after the roadmap is abandoned', () => {

@@ -303,7 +303,7 @@ export function Home() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
           {projectedFinish ? (
             <div style={{ padding: '14px 16px', background: 'var(--surface-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)' }}>
-              <div className="stat-label" style={{ marginBottom: '6px' }}>Projected finish</div>
+              <div className="stat-label" style={{ marginBottom: '6px' }}>Projected finish · provisional</div>
               <div className={`stat-value sm ${daysEarlyOrLate !== null && daysEarlyOrLate >= 0 ? 'moss' : 'terracotta'}`}>
                 {confidenceInterval
                   ? `${format(new Date(confidenceInterval[0]), 'MMM d')}–${format(new Date(confidenceInterval[1]), 'MMM d')}`

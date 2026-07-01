@@ -22,23 +22,23 @@ export const STATUS_STYLES: Record<CalendarBubbleStatus, CalendarStatusStyle> = 
     icon: 'ti-check',
     chipClass: 'roadmap-chip-done',
   },
-  pending: {
-    status: 'pending',
-    label: 'Planned',
+  booked: {
+    status: 'booked',
+    label: 'Booked',
     fillVar: 'var(--surface-card)',
     borderStyle: '1.4px solid var(--border-default)',
     textVar: 'var(--text-tertiary)',
     icon: 'ti-clock',
-    chipClass: 'roadmap-chip-pending',
+    chipClass: 'roadmap-chip-booked',
   },
-  skipped: {
-    status: 'skipped',
-    label: 'Skipped',
+  missed: {
+    status: 'missed',
+    label: 'Missed',
     fillVar: 'var(--rust)',
     borderStyle: 'none',
     textVar: 'var(--text-on-inverted)',
     icon: 'ti-x',
-    chipClass: 'roadmap-chip-skipped',
+    chipClass: 'roadmap-chip-missed',
   },
   unplanned: {
     status: 'unplanned',
@@ -53,8 +53,8 @@ export const STATUS_STYLES: Record<CalendarBubbleStatus, CalendarStatusStyle> = 
 
 export const LEGEND_ITEMS = [
   STATUS_STYLES.done,
-  STATUS_STYLES.pending,
-  STATUS_STYLES.skipped,
+  STATUS_STYLES.booked,
+  STATUS_STYLES.missed,
   STATUS_STYLES.unplanned,
 ]
 

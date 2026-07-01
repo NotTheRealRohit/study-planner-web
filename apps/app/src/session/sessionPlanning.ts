@@ -1,4 +1,11 @@
-import { buildDailyActivity, buildMaterialLedger, type MaterialLedgerEntry } from '@study-tracker/progress';
+import {
+  buildDailyActivity,
+  buildMaterialLedger,
+  calibrationDenominator,
+  isCalibrationSession,
+  type MaterialLedgerEntry,
+  type SessionEvent,
+} from '@study-tracker/progress';
 import {
   suggestMaterialForBooking,
   type Booking,
@@ -65,20 +72,86 @@ export function softCapMinutes(capacity: number, doneToday: number): number {
   return Math.max(0, capacity - Math.max(0, doneToday));
 }
 
+const MIN_RECOMMENDED_MINUTES = 15;
+
+function roundTo5(minutes: number): number {
+  return Math.max(5, Math.round(minutes / 5) * 5);
+}
+
 /**
- * Recommended planned length (D5/D6). Pace-first tuning is gated on Phase 6's
- * ETA/pace model; until then the recommendation is the booking target clamped
- * to the remaining daily cap so it can never suggest past the soft cap.
+ * Demonstrated throughput factor (actual minutes ÷ estimated material minutes
+ * consumed) averaged over the user's calibration sessions (D8). This is the same
+ * ratio Pillar A calibrates; ~1.0 when there is no evidence yet.
  */
-function recommendedForBooking(
-  booking: Booking | undefined,
-  material: SessionMaterialOption | undefined,
-  cap: number,
-): number {
-  const target = booking?.estimatedDuration ??
-    Math.max(15, Math.min(60, material?.remainingEstimatedMinutes || material?.estimatedMinutes || 50));
-  if (cap <= 0) return Math.max(5, target);
-  return Math.max(5, Math.min(cap, target));
+export function demonstratedThroughputFactor(sessions: SessionEvent[]): number {
+  const ratios: number[] = [];
+  for (const session of sessions) {
+    if (!isCalibrationSession(session)) continue;
+    const denominator = calibrationDenominator(session);
+    if (!denominator || session.activeMinutes == null) continue;
+    ratios.push(session.activeMinutes / denominator);
+  }
+  if (ratios.length === 0) return 1;
+  return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
+}
+
+/** Demonstrated daily study minutes = mean actual minutes across days with activity. */
+export function demonstratedDailyMinutes(sessions: SessionEvent[]): number {
+  const days = buildDailyActivity(sessions).filter((day) => day.minutes > 0);
+  if (days.length === 0) return 0;
+  return days.reduce((sum, day) => sum + day.minutes, 0) / days.length;
+}
+
+export interface RecommendationInputs {
+  bookingTarget?: number;
+  /** Estimated material minutes still remaining across the roadmap. */
+  remainingMaterialMinutes: number;
+  /** Actual-per-estimated pace multiplier (D8). */
+  throughputFactor: number;
+  /** Mean demonstrated daily study minutes. */
+  demonstratedDaily: number;
+  /** Calendar days from today to the deadline (>= 1). */
+  daysToDeadline: number;
+  /** Remaining daily soft cap in minutes (D5). */
+  cap: number;
+}
+
+/**
+ * Pace-first recommended session length (D6). Computes the deadline-required
+ * daily rate in actual-minutes currency
+ * (`requiredDaily = remaining material × throughput ÷ days-to-deadline`), then
+ * nudges from the user's demonstrated pace toward that required rate and clamps
+ * to the D5 soft cap. When even the cap cannot hit the deadline it recommends the
+ * cap — never an impossible number; the extend/shorten levers live on Replan (D6).
+ */
+export function recommendedSessionMinutes(inputs: RecommendationInputs): number {
+  const {
+    bookingTarget,
+    remainingMaterialMinutes,
+    throughputFactor,
+    demonstratedDaily,
+    daysToDeadline,
+    cap,
+  } = inputs;
+
+  // Nothing left to schedule → honor the booking target within the cap.
+  if (remainingMaterialMinutes <= 0) {
+    const base = bookingTarget ?? 50;
+    return cap > 0 ? roundTo5(Math.min(cap, base)) : roundTo5(base);
+  }
+
+  const requiredDaily =
+    (remainingMaterialMinutes * Math.max(0.1, throughputFactor)) / Math.max(1, daysToDeadline);
+
+  // With no demonstrated pace yet, aim straight at the required rate (or booking target).
+  const anchor = demonstratedDaily > 0 ? demonstratedDaily : bookingTarget ?? requiredDaily;
+  // Nudge halfway from demonstrated pace toward the deadline-required rate.
+  const nudged = anchor + (requiredDaily - anchor) * 0.5;
+  const target = Math.max(MIN_RECOMMENDED_MINUTES, nudged);
+
+  if (cap <= 0) return roundTo5(target);
+  // Infeasible at the cap → recommend the cap, not an impossible number.
+  return roundTo5(Math.min(cap, target));
 }
 
 function dayDiff(start: string, end: string): number {
@@ -189,7 +262,19 @@ export function deriveTodaySessionPlan(events: Event[], today: string): SessionP
   const dailyCapacityMinutes = dailyCapacityForDate(active, today);
   const minutesDoneToday = buildDailyActivity(sessions).find((day) => day.date === today)?.minutes ?? 0;
   const cap = softCapMinutes(dailyCapacityMinutes, minutesDoneToday);
-  const recommendedMinutes = recommendedForBooking(booking, suggestedMaterial, cap);
+  const remainingMaterialMinutes = ledger.reduce(
+    (sum, entry) => sum + entry.remainingEstimatedMinutes,
+    0,
+  );
+  const daysToDeadline = Math.max(1, dayDiff(today, active.payload.deadline));
+  const recommendedMinutes = recommendedSessionMinutes({
+    bookingTarget: booking?.estimatedDuration ?? suggestedMaterial?.remainingEstimatedMinutes,
+    remainingMaterialMinutes,
+    throughputFactor: demonstratedThroughputFactor(sessions),
+    demonstratedDaily: demonstratedDailyMinutes(sessions),
+    daysToDeadline,
+    cap,
+  });
 
   return {
     roadmapEntry: active,

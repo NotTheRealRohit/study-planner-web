@@ -56,6 +56,8 @@ const progressSnapshot = {
   projection: {
     finishDate: null,
     confidenceInterval: null,
+    basis: 'analytic',
+    provisional: true,
   },
   streak: {
     current: 1,

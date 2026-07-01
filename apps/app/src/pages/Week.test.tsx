@@ -46,7 +46,12 @@ function makeProgress(overrides: Partial<ProgressSnapshot> = {}): ProgressSnapsh
       dayNumber: 14,
       totalDays: 56,
     },
-    projection: { finishDate: '2026-06-15', confidenceInterval: null },
+    projection: {
+      finishDate: '2026-06-15',
+      confidenceInterval: null,
+      basis: 'analytic',
+      provisional: true,
+    },
     totalMinutes: 450,
     totalPlannedMinutes: 600,
     completionPercentage: 75,
@@ -176,6 +181,19 @@ describe('Week', () => {
 
     expect(screen.getByText(/3h against a 4h target/)).toBeInTheDocument()
     expect(screen.getByText(/Active on 4 days/)).toBeInTheDocument()
+  })
+
+  it('labels projected finish as provisional', () => {
+    mockProgress = makeProgress()
+
+    render(
+      <MemoryRouter>
+        <Week />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Provisional finish')).toBeInTheDocument()
+    expect(screen.getByText('Jun 15')).toBeInTheDocument()
   })
 
   it('renders navigation arrows', () => {

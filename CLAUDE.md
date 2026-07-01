@@ -101,7 +101,17 @@ Memory contains a codebase index (14 module files tracking 162+ source files). A
 
 ## E2E test
 
-E2E test cannot be performed due to Environment issues, So only write the test dont try to run.
+E2E **can** be run by the agent in this environment. The Vite app dev server boots
+(`pnpm --filter @study-tracker/app dev` → http://localhost:5173/study/, needs
+`COREPACK_NPM_REGISTRY=https://npm.dev.payment-providerinc.com`), Supabase env is present in
+`apps/app/.env.local`, and Chromium is installed. Run specs with
+`pnpm exec playwright test -c e2e/playwright.config.ts <spec> --project=app`.
+
+- Hermetic specs create throwaway users via `SUPABASE_SERVICE_ROLE_KEY` (auto-skip if unset).
+- A real-login spec (`e2e/roadmap-booking-live.spec.ts`) signs in with a dev app account
+  (`E2E_LIVE_EMAIL`/`E2E_LIVE_PASSWORD`); it seeds locally and abandons its roadmap to stay tidy.
+
+Author E2E for new UI flows and run them to verify before marking a phase done.
 
 <!-- ============================================================= -->
 <!-- BEGIN .work/ working-directory guide (mirror of AGENTS.md)     -->

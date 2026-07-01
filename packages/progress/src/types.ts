@@ -53,6 +53,11 @@ export interface RoadmapInput {
   weeks: number
   weeklyHours: number
   slots: RoadmapSlot[]
+  selectedStudyDays?: string[]
+  weekdayHours?: number
+  weekendHours?: number
+  materialTotalMinutes?: number
+  materialRemainingMinutes?: number
 }
 
 // --- CalibrationState output ---
@@ -189,6 +194,8 @@ export interface ProgressSnapshot {
   projection: {
     finishDate: string | null
     confidenceInterval: [string, string] | null
+    basis: 'gp' | 'analytic'
+    provisional: true
   }
   totalMinutes: number
   totalPlannedMinutes: number

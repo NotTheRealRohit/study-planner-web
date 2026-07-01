@@ -186,46 +186,75 @@ No correctness defects found in the code itself — `sessionsCount === completed
 - [x] **D5** — Pre-session soft-cap now derives from `hoursPerDay − minutesLoggedToday`: `sessionPlanning.dailyCapacityForDate` (weekday/weekend hours from the active roadmap payload) + `softCapMinutes` + today's minutes from `buildDailyActivity`; threaded through `SessionPlan` → `Session.tsx` → `PreSessionSetup` → `SessionDial`. Over-cap is allowed but flagged. Unit-tested (`sessionPlanning.test.ts`).
 - [x] **D14** — Onboarding material group headers (Playlists + each type group) are now collapsible `<button>`s with `aria-expanded` + rotating chevron; body renders conditionally (`Step3Materials.tsx`).
 - [x] **D18** — `EndSessionSheet` captures YouTube/playlist position automatically (read-only "N of M videos watched" → `materialPosition {kind:'videos', value, ofTotal}`) instead of the manual slider; non-YouTube keeps presets/slider. Unit-tested.
-- [ ] **D6** — pace-first *nudge* still genuinely gated on Phase 6 (needs the ETA/pace model). Current recommendation is the booking target clamped to the D5 soft-cap (never suggests past cap), which is the honest pace-independent behavior until P6 lands.
+- [x] **D6** — pace-first *nudge* **implemented 2026-07-01** once Phase 6 landed the pace/ETA model: `sessionPlanning.recommendedSessionMinutes` computes the deadline-required daily rate (remaining material × throughput ÷ days-to-deadline), nudges from demonstrated pace toward it, clamps to the D5 soft cap, and recommends the cap when infeasible. Unit-tested. (See Phase 6 Resolution below.)
 
 **Verification of the fixes:** `pnpm --filter app typecheck` clean; `pnpm --filter app test` green (**56 files / 480 tests**, +4: EndSessionSheet YouTube, 3× sessionPlanning); Playwright screenshot diff of the pre-session dial vs mock confirmed matching (throwaway preview harness used then removed). D6 remains the only open item and is correctly deferred to Phase 6.
 
 ---
 
-## Phase 5 — Roadmap page + booking interactions · Status: ☐
+## Phase 5 — Roadmap page + booking interactions · Status: ✅ Verified (deviations rectified 2026-07-01)
 
 **Acceptance criteria** (contract `mocks/proposed/roadmap.html`)
-- [ ] `RoadmapCalendar.tsx` uses `deriveBookingStatuses` (over `deriveBookingsForRoadmap`) — **no `deriveSlotStatuses`** in the live path; legend = done/booked/missed/unplanned (D9).
-- [ ] Future = outlined **booking** bubbles (blank = "Session · pick at start"), past = filled **activity**; "+ add session" on empty in-month days.
-- [ ] Collapsible **Materials directory panel** below calendar (from `buildMaterialLedger`, per-material progress + Mark progress).
-- [ ] Header **ETA card** (finish + burn-up sparkline, **provisional**); full 5–6 row month grid (no clipping).
-- [ ] Booking editor: swap/detach material (`BookingEdited`, `materialId:null`), **duration stepper** (`BookingEdited`, *not the dial*), move day (`BookingEdited`), **remove** (`BookingCleared`) (D21).
-- [ ] Add-session sheet → `SessionBooked`; material picker includes "No material · pick at start".
-- [ ] `RoadmapEdited`/`logRoadmapEdit` slot-coordinate path replaced by booking events; `SessionDetailModal` = read-only past-session detail.
-- [ ] Materials directory **Mark progress** emits `MaterialProgressMarked{roadmapCreatedAt, materialId, markedAt, materialPosition, source:'directory'}`; it updates ledger/ETA and does not emit `SessionLogged`.
-- [ ] `pnpm --filter app typecheck` + `pnpm --filter app test -- RoadmapCalendar calendarModel` green; Playwright authored (not run).
+- [x] `RoadmapCalendar.tsx` uses `deriveBookingStatuses` (over `deriveBookingsForRoadmap`) — **no `deriveSlotStatuses`** in the live roadmap path; legend = done/booked/missed/unplanned (D9).
+- [x] Future = outlined **booking** bubbles (blank = "Session · pick at start"), past = filled **activity**; "+ add session" on empty in-month days.
+- [x] Collapsible **Materials directory panel** below calendar (from `buildMaterialLedger`, per-material progress + Mark progress).
+- [x] Header **ETA card** (finish + burn-up sparkline, **provisional**); full 5–6 row month grid (no clipping).
+- [x] Booking editor: swap/detach material (`BookingEdited`, `materialId:null`), **duration stepper** (`BookingEdited`, *not the dial*), move day (`BookingEdited`), **remove** (`BookingCleared`) (D21).
+- [x] Add-session sheet → `SessionBooked`; material picker includes "No material · pick at start".
+- [x] `RoadmapEdited`/`logRoadmapEdit` slot-coordinate path replaced by booking events; `SessionDetailModal` = read-only past-session detail.
+- [x] Materials directory **Mark progress** emits `MaterialProgressMarked{roadmapCreatedAt, materialId, markedAt, materialPosition, source:'directory'}`; it updates ledger/ETA and does not emit `SessionLogged`.
+- [x] `pnpm --filter app typecheck` + `pnpm --filter app test -- RoadmapCalendar calendarModel` green; Playwright authored (not run).
 
-**Implementer report:** _( … )_
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+**Implementer report (2026-07-01):**
+- Files changed: `apps/app/src/roadmap/{RoadmapCalendar,CalendarCell,SessionDetailModal,calendarModel,statusStyles}.ts(x)`, `apps/app/src/roadmap/booking/*`, `apps/app/src/roadmap/roadmap.css`, roadmap tests, `apps/app/src/pages/{Home,Week}.tsx` copy touch, and `e2e/material-session-decoupling.spec.ts`.
+- Commit SHA: uncommitted local implementation in this working tree.
+- What changed: swapped the calendar binding to booking/activity bubbles; added done/booked/missed/unplanned status styles; added the provisional roadmap ETA card; added the collapsible material directory with per-material progress bars; added booking edit/add/progress sheets; replaced live slot-coordinate edits with `SessionBooked`/`BookingEdited`/`BookingCleared`/`MaterialProgressMarked`; kept past activity in the read-only `SessionDetailModal`; authored Playwright coverage for add/edit/remove booking events.
+- Deviations: the booking/add sheets use native `<select>` material pickers and a native date input instead of reusing the full grouped directory/playlist picker modal from D10/D21. The required "No material · pick at start" detach path, duration stepper, move-day edit, remove, and booking events are implemented and tested; grouped picker reuse is deferred as UI polish, not event-model logic.
+- Self-check: `pnpm --filter app typecheck` passed; `pnpm --filter app test -- RoadmapCalendar calendarModel` passed (`56` files / `483` tests under the filter run); `pnpm exec playwright test --config e2e/playwright.config.ts e2e/material-session-decoupling.spec.ts --list` listed the new roadmap interaction spec (not run, per project rule); `grep -n "deriveBookingStatuses" apps/app/src/roadmap/RoadmapCalendar.tsx` shows import + live derivation call; `grep -rn "deriveSlotStatuses" apps/app/src packages/progress/src` shows only the deferred Phase-7 replan path and deprecated progress export; `git diff --check` passed.
+
+**Reviewer findings (2026-07-01, Cowork senior review — read the working-tree diff):** **Status: 🔁 Changes requested → RECTIFIED (see Resolution)**
+- Event model, statuses, ETA card, directory panel, and Mark-progress path all correct and tested. ✅
+- **[BLOCKING deviation vs D21 + `mocks/proposed/roadmap.html`]** The self-disclosed native-picker shortcut was a real mock/decision violation, not just polish: `BookingEditorSheet`/`AddSessionSheet` used a native `<select>` for material and a native `<input type="date">` for the day. The mock's load-bearing D21 element — the **radio-list material picker sheet** (`#bkPick`, "No material · pick at start" + per-material status rows, suggested pre-selected) opened from a **tappable material card** (`#bkEdit`) / **"Attach" link** (`#bkAdd`) — was **never built**. Per the user's firm "deviations must be rectified" bar, this blocks Phase 5.
+
+**Resolution (rectified 2026-07-01):**
+- New `apps/app/src/roadmap/booking/MaterialPickerSheet.tsx` — radio-list picker faithful to `#bkPick` (detach row first, `material-icon` per kind, `in progress · N/M` / `done` / `not started` sublines, suggested/attached pre-selected, "Use this material" / "Cancel"). New shared `booking/types.ts` (`BookingMaterialOption` enriched from the material ledger, `materialIcon`, `materialStatusLine`).
+- `BookingEditorSheet` rebuilt to `#bkEdit`: tappable `bk-matcard` → picker (attach/swap/**detach** via `materialId:null`), settings-row Length stepper, **Day** as a `bk-link` backed by a hidden native date input (`showPicker()`), primary **Done** + **Remove booking** ghost, backdrop-close.
+- `AddSessionSheet` rebuilt to `#bkAdd`: **Length first** (with "within today's Xh cap" hint from the D5 soft cap), then a Material **"Attach"** `bk-link` → picker.
+- `RoadmapCalendar` now feeds ledger-enriched material options (`kind`/`started`/`done`/`remaining`/`lastPosition`) + today's cap; booking events (`BookingEdited`/`BookingCleared`/`SessionBooked`) unchanged. Added the mock's `bk-matcard`/`bk-link`/`chooser`/hidden-date CSS to `roadmap.css`; removed orphaned `bk-select-row`/`bk-date-input`.
+- Tests: `MaterialPickerSheet.test.tsx` (new, 4); `RoadmapCalendar.test.tsx` booking flows migrated to the picker interaction. **Playwright screenshot of the live editor + picker confirmed pixel-faithful to `mocks/proposed/roadmap.html`.**
+- Verification: `pnpm --filter app typecheck` clean; `pnpm --filter app test` green (**57 files / 494 tests**); E2E **run** (not just authored) — `e2e/material-session-decoupling.spec.ts` "Roadmap can add, edit, and remove bookings" passes end-to-end against real Supabase auth (throwaway user), exercising add→picker→attach, edit→picker→detach, remove, and Mark progress (asserts `SessionBooked`/`BookingEdited{materialId:null}`/`BookingCleared`/`MaterialProgressMarked`, no `SessionLogged`). A real-login live spec (`e2e/roadmap-booking-live.spec.ts`) also passes. **Status: ✅ Verified.**
 
 ---
 
-## Phase 6 — ETA composite + Week wiring · Status: ☐
+## Phase 6 — ETA composite + Week wiring · Status: ✅ Verified (D6 closed 2026-07-01)
 
 **Acceptance criteria** (research §2 / D-07/D-08)
-- [ ] `packages/progress/src/projectFinish.ts` with `COLD_START_N = 5` and switch: (1) `sessionCount<5` → analytic; (2) GP finish ≥ horizonEnd (non-crossing) → analytic; (3) else GP point + CI.
-- [ ] `sessionCount === 0 || consumedActualMin <= 0` returns `finishDate:null` with `basis:'analytic'` and `provisional:true`; product does not claim an ETA before evidence even though the Python helper returns today for no sessions.
-- [ ] Analytic uses **actual-minutes currency** (`consumedActual/elapsedDays` rate; `remainingActual/rate` days) with **no throughput multiplication**; mirrors `forecast_gp_plus_analytic_finish`.
-- [ ] `progress.ts` uses `projectFinish`; `projection` carries `basis`/`provisional`; CI only when `basis==='gp'` (analytic CI = null — not presented as calibrated).
-- [ ] This phase intentionally updates the local TS progress path consumed by the app; `/v1/progress` parity remains deferred unless the service becomes a live app dependency.
-- [ ] Home / Week / Roadmap ETA render the finish with a **provisional** eyebrow.
-- [ ] Week `plannedMinutesThisWeek` from **capacity** (D-08); no other Week UI change; no booked-day marker.
-- [ ] `pnpm --filter @study-tracker/progress test` green; `projectFinish.test.ts` covers all three branches + actual-minutes/no-pace-multiply; a case cross-checked vs the Python reference where feasible.
+- [x] `packages/progress/src/projectFinish.ts` with `COLD_START_N = 5` and switch: (1) `sessionCount<5` → analytic; (2) GP finish ≥ horizonEnd (non-crossing) → analytic; (3) else GP point + CI.
+- [x] `sessionCount === 0 || consumedActualMin <= 0` returns `finishDate:null` with `basis:'analytic'` and `provisional:true`; product does not claim an ETA before evidence even though the Python helper returns today for no sessions.
+- [x] Analytic uses **actual-minutes currency** (`consumedActual/elapsedDays` rate; `remainingActual/rate` days) with **no throughput multiplication**; mirrors the phase's product contract for `forecast_gp_plus_analytic_finish`.
+- [x] `progress.ts` uses `projectFinish`; `projection` carries `basis`/`provisional`; CI only when `basis==='gp'` (analytic CI = null — not presented as calibrated).
+- [x] This phase intentionally updates the local TS progress path consumed by the app; `/v1/progress` parity remains deferred unless the service becomes a live app dependency.
+- [x] Home / Week / Roadmap ETA render the finish with a **provisional** eyebrow.
+- [x] Week `plannedMinutesThisWeek` from **capacity** (D-08); no other Week UI change; no booked-day marker.
+- [x] `pnpm --filter @study-tracker/progress test` green; `projectFinish.test.ts` covers all three branches + actual-minutes/no-pace-multiply; a case cross-checked vs the Python reference where feasible.
 
-**Implementer report:** _( … )_
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+**Implementer report (2026-07-01):**
+- Files changed: `packages/progress/src/{projectFinish,progress,types,index}.ts`, `packages/progress/test/{projectFinish,progress,deriveBookingStatuses,cusum}.test.ts`, `apps/app/src/progress/mapEvents.ts`, `apps/app/src/pages/{Home,Week}.tsx`, `apps/app/src/pages/{Home,Week}.test.tsx`, and `apps/app/src/progress/useProgress.test.ts`.
+- Commit SHA: uncommitted local implementation in this working tree.
+- What changed: added `projectFinish` with `COLD_START_N=5`, analytic cold-start/no-crossing fallback and GP crossing + CI; extended projection type with `basis`/`provisional`; wired `computeProgress` to use material ledger totals/remaining minutes from `mapEvents`; changed weekly target to capacity when roadmap capacity fields are present; added provisional finish copy on Home, Week, and Roadmap; added focused ETA tests.
+- Deviations: direct Python subprocess parity was not added because the research helper's no-evidence behavior and elapsed-day convention differ from the product-specific Phase 6 contract. The TS tests assert the product contract directly: no ETA before evidence, cold-start analytic, actual-minutes/no pace multiplication, GP non-crossing rescue, and GP crossing + CI.
+- Verification hygiene: `packages/progress/test/cusum.test.ts` used `Math.random()` in an unrelated "stable signal" fixture and failed once during package verification. The fixture is now seeded with the existing `mulberry32` helper; CUSUM production logic was not changed.
+- Open follow-up: the D6 pace-first pre-session *recommendation nudge* remains open from the Phase 3/4 review. Phase 6 implemented the ETA/projection and Week capacity target specified in `PLAN.md`; `PreSessionSetup` still recommends the booking target clamped to D5 soft cap, not a demonstrated-pace-vs-required-rate nudge.
+- Self-check: `pnpm --filter @study-tracker/progress test` passed (`13` files / `95` tests); `pnpm typecheck` passed across progress, roadmap-engine, app, and marketing; `pnpm --filter app test -- Home Week useProgress` passed (`56` files / `483` tests under the filter run); `grep -n "COLD_START_N\|projectFinish" packages/progress/src/projectFinish.ts` and `grep -n "projectFinish" packages/progress/src/progress.ts` show the new projection path; `git diff --check` passed.
+
+**Reviewer findings (2026-07-01, Cowork senior review):** **Status: ✅ Verified (ETA/Week) · D6 follow-up RECTIFIED**
+- `projectFinish` composite (COLD_START_N=5, cold-start/no-crossing analytic, GP+CI), no-evidence→null, actual-minutes currency, `basis`/`provisional` wiring, capacity Week target, and provisional finish copy on Home/Week/Roadmap — all correct and tested. ✅
+- Python-subprocess parity is **not** a deviation — PLAN Phase 6 explicitly ships the TS mirror and defers `/v1/progress` parity to OQ-01/OQ-02. The `cusum.test.ts` change is a test-only `mulberry32` seeding fix; **no production CUSUM logic changed** (diff confirmed). ✅
+- **D6 pace-first recommendation was the one open decision-vs-code gap.** It was legitimately gated on Phase 6's pace/ETA model; with that now landed, the deferred "booking-target clamped to cap" recommendation no longer matches D6.
+
+**Resolution (D6 rectified 2026-07-01):**
+- `apps/app/src/session/sessionPlanning.ts`: replaced `recommendedForBooking` with `recommendedSessionMinutes` implementing D6 — `requiredDailyMinutes = remaining material × throughput ÷ days-to-deadline` (actual-minutes currency), nudge from demonstrated pace toward the required rate, **clamp to the D5 soft cap**, and when the cap can't hit the deadline recommend the cap (never an impossible number; levers live on Replan/Phase 7). New helpers `demonstratedThroughputFactor` (uses the Phase-2 `calibrationDenominator`, i.e. `materialConsumedMinutes ?? plannedMinutes`) and `demonstratedDailyMinutes`; threaded through `deriveTodaySessionPlan`. `PreSessionSetup` consumes the richer `recommendedMinutes` unchanged.
+- Tests: 7 new `sessionPlanning.test.ts` cases (throughput denominator, demonstrated-daily, pace-first nudge, infeasible→cap, throughput applied, no-material→booking-target). `pnpm --filter app test` green (57 files / 494). **D6 is now closed.** Status: ✅ Verified.
 
 ---
 

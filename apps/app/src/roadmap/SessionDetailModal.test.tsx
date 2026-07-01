@@ -16,6 +16,7 @@ function makeBubble(overrides: Partial<CalendarBubble> = {}): CalendarBubble {
     plannedMinutes: 60,
     loggedMinutes: 52,
     sessionIds: ['session-1'],
+    kind: 'booking',
     ...overrides,
   }
 }
@@ -23,8 +24,8 @@ function makeBubble(overrides: Partial<CalendarBubble> = {}): CalendarBubble {
 describe('SessionDetailModal', () => {
   it.each([
     ['done', 'Completed', 'View session'],
-    ['pending', 'Planned', 'Start session'],
-    ['skipped', 'Skipped', 'Log it late'],
+    ['booked', 'Booked', 'View booking'],
+    ['missed', 'Missed', 'View booking'],
     ['unplanned', 'Unplanned', 'View session'],
   ] as const)('maps %s status to the correct pill and action', (status, pill, action) => {
     expect(statusCopyFor(status)).toEqual({
@@ -43,7 +44,7 @@ describe('SessionDetailModal', () => {
     )
 
     expect(screen.getByText(pill)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: action })).toBeInTheDocument()
+    expect(screen.getByText(action)).toBeInTheDocument()
   })
 
   it('renders date, material link, and logged vs planned body', () => {

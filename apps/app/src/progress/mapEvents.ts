@@ -5,6 +5,7 @@ import type {
   RecalibrationResolution,
   RoadmapInput,
 } from '@study-tracker/progress'
+import { buildMaterialLedger } from '@study-tracker/progress'
 import type { Booking, DayOfWeek, Slot } from '@study-tracker/roadmap-engine'
 import type {
   BookingClearedPayload,
@@ -89,13 +90,22 @@ function slotFromBooking(booking: Booking, payload: RoadmapCreatedPayload): Slot
   }
 }
 
-function toRoadmapInput(payload: RoadmapCreatedPayload, bookings: Booking[] = []): RoadmapInput {
+function toRoadmapInput(
+  payload: RoadmapCreatedPayload,
+  bookings: Booking[] = [],
+  materialMetrics: { totalMinutes?: number; remainingMinutes?: number } = {},
+): RoadmapInput {
   const slots = payload.slots ?? bookings.map((booking) => slotFromBooking(booking, payload))
   return {
     startDate: payload.startDate,
     deadline: payload.deadline,
     weeks: payload.weeks,
     weeklyHours: payload.weeklyHours,
+    selectedStudyDays: payload.selectedStudyDays,
+    weekdayHours: payload.weekdayHours,
+    weekendHours: payload.weekendHours,
+    materialTotalMinutes: materialMetrics.totalMinutes,
+    materialRemainingMinutes: materialMetrics.remainingMinutes,
     slots: slots.map((slot) => ({
       date: slot.date,
       dayOfWeek: slot.dayOfWeek,
@@ -105,6 +115,29 @@ function toRoadmapInput(payload: RoadmapCreatedPayload, bookings: Booking[] = []
       role: slot.role,
       sessionTitle: slot.sessionTitle ?? null,
     })),
+  }
+}
+
+function materialMetricsForRoadmap(
+  events: Event[],
+  entry: RoadmapLifecycleEntry,
+): { totalMinutes?: number; remainingMinutes?: number } {
+  const materials = mapMaterialsForRoadmap(events, entry)
+  if (materials.length === 0) return {}
+
+  const ledger = buildMaterialLedger(
+    materials.map((material) => ({
+      id: material.materialId,
+      title: material.title,
+      estimatedMinutes: material.estimatedDuration,
+    })),
+    mapSessions(events),
+    mapMaterialProgressMarks(events, entry.roadmapCreatedAt),
+  )
+
+  return {
+    totalMinutes: ledger.reduce((total, material) => total + material.estimatedMinutes, 0),
+    remainingMinutes: ledger.reduce((total, material) => total + material.remainingEstimatedMinutes, 0),
   }
 }
 
@@ -244,5 +277,5 @@ export function findActiveRoadmap(events: Event[]): RoadmapInput | null {
   const active = deriveRoadmapLifecycle(events).active[0]
   if (!active) return null
   const bookings = active.payload.slots ? [] : deriveBookingsForRoadmap(events, active)
-  return toRoadmapInput(active.payload, bookings)
+  return toRoadmapInput(active.payload, bookings, materialMetricsForRoadmap(events, active))
 }

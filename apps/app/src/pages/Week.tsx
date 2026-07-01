@@ -122,6 +122,8 @@ export function Week() {
   const hoursLogged = Math.round((weeklyStats.minutesThisWeek / 60) * 10) / 10;
   const hoursPlanned = Math.round((weeklyStats.plannedMinutesThisWeek / 60) * 10) / 10;
   const displayWeekNumber = selectedWeekIndex + 1;
+  const projectedFinish = progress.projection.finishDate;
+  const confidenceInterval = progress.projection.confidenceInterval;
 
   const isAtStart = selectedWeekIndex <= 0;
   const isAtEnd = !roadmapBounds || selectedWeekIndex >= roadmapBounds.currentWeekIndex;
@@ -243,6 +245,26 @@ export function Week() {
               exceptionalDates={exceptionalDates}
             />
           </div>
+
+          {projectedFinish && (
+            <div
+              aria-label="Projected finish"
+              style={{
+                background: 'var(--surface-card)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 16px',
+                marginBottom: '1rem',
+              }}
+            >
+              <div className="stat-label" style={{ marginBottom: 4 }}>Provisional finish</div>
+              <div className="stat-value sm">
+                {confidenceInterval
+                  ? `${format(parseISO(confidenceInterval[0]), 'MMM d')}–${format(parseISO(confidenceInterval[1]), 'MMM d')}`
+                  : format(parseISO(projectedFinish), 'MMM d')}
+              </div>
+            </div>
+          )}
 
           {chartBurnUp.actual.length >= 3 && chartBurnUp.actual.some(p => p.minutes > 0) ? (
             <BurnUpChart data={chartBurnUp} />

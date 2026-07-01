@@ -484,7 +484,7 @@ Revert session files; Home reverts to `getUpNextSlot`. New `SessionLogged` field
 
 ### Phase 5: Roadmap page — booking calendar + directory + booking interactions
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — deviations rectified + verified 2026-07-01 (native pickers → mock radio-list picker; E2E run green)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~5 files. Visual contract: [`mocks/proposed/roadmap.html`](./mocks/proposed/roadmap.html) (D20/D21).
 
@@ -532,7 +532,7 @@ Revert roadmap files; derivations remain for other consumers.
 
 ### Phase 6: ETA composite (GP + analytic cold-start fallback) + Week wiring
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete — verified 2026-07-01; D6 pace-first recommendation closed (see VERIFICATION Phase 6)
 **Depends on:** Phase 2 (material ledger for "remaining actual"), Phase 1
 **Estimated scope:** ~4 files. Research contract: handover §2 + `research/comparison/src/research_comparison/baselines/projection.py` (`forecast_gp_plus_analytic_finish`, `COLD_START_N=5`). Implements D-07/D-08. The research baton suggested the Python service seam, but current app code consumes finish-date from the local TS `computeProgress`; this phase intentionally ships a TS mirror first and leaves `/v1/progress` parity as OQ-01/OQ-02.
 

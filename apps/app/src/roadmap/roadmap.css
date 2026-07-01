@@ -69,6 +69,44 @@
   font-size: 13px;
 }
 
+.roadmap-eta-card {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  background: var(--surface-card);
+  border: var(--border-width-hair) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.roadmap-eta-copy {
+  min-width: 140px;
+}
+
+.roadmap-provisional {
+  color: var(--clay);
+}
+
+.roadmap-eta-finish {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--moss);
+  margin-top: var(--space-1);
+}
+
+.roadmap-eta-meta {
+  margin-top: var(--space-1);
+  color: var(--moss);
+}
+
+.roadmap-eta-spark {
+  flex: 1;
+  min-width: 96px;
+  height: 44px;
+}
+
 .roadmap-ended-banner {
   display: flex;
   justify-content: space-between;
@@ -427,7 +465,24 @@
   border: 1.4px solid var(--border-default);
 }
 
+.roadmap-chip-booked {
+  color: var(--text-secondary);
+  background: var(--surface-card);
+  border: 1.4px solid var(--border-strong);
+}
+
+.roadmap-booking-blank {
+  color: var(--text-tertiary);
+  border-style: dashed;
+}
+
 .roadmap-chip-skipped {
+  color: var(--text-on-inverted);
+  background: var(--rust);
+  border: 1.4px solid transparent;
+}
+
+.roadmap-chip-missed {
   color: var(--text-on-inverted);
   background: var(--rust);
   border: 1.4px solid transparent;
@@ -437,6 +492,32 @@
   color: var(--text-tertiary);
   background: var(--surface-card);
   border: 1.4px dashed var(--border-default);
+}
+
+.roadmap-add-session {
+  width: 100%;
+  border: 1px dashed var(--border-default);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.2;
+  padding: 5px 7px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--duration-2) var(--ease-out),
+              color var(--duration-2) var(--ease-out),
+              border-color var(--duration-2) var(--ease-out);
+}
+
+.roadmap-day-in-month:hover .roadmap-add-session,
+.roadmap-add-session:focus-visible {
+  opacity: 1;
+}
+
+.roadmap-add-session:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 
 .roadmap-overflow {
@@ -462,6 +543,403 @@
   color: var(--text-secondary);
   background: var(--surface-recessed);
   font-size: 13px;
+}
+
+.roadmap-readonly-detail,
+.roadmap-muted {
+  margin: var(--space-4) 0 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.dir-panel {
+  margin-top: var(--space-4);
+  border: var(--border-width-hair) solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-card);
+  overflow: hidden;
+}
+
+.dir-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.dir-head:hover {
+  background: var(--surface-recessed);
+}
+
+.dir-head .ttl {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.dir-head .chev {
+  color: var(--text-tertiary);
+  transition: transform var(--duration-2) var(--ease-out);
+}
+
+.dir-panel.collapsed .chev {
+  transform: rotate(-90deg);
+}
+
+.count-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-recessed);
+  color: var(--text-secondary);
+}
+
+.dir-body {
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  border-top: var(--border-width-hair) solid var(--border-subtle);
+}
+
+.dir-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) 0;
+  border-bottom: var(--border-width-hair) solid var(--border-subtle);
+}
+
+.dir-row:last-child {
+  border-bottom: 0;
+}
+
+.dir-prog {
+  flex: 1;
+  min-width: 0;
+}
+
+.dir-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: var(--space-2);
+}
+
+.dir-bar {
+  height: 6px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--surface-recessed);
+}
+
+.dir-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--moss);
+}
+
+.dir-meta {
+  margin-top: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.bk-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(42, 31, 24, 0.4);
+}
+
+.bk-sheet {
+  width: 100%;
+  max-width: 460px;
+  padding: var(--space-5) var(--space-5) var(--space-6);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface-card);
+  box-shadow: var(--shadow-modal);
+}
+
+.bk-grip {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--border-default);
+  margin: 0 auto var(--space-4);
+}
+
+.bk-head {
+  margin-bottom: var(--space-3);
+}
+
+.bk-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 3px;
+}
+
+.bk-title {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.bk-progress-field {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-4) 0;
+}
+
+.bk-row .lbl,
+.bk-progress-field .lbl {
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* label sub-hint ("within today's 2h cap", "optional — or pick at start") */
+.bk-row .lbl .hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+/* full-width tappable material card (booking editor) */
+.bk-matcard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin: var(--space-4) 0 var(--space-1);
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  cursor: pointer;
+  text-align: left;
+}
+
+.bk-matcard:hover {
+  background: var(--surface-recessed);
+  border-color: var(--border-strong);
+}
+
+.bk-matcard .chg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.bk-matcard .body,
+.chooser-row .body {
+  flex: 1;
+  min-width: 0;
+}
+
+.bk-matcard .ttl,
+.chooser-row .ttl {
+  display: block;
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-matcard .sub,
+.chooser-row .sub {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* inline link-style control (day picker, attach material) */
+.bk-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.bk-link:hover {
+  color: var(--terracotta-d);
+}
+
+.bk-link .material-icon {
+  width: 22px;
+  height: 22px;
+  font-size: 9px;
+}
+
+/* visually-hidden native date input backing the Day bk-link */
+.bk-date-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* radio-list material picker (bkPick) */
+.chooser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.chooser-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chooser-row:hover {
+  background: var(--surface-recessed);
+}
+
+.chooser-row.sel {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.chooser-radio {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+}
+
+.chooser-row.sel .chooser-radio {
+  border-color: var(--ink);
+}
+
+.chooser-row.sel .chooser-radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.chooser-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.bk-rows {
+  margin: var(--space-2) 0;
+}
+
+.bk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: var(--border-width-hair) solid var(--border-subtle);
+}
+
+.bk-row .ctrl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  border: var(--border-width-hair) solid var(--border-default);
+  border-radius: var(--radius-md);
+}
+
+.stepper button {
+  width: 40px;
+  height: 36px;
+  border: 0;
+  background: var(--surface-page);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.stepper button:hover {
+  background: var(--surface-recessed);
+  color: var(--text-primary);
+}
+
+.stepper .val {
+  min-width: 64px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.bk-progress-field input[type="range"] {
+  width: 100%;
+}
+
+.bk-progress-value {
+  font-family: var(--font-mono);
+  color: var(--moss);
+}
+
+.bk-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.bk-remove {
+  align-self: center;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--terracotta);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.bk-remove:hover {
+  text-decoration: underline;
 }
 
 .modal-overlay.roadmap-modal-overlay {

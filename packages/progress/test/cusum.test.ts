@@ -17,7 +17,8 @@ function makeSession(overrides: Partial<SessionEvent> = {}): SessionEvent {
 
 describe('runCUSUM', () => {
   it('detects no breakpoints for stable signal', () => {
-    const stable = Array.from({ length: 30 }, () => 1.0 + (Math.random() - 0.5) * 0.1)
+    const rng = mulberry32(17)
+    const stable = Array.from({ length: 30 }, () => 1.0 + (rng() - 0.5) * 0.1)
     const mean = stable.reduce((s, r) => s + r, 0) / stable.length
     const std = Math.sqrt(
       stable.reduce((s, r) => s + (r - mean) ** 2, 0) / (stable.length - 1),

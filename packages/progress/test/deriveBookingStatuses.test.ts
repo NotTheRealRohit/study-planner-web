@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { deriveBookingStatuses } from '../src/deriveBookingStatuses'
-import type { Booking } from '@study-tracker/roadmap-engine'
+import { deriveBookingStatuses, type BookingLike } from '../src/deriveBookingStatuses'
 import type { SessionEvent } from '../src/types'
 
-function booking(overrides: Partial<Booking> = {}): Booking {
+function booking(overrides: Partial<BookingLike> = {}): BookingLike {
   return {
     id: 'booking-1',
     date: '2026-06-10',

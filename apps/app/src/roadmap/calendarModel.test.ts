@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { DerivedSlot, RoadmapSlot, UnplannedSession } from '@study-tracker/progress'
+import type { DerivedBooking } from '@study-tracker/progress'
 import {
   bindCells,
   buildMonthGrid,
@@ -8,30 +8,19 @@ import {
   shiftMonth,
 } from './calendarModel'
 
-function makeSlot(overrides: Partial<RoadmapSlot> = {}): RoadmapSlot {
+function makeDerivedBooking(overrides: Partial<DerivedBooking> = {}): DerivedBooking {
   return {
-    date: '2026-03-10',
-    dayOfWeek: 'Tuesday',
-    weekIndex: 1,
-    plannedMinutes: 60,
-    candidateMaterialIds: ['mat-1'],
-    role: 'anchor',
-    sessionTitle: 'Distributed systems · session 1',
-    ...overrides,
-  }
-}
-
-function makeDerivedSlot(
-  overrides: Partial<Omit<DerivedSlot, 'slot'>> & { slot?: Partial<RoadmapSlot> } = {},
-): DerivedSlot {
-  const { slot: slotOverrides, ...derivedOverrides } = overrides
-  const slot = makeSlot(slotOverrides)
-  return {
-    slot,
-    status: 'pending',
+    booking: {
+      id: 'booking-1',
+      date: '2026-03-10',
+      estimatedDuration: 60,
+      materialId: 'mat-1',
+      status: 'booked',
+    },
+    status: 'booked',
     loggedMinutes: 0,
     sessionIds: [],
-    ...derivedOverrides,
+    ...overrides,
   }
 }
 
@@ -62,12 +51,12 @@ describe('calendarModel', () => {
     expect(dates).toContain('2026-02-28')
   })
 
-  it('binds planned slots to their day cells with material titles', () => {
+  it('binds booking statuses to their day cells with material titles', () => {
     const grid = buildMonthGrid('2026-03-10')
     const bound = bindCells(
       grid,
       [
-        makeDerivedSlot({
+        makeDerivedBooking({
           status: 'done',
           loggedMinutes: 52,
           sessionIds: ['session-1'],
@@ -82,50 +71,49 @@ describe('calendarModel', () => {
     expect(day?.bubbles).toHaveLength(1)
     expect(day?.bubbles[0]).toMatchObject({
       status: 'done',
-      label: 'Distributed systems · session 1',
+      label: 'Distributed Systems',
       materialTitle: 'Distributed Systems',
       minutes: 52,
       plannedMinutes: 60,
       materialId: 'mat-1',
+      bookingId: 'booking-1',
+      kind: 'booking',
     })
   })
 
-  it('falls back to the material title when a slot has no session title', () => {
+  it('labels blank bookings as pick-at-start sessions', () => {
     const grid = buildMonthGrid('2026-03-10')
     const bound = bindCells(
       grid,
-      [
-        makeDerivedSlot({
-          slot: {
-            sessionTitle: null,
-          },
-        }),
-      ],
+      [makeDerivedBooking({ booking: { id: 'booking-blank', date: '2026-03-10', estimatedDuration: 45, status: 'booked' } })],
       [],
-      new Map([['mat-1', 'Operating Systems']]),
+      new Map(),
     )
 
     const bubble = bound.weeks.flat().find((cell) => cell.date === '2026-03-10')
       ?.bubbles[0]
 
-    expect(bubble?.label).toBe('Operating Systems')
+    expect(bubble).toMatchObject({
+      status: 'booked',
+      label: 'Session · pick at start',
+      minutes: 45,
+      bookingId: 'booking-blank',
+    })
   })
 
-  it('binds unplanned sessions as their own bubbles', () => {
+  it('binds unplanned activity as its own bubble', () => {
     const grid = buildMonthGrid('2026-03-10')
-    const unplanned: UnplannedSession[] = [
-      {
-        date: '2026-03-10',
-        materialId: 'mat-2',
-        minutes: 35,
-        sessionId: 'session-unplanned',
-      },
-    ]
     const bound = bindCells(
       grid,
       [],
-      unplanned,
-      new Map([['mat-2', 'Office hours']]),
+      [
+        {
+          date: '2026-03-10',
+          sessionIds: ['session-unplanned'],
+          minutes: 35,
+        },
+      ],
+      new Map(),
     )
 
     const bubble = bound.weeks.flat().find((cell) => cell.date === '2026-03-10')
@@ -133,10 +121,10 @@ describe('calendarModel', () => {
 
     expect(bubble).toMatchObject({
       status: 'unplanned',
-      label: 'Office hours',
-      materialTitle: 'Office hours',
+      label: 'Unplanned activity',
       minutes: 35,
       sessionId: 'session-unplanned',
+      kind: 'activity',
     })
   })
 

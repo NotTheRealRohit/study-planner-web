@@ -10,6 +10,8 @@ interface CalendarCellProps {
   onBubbleClick?: (bubble: CalendarBubble) => void
   onOverflowClick?: (day: BoundCalendarDay) => void
   onDayClick?: (day: BoundCalendarDay) => void
+  onAddSessionClick?: (date: string) => void
+  canAddSession?: boolean
 }
 
 function StatusIcon({ name }: { name: StatusIconName }) {
@@ -62,12 +64,15 @@ export function CalendarCell({
   onBubbleClick = () => undefined,
   onOverflowClick = () => undefined,
   onDayClick = () => undefined,
+  onAddSessionClick = () => undefined,
+  canAddSession = false,
 }: CalendarCellProps) {
   const isCompact = useMatchMedia('(max-width: 560px)')
   const visibleBubbles = day.bubbles.slice(0, 3)
   const hiddenCount = Math.max(0, day.bubbles.length - visibleBubbles.length)
   const dotBubbles = day.bubbles.slice(0, 4)
   const canOpenDay = isCompact && day.isInMonth && day.bubbles.length > 0
+  const showAddSession = canAddSession && day.isInMonth && day.bubbles.length === 0
   const classes = [
     'roadmap-day',
     day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
@@ -128,11 +133,12 @@ export function CalendarCell({
         <div className="roadmap-bubble-stack">
           {visibleBubbles.map((bubble) => {
             const style = statusStyleFor(bubble.status)
+            const isBlankBooking = bubble.status === 'booked' && bubble.materialId === undefined
             return (
               <button
                 key={bubble.id}
                 type="button"
-                className={`roadmap-bubble ${style.chipClass}`}
+                className={`roadmap-bubble ${style.chipClass}${isBlankBooking ? ' roadmap-booking-blank' : ''}`}
                 data-status={bubble.status}
                 data-icon={style.icon}
                 disabled={!day.isInMonth}
@@ -154,6 +160,15 @@ export function CalendarCell({
               onClick={() => onOverflowClick(day)}
             >
               +{hiddenCount} more
+            </button>
+          )}
+          {showAddSession && (
+            <button
+              type="button"
+              className="roadmap-add-session"
+              onClick={() => onAddSessionClick(day.date)}
+            >
+              + add session
             </button>
           )}
         </div>

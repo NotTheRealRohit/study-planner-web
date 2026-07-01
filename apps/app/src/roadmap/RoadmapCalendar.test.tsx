@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { Event } from '../events/EventStore'
 import type { RoadmapCreatedPayload } from '../sync/types'
@@ -47,18 +47,8 @@ function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): Roadmap
     weekdayHours: 1,
     weekendHours: 0,
     weeklyHours: 2,
-    slots: [
-      {
-        date: '2099-06-03',
-        dayOfWeek: 'Wed',
-        weekIndex: 0,
-        plannedMinutes: 60,
-        capacityMinutes: 60,
-        candidateMaterialIds: ['mat-1'],
-        role: 'anchor',
-        sessionTitle: 'Read chapter',
-      },
-    ],
+    materialIds: ['mat-1', 'mat-2'],
+    slots: undefined,
     ...overrides,
   }
 }
@@ -68,6 +58,7 @@ function event(kind: string, payload: unknown, createdAt: string): Event {
 }
 
 function baseEvents(): Event[] {
+  const roadmapCreatedAt = '2026-05-01T09:00:00.000Z'
   return [
     event(
       'MaterialAdded',
@@ -80,7 +71,39 @@ function baseEvents(): Event[] {
       },
       '2026-05-01T08:00:00.000Z',
     ),
-    event('RoadmapCreated', roadmapPayload(), '2026-05-01T09:00:00.000Z'),
+    event(
+      'MaterialAdded',
+      {
+        materialId: 'mat-2',
+        title: 'Operating Systems',
+        estimatedDuration: 90,
+        kind: 'manual',
+        role: 'foundation',
+      },
+      '2026-05-01T08:05:00.000Z',
+    ),
+    event('RoadmapCreated', roadmapPayload(), roadmapCreatedAt),
+    event(
+      'SessionBooked',
+      {
+        roadmapCreatedAt,
+        bookingId: 'booking-1',
+        date: '2099-06-03',
+        estimatedDuration: 60,
+        materialId: 'mat-1',
+      },
+      '2026-05-01T09:01:00.000Z',
+    ),
+    event(
+      'SessionBooked',
+      {
+        roadmapCreatedAt,
+        bookingId: 'booking-blank',
+        date: '2099-06-10',
+        estimatedDuration: 45,
+      },
+      '2026-05-01T09:02:00.000Z',
+    ),
   ]
 }
 
@@ -100,126 +123,112 @@ function renderHistoricalCalendar() {
   )
 }
 
-function openPlannedBubble() {
-  fireEvent.click(screen.getByRole('button', { name: /Planned: Read chapter, 1h/ }))
+function openBookingEditor(name = /Booked: Distributed Systems, 1h/) {
+  fireEvent.click(screen.getByRole('button', { name }))
 }
 
-describe('RoadmapCalendar quick actions', () => {
+describe('RoadmapCalendar booking interactions', () => {
   beforeEach(() => {
     mockState.events = baseEvents()
     mockState.logEvent.mockReset()
     mockState.logEvent.mockResolvedValue(1)
   })
 
-  it('logs a session with the tapped slot date and material', async () => {
+  it('renders booking statuses instead of slot statuses', () => {
     renderCalendar()
-    openPlannedBubble()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Log session' }))
-
-    await waitFor(() => {
-      expect(mockState.logEvent).toHaveBeenCalledWith('SessionLogged', expect.objectContaining({
-        source: 'manual',
-        date: '2099-06-03',
-        materialId: 'mat-1',
-        duration: 60,
-      }))
-    })
+    expect(screen.getByRole('button', { name: /Booked: Distributed Systems, 1h/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Booked: Session · pick at start, 45m/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('Projected finish')).toHaveTextContent('estimate')
   })
 
-  it('renames a future slot by emitting RoadmapEdited', async () => {
+  it('edits a future booking by emitting BookingEdited', async () => {
     renderCalendar()
-    openPlannedBubble()
+    openBookingEditor()
 
-    fireEvent.change(screen.getByLabelText('Session title'), {
-      target: { value: 'Read chapter revised' },
+    fireEvent.click(screen.getByRole('button', { name: 'Change material' }))
+    fireEvent.click(screen.getByRole('button', { name: /Operating Systems/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use this material' }))
+    fireEvent.click(screen.getByLabelText('Increase booking duration'))
+    fireEvent.change(screen.getByLabelText('Booking date'), {
+      target: { value: '2099-06-04' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save title' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
     await waitFor(() => {
-      expect(mockState.logEvent).toHaveBeenCalledWith('RoadmapEdited', {
+      expect(mockState.logEvent).toHaveBeenCalledWith('BookingEdited', {
         roadmapCreatedAt: '2026-05-01T09:00:00.000Z',
-        weekIndex: 0,
-        dayOfWeek: 'Wed',
-        materialId: 'mat-1',
-        sessionTitle: 'Read chapter revised',
-        plannedMinutes: 60,
+        bookingId: 'booking-1',
+        date: '2099-06-04',
+        estimatedDuration: 75,
+        materialId: 'mat-2',
       })
     })
   })
 
-  it('hides quick actions in read-only history mode', () => {
-    renderCalendar(true)
-    openPlannedBubble()
+  it('removes a future booking by emitting BookingCleared', async () => {
+    renderCalendar()
+    openBookingEditor()
 
-    expect(screen.queryByRole('button', { name: 'Log session' })).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Session title')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove booking' }))
+
+    await waitFor(() => {
+      expect(mockState.logEvent).toHaveBeenCalledWith('BookingCleared', {
+        roadmapCreatedAt: '2026-05-01T09:00:00.000Z',
+        bookingId: 'booking-1',
+      })
+    })
   })
 
-  it('shows the Roadmaps back link for historical route views', () => {
-    renderHistoricalCalendar()
-
-    expect(screen.getByRole('link', { name: /Roadmaps/ })).toHaveAttribute('href', '/roadmaps')
-  })
-
-  it('does not count historical sessions in the active roadmap progress card', () => {
-    mockState.events = [
-      event(
-        'MaterialAdded',
-        {
-          materialId: 'mat-1',
-          title: 'Distributed Systems',
-          estimatedDuration: 120,
-          kind: 'article',
-          role: 'anchor',
-        },
-        '2026-05-01T08:00:00.000Z',
-      ),
-      event(
-        'RoadmapCreated',
-        roadmapPayload({
-          startDate: '2026-06-27',
-          deadline: '2026-07-11',
-          weeks: 2,
-          purpose: 'Tests',
-          slots: [
-            {
-              date: '2026-06-30',
-              dayOfWeek: 'Tue',
-              weekIndex: 0,
-              plannedMinutes: 60,
-              capacityMinutes: 60,
-              candidateMaterialIds: ['mat-1'],
-              role: 'anchor',
-              sessionTitle: 'Current roadmap session',
-            },
-          ],
-        }),
-        '2026-06-27T00:00:00.000Z',
-      ),
-      event(
-        'SessionLogged',
-        { sessionId: 'old-1', date: '2026-06-26', materialId: 'mat-1', duration: 1 },
-        '2026-06-26T12:00:00.000Z',
-      ),
-      event(
-        'SessionLogged',
-        { sessionId: 'old-2', date: '2026-06-07', materialId: 'mat-1', duration: 60 },
-        '2026-06-07T12:00:00.000Z',
-      ),
-      event(
-        'SessionLogged',
-        { sessionId: 'old-3', date: '2026-05-09', materialId: 'mat-1', duration: 1 },
-        '2026-05-09T12:00:00.000Z',
-      ),
-    ]
-
+  it('adds a session on an empty day by emitting SessionBooked', async () => {
     renderCalendar()
 
-    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('0%')
-    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('0m logged')
-    expect(screen.getByLabelText('Roadmap progress')).toHaveTextContent('1h to go')
-    expect(screen.getByLabelText('Roadmap progress')).not.toHaveTextContent('1h 2m logged')
+    fireEvent.click(screen.getAllByRole('button', { name: '+ add session' })[0])
+    fireEvent.click(screen.getByRole('button', { name: /Attach/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Operating Systems/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use this material' }))
+    fireEvent.click(screen.getByLabelText('Decrease new session duration'))
+    fireEvent.click(screen.getByRole('button', { name: 'Add session' }))
+
+    await waitFor(() => {
+      expect(mockState.logEvent).toHaveBeenCalledWith('SessionBooked', expect.objectContaining({
+        roadmapCreatedAt: '2026-05-01T09:00:00.000Z',
+        date: expect.stringMatching(/^2099-06-/),
+        estimatedDuration: 45,
+        materialId: 'mat-2',
+      }))
+    })
+  })
+
+  it('marks material progress without emitting SessionLogged', async () => {
+    renderCalendar()
+
+    const directory = screen.getByLabelText('Materials directory')
+    fireEvent.click(within(directory).getAllByRole('button', { name: 'Mark progress' })[0])
+    fireEvent.change(screen.getByLabelText('Material progress percent'), {
+      target: { value: '50' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Save progress' }))
+
+    await waitFor(() => {
+      expect(mockState.logEvent).toHaveBeenCalledWith('MaterialProgressMarked', expect.objectContaining({
+        roadmapCreatedAt: '2026-05-01T09:00:00.000Z',
+        materialId: 'mat-1',
+        materialPosition: { kind: 'percent', value: 50 },
+        source: 'directory',
+      }))
+    })
+    expect(mockState.logEvent).not.toHaveBeenCalledWith('SessionLogged', expect.anything())
+  })
+
+  it('keeps booking controls out of read-only history mode', () => {
+    renderHistoricalCalendar()
+
+    openBookingEditor()
+
+    expect(screen.queryByRole('dialog', { name: 'Edit booking' })).not.toBeInTheDocument()
+    expect(screen.getByText('View booking')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Mark progress' })[0]).toBeDisabled()
+    expect(screen.getByRole('link', { name: /Roadmaps/ })).toHaveAttribute('href', '/roadmaps')
   })
 })

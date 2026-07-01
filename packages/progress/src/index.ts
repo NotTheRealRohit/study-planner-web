@@ -59,6 +59,11 @@ export {
   type DailyActivity,
 } from './dailyActivity'
 export {
+  COLD_START_N,
+  projectFinish,
+  type FinishProjection,
+} from './projectFinish'
+export {
   deriveSlotStatuses,
   type DerivedSlot,
   type SlotStatus,

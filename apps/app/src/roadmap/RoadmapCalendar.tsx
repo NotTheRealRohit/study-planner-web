@@ -1,17 +1,21 @@
 import { type TouchEvent, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { format, parseISO } from 'date-fns'
-import { deriveSlotStatuses } from '@study-tracker/progress'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { buildDailyActivity, buildMaterialLedger, deriveBookingStatuses, type MaterialLedgerEntry } from '@study-tracker/progress'
 import type { RoadmapInput } from '@study-tracker/progress'
-import type { Event } from '../events/EventStore'
+import { dailyCapacityForDate, softCapMinutes } from '../session/sessionPlanning'
 import { useEventStore } from '../events/useEventStore'
-import { useCalibrationState } from '../progress'
-import { mapSessions } from '../progress/mapEvents'
+import { useCalibrationState, useProgressSnapshot } from '../progress'
+import {
+  deriveBookingsForRoadmap,
+  mapMaterialProgressMarks,
+  mapMaterialsForRoadmap,
+  mapSessions,
+} from '../progress/mapEvents'
 import type {
   MaterialAddedPayload,
   RoadmapCreatedPayload,
-  RoadmapEditedPayload,
 } from '../sync/types'
 import { useSync } from '../sync/useSync'
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner'
@@ -35,33 +39,23 @@ import { deriveRoadmapLifecycle } from './roadmapLifecycle'
 import { DayDetailModal, SessionDetailModal } from './SessionDetailModal'
 import { RoadmapEndedBanner } from './RoadmapEndedBanner'
 import { summarizeRoadmapProgress } from './roadmapProgress'
-import { logRoadmapEdit } from './edit/logRoadmapEdit'
 import { resolveRoadmap as resolveRoadmapEvent, type RoadmapResolutionKind } from './resolveRoadmap'
 import { deriveRoadmapEndedState } from './useRoadmapEndedState'
 import { LEGEND_ITEMS } from './statusStyles'
+import {
+  AddSessionSheet,
+  BookingEditorSheet,
+  MaterialProgressSheet,
+  type BookingEditDraft,
+  type BookingMaterialOption,
+} from './booking'
+import type { MaterialKind } from '../session/types'
 import './roadmap.css'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const DAY_SEQUENCE = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
-}
-
-function nextDayOfWeek(
-  dayOfWeek: string,
-  weekIndex: number,
-): Pick<RoadmapEditedPayload, 'dayOfWeek' | 'weekIndex'> {
-  const index = DAY_SEQUENCE.findIndex((day) => day === dayOfWeek)
-  if (index === -1) {
-    return { dayOfWeek: 'Mon', weekIndex }
-  }
-
-  const nextIndex = (index + 1) % DAY_SEQUENCE.length
-  return {
-    dayOfWeek: DAY_SEQUENCE[nextIndex],
-    weekIndex: weekIndex + (nextIndex === 0 ? 1 : 0),
-  }
 }
 
 function formatDateRange(startDate: string, deadline: string): string {
@@ -77,17 +71,15 @@ function formatMinutes(totalMinutes: number): string {
   return `${hours}h ${rest}m`
 }
 
-function collectMaterialsById(events: Event[]): Map<string, CalendarMaterial> {
-  const materials = new Map<string, CalendarMaterial>()
-  for (const event of events) {
-    if (event.kind !== 'MaterialAdded') continue
-    const payload = event.payload as unknown as MaterialAddedPayload
-    materials.set(payload.materialId, {
-      title: payload.title,
-      url: payload.url,
+function collectMaterialsById(materials: MaterialAddedPayload[]): Map<string, CalendarMaterial> {
+  const byId = new Map<string, CalendarMaterial>()
+  for (const material of materials) {
+    byId.set(material.materialId, {
+      title: material.title,
+      url: material.url,
     })
   }
-  return materials
+  return byId
 }
 
 function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
@@ -113,8 +105,8 @@ function isEditableBubble(
   bubble: CalendarBubble | null,
   today: string,
   readOnly: boolean,
-): bubble is CalendarBubble & { slotRef: NonNullable<CalendarBubble['slotRef']> } {
-  return !readOnly && bubble?.slotRef !== undefined && bubble.date >= today
+): bubble is CalendarBubble & { bookingId: string } {
+  return !readOnly && bubble?.bookingId !== undefined && bubble.status === 'booked' && bubble.date >= today
 }
 
 interface RoadmapCalendarProps {
@@ -133,11 +125,16 @@ export function RoadmapCalendar({
   const [viewMonth, setViewMonth] = useState<string | null>(null)
   const [slideDirection, setSlideDirection] = useState<'prev' | 'next' | 'today'>('today')
   const [selectedBubble, setSelectedBubble] = useState<CalendarBubble | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<CalendarBubble | null>(null)
   const [selectedDay, setSelectedDay] = useState<BoundCalendarDay | null>(null)
   const [selectedSheetDay, setSelectedSheetDay] = useState<BoundCalendarDay | null>(null)
+  const [addSessionDate, setAddSessionDate] = useState<string | null>(null)
+  const [directoryCollapsed, setDirectoryCollapsed] = useState(false)
+  const [progressMaterial, setProgressMaterial] = useState<MaterialLedgerEntry | null>(null)
   const touchStartX = useRef<number | null>(null)
   const isMobileCalendar = useMatchMedia('(max-width: 560px)')
-  const { status } = useCalibrationState()
+  const { calibration, status } = useCalibrationState()
+  const progress = useProgressSnapshot(calibration)
   const today = todayISO()
   const loadedEvents = events ?? []
 
@@ -163,10 +160,66 @@ export function RoadmapCalendar({
     () => roadmapPayload ? roadmapInputFromPayload(roadmapPayload) : null,
     [roadmapPayload],
   )
-  const materialsById = useMemo(
-    () => collectMaterialsById(loadedEvents),
+  const sessions = useMemo(
+    () => mapSessions(loadedEvents),
     [loadedEvents],
   )
+  const materialPayloads = useMemo(
+    () => selectedRoadmap ? mapMaterialsForRoadmap(loadedEvents, selectedRoadmap) : [],
+    [loadedEvents, selectedRoadmap],
+  )
+  const materialsById = useMemo(
+    () => collectMaterialsById(materialPayloads),
+    [materialPayloads],
+  )
+  const materialKindById = useMemo(() => {
+    const byId = new Map<string, MaterialKind>()
+    for (const material of materialPayloads) byId.set(material.materialId, material.kind)
+    return byId
+  }, [materialPayloads])
+  const materialProgressMarks = useMemo(
+    () => selectedRoadmap
+      ? mapMaterialProgressMarks(loadedEvents, selectedRoadmap.roadmapCreatedAt)
+      : [],
+    [loadedEvents, selectedRoadmap],
+  )
+  const materialLedger = useMemo(
+    () => buildMaterialLedger(
+      materialPayloads.map((material) => ({
+        id: material.materialId,
+        title: material.title,
+        estimatedMinutes: material.estimatedDuration,
+      })),
+      sessions,
+      materialProgressMarks,
+    ),
+    [materialPayloads, materialProgressMarks, sessions],
+  )
+  const materialOptions: BookingMaterialOption[] = useMemo(
+    () => materialLedger.map((entry) => ({
+      materialId: entry.materialId,
+      title: entry.title,
+      kind: materialKindById.get(entry.materialId) ?? 'manual',
+      started: entry.started,
+      done: entry.done,
+      remainingEstimatedMinutes: entry.remainingEstimatedMinutes,
+      estimatedMinutes: entry.estimatedMinutes,
+      lastPosition: entry.lastPosition,
+    })),
+    [materialLedger, materialKindById],
+  )
+  const bookings = useMemo(
+    () => selectedRoadmap
+      ? deriveBookingsForRoadmap(loadedEvents, selectedRoadmap, today)
+      : [],
+    [loadedEvents, selectedRoadmap, today],
+  )
+  const todayCapMinutes = useMemo(() => {
+    if (!selectedRoadmap) return 0
+    const capacity = dailyCapacityForDate(selectedRoadmap, today)
+    const doneToday = buildDailyActivity(sessions).find((day) => day.date === today)?.minutes ?? 0
+    return softCapMinutes(capacity, doneToday)
+  }, [selectedRoadmap, sessions, today])
   const monthBounds = useMemo(
     () => roadmap ? calendarMonthBounds(roadmap.startDate, roadmap.deadline) : null,
     [roadmap],
@@ -178,18 +231,27 @@ export function RoadmapCalendar({
 
   const calendar = useMemo(() => {
     if (!roadmap) return null
-    const sessions = mapSessions(loadedEvents)
-    const derived = deriveSlotStatuses(roadmap, sessions, today)
+    const derived = deriveBookingStatuses(bookings, sessions, today)
     const grid = buildMonthGrid(monthKeyToDate(activeViewMonth))
-    return bindCells(grid, derived.slots, derived.unplanned, materialsById)
-  }, [activeViewMonth, loadedEvents, materialsById, roadmap, today])
+    return bindCells(grid, derived.bookings, derived.unplanned, materialsById)
+  }, [activeViewMonth, bookings, materialsById, roadmap, sessions, today])
 
   const progressSummary = selectedRoadmap
     ? summarizeRoadmapProgress(selectedRoadmap, loadedEvents)
     : null
-  const loggedMinutes = progressSummary?.loggedMinutes ?? 0
-  const toGoMinutes = progressSummary?.toGoMinutes ?? 0
   const percent = progressSummary?.percentComplete ?? 0
+  const projectedFinish = progress?.projection.finishDate ?? null
+  const projectionBasis = progress?.projection.basis ?? 'analytic'
+  const confidenceInterval = progress?.projection.confidenceInterval ?? null
+  const daysEarlyOrLate = projectedFinish && roadmapPayload?.deadline
+    ? differenceInCalendarDays(parseISO(roadmapPayload.deadline), parseISO(projectedFinish))
+    : null
+  const materialPercent = materialLedger.length > 0
+    ? Math.round(
+      (materialLedger.reduce((total, material) => total + material.estimatedConsumedMinutes, 0) /
+        Math.max(1, materialLedger.reduce((total, material) => total + material.estimatedMinutes, 0))) * 100,
+    )
+    : percent
 
   if (!events) {
     return (
@@ -231,6 +293,17 @@ export function RoadmapCalendar({
   const handleDayBubbleSelect = (bubble: CalendarBubble) => {
     setSelectedDay(null)
     setSelectedSheetDay(null)
+    if (isEditableBubble(bubble, today, readOnly)) {
+      setSelectedBooking(bubble)
+      return
+    }
+    setSelectedBubble(bubble)
+  }
+  const handleCalendarBubbleSelect = (bubble: CalendarBubble) => {
+    if (isEditableBubble(bubble, today, readOnly)) {
+      setSelectedBooking(bubble)
+      return
+    }
     setSelectedBubble(bubble)
   }
   const handleOverflowSelect = (day: BoundCalendarDay) => {
@@ -280,78 +353,50 @@ export function RoadmapCalendar({
 
     navigate('/roadmaps')
   }
-  const editPayloadForBubble = (
-    bubble: CalendarBubble,
-    overrides: Partial<RoadmapEditedPayload> = {},
-  ): RoadmapEditedPayload | null => {
-    if (!selectedRoadmap || !bubble.slotRef) return null
+  const handleSaveBooking = async (bubble: CalendarBubble, draft: BookingEditDraft) => {
+    if (!selectedRoadmap || !isEditableBubble(bubble, today, readOnly)) return
 
-    return {
+    await logEvent('BookingEdited', {
       roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
-      weekIndex: bubble.slotRef.weekIndex,
-      dayOfWeek: bubble.slotRef.dayOfWeek as RoadmapEditedPayload['dayOfWeek'],
-      materialId: bubble.materialId ?? null,
-      sessionTitle: bubble.sessionTitle ?? bubble.label,
-      plannedMinutes: bubble.plannedMinutes ?? bubble.minutes,
-      ...overrides,
-    }
-  }
-  const handleLogSession = async (bubble: CalendarBubble) => {
-    if (!isEditableBubble(bubble, today, readOnly)) return
-
-    await logEvent('SessionLogged', {
-      source: 'manual',
-      sessionId: crypto.randomUUID(),
-      duration: bubble.plannedMinutes ?? bubble.minutes,
-      plannedMinutes: bubble.plannedMinutes,
-      date: bubble.date,
-      description: bubble.label,
-      materialId: bubble.materialId,
-      role: bubble.slotRef.role,
-      timeOfDay: 'morning',
+      bookingId: bubble.bookingId,
+      date: draft.date,
+      estimatedDuration: draft.estimatedDuration,
+      materialId: draft.materialId,
     })
-    setSelectedBubble(null)
+    setSelectedBooking(null)
   }
-  const handleRename = async (bubble: CalendarBubble, title: string) => {
-    if (!isEditableBubble(bubble, today, readOnly)) return
-    const edit = editPayloadForBubble(bubble, { sessionTitle: title })
-    if (!edit) return
+  const handleRemoveBooking = async (bubble: CalendarBubble) => {
+    if (!selectedRoadmap || !isEditableBubble(bubble, today, readOnly)) return
 
-    await logRoadmapEdit(logEvent, edit)
-    setSelectedBubble(null)
-  }
-  const handleNudgeMinutes = async (bubble: CalendarBubble, deltaMinutes: number) => {
-    if (!isEditableBubble(bubble, today, readOnly)) return
-    const currentMinutes = bubble.plannedMinutes ?? bubble.minutes
-    const edit = editPayloadForBubble(bubble, {
-      plannedMinutes: Math.max(15, currentMinutes + deltaMinutes),
+    await logEvent('BookingCleared', {
+      roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
+      bookingId: bubble.bookingId,
     })
-    if (!edit) return
-
-    await logRoadmapEdit(logEvent, edit)
-    setSelectedBubble(null)
+    setSelectedBooking(null)
   }
-  const handleMoveNextDay = async (bubble: CalendarBubble) => {
-    if (!isEditableBubble(bubble, today, readOnly)) return
-    const edit = editPayloadForBubble(
-      bubble,
-      nextDayOfWeek(bubble.slotRef.dayOfWeek, bubble.slotRef.weekIndex),
-    )
-    if (!edit) return
+  const handleCreateBooking = async (draft: { date: string; estimatedDuration: number; materialId?: string }) => {
+    if (!selectedRoadmap || readOnly) return
 
-    await logRoadmapEdit(logEvent, edit)
-    setSelectedBubble(null)
+    await logEvent('SessionBooked', {
+      roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
+      bookingId: crypto.randomUUID(),
+      date: draft.date,
+      estimatedDuration: draft.estimatedDuration,
+      ...(draft.materialId ? { materialId: draft.materialId } : {}),
+    })
+    setAddSessionDate(null)
   }
-  const handleMarkDone = async (bubble: CalendarBubble) => {
-    if (!isEditableBubble(bubble, today, readOnly)) return
-    if (bubble.status !== 'done') {
-      await handleLogSession(bubble)
-    }
-    const edit = editPayloadForBubble(bubble)
-    if (!edit) return
+  const handleMarkMaterialProgress = async (material: MaterialLedgerEntry, percentDone: number) => {
+    if (!selectedRoadmap || readOnly) return
 
-    await logRoadmapEdit(logEvent, edit)
-    setSelectedBubble(null)
+    await logEvent('MaterialProgressMarked', {
+      roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt,
+      materialId: material.materialId,
+      markedAt: new Date().toISOString(),
+      materialPosition: { kind: 'percent', value: percentDone },
+      source: 'directory',
+    })
+    setProgressMaterial(null)
   }
 
   return (
@@ -381,18 +426,38 @@ export function RoadmapCalendar({
           <p className="roadmap-subtitle">{dateRange}</p>
         </div>
 
-        <section className="roadmap-progress-card" aria-label="Roadmap progress">
-          <div className="roadmap-progress-row">
-            <span className="mono-caps">Progress</span>
-            <span className="roadmap-progress-percent">{Math.round(percent)}%</span>
+        <section className="roadmap-eta-card" aria-label="Projected finish">
+          <div className="roadmap-eta-copy">
+            <div className="mono-caps">
+              <span className="roadmap-provisional">provisional estimate</span> · finish
+            </div>
+            <div className="roadmap-eta-finish">
+              {projectedFinish
+                ? (confidenceInterval
+                  ? `${format(parseISO(confidenceInterval[0]), 'MMM d')}-${format(parseISO(confidenceInterval[1]), 'MMM d')}`
+                  : format(parseISO(projectedFinish), 'MMM d'))
+                : 'After first log'}
+            </div>
+            <div className="mono-caps roadmap-eta-meta">
+              {projectedFinish && daysEarlyOrLate !== null
+                ? daysEarlyOrLate > 0
+                  ? `${daysEarlyOrLate} days early`
+                  : daysEarlyOrLate === 0
+                    ? 'On target'
+                    : `${Math.abs(daysEarlyOrLate)} days late`
+                : `${Math.round(materialPercent)}% done`}
+              {' '}· {projectionBasis}
+            </div>
           </div>
-          <div className="progress" style={{ height: 6, marginBottom: 'var(--space-2)' }}>
-            <div className="progress-fill" style={{ width: `${Math.round(percent)}%` }} />
-          </div>
-          <div className="roadmap-progress-meta">
-            <span>{formatMinutes(loggedMinutes)} logged</span>
-            <span>{formatMinutes(toGoMinutes)} to go</span>
-          </div>
+          <svg className="roadmap-eta-spark" viewBox="0 0 160 44" preserveAspectRatio="none" aria-hidden="true">
+            <polyline points="0,42 40,34 80,24 120,14 160,4" fill="none" stroke="var(--border-default)" strokeWidth="1.5" strokeDasharray="3 3" />
+            <polyline
+              points={`0,42 40,${Math.max(8, 42 - materialPercent * 0.18)} 80,${Math.max(6, 42 - materialPercent * 0.32)}`}
+              fill="none"
+              stroke="var(--moss)"
+              strokeWidth="2.5"
+            />
+          </svg>
         </section>
       </header>
 
@@ -450,15 +515,69 @@ export function RoadmapCalendar({
                     isToday={day.date === today}
                     isDeadline={day.date === roadmap.deadline && day.isInMonth}
                     isCurrentWeek={isCurrentWeek}
-                    onBubbleClick={setSelectedBubble}
+                    onBubbleClick={handleCalendarBubbleSelect}
                     onOverflowClick={handleOverflowSelect}
                     onDayClick={handleMobileDaySelect}
+                    onAddSessionClick={setAddSessionDate}
+                    canAddSession={!readOnly}
                   />
                 ))}
               </div>
             )
           })}
         </div>
+      </section>
+
+      <section className={`dir-panel${directoryCollapsed ? ' collapsed' : ''}`} aria-label="Materials directory">
+        <button
+          type="button"
+          className="dir-head"
+          aria-expanded={!directoryCollapsed}
+          onClick={() => setDirectoryCollapsed((collapsed) => !collapsed)}
+        >
+          <span className="ttl">Materials</span>
+          <span className="count-pill">{materialLedger.length} · {Math.round(materialPercent)}% done</span>
+          <svg className="icon icon-sm chev" viewBox="0 0 24 24" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+        {!directoryCollapsed && (
+          <div className="dir-body">
+            {materialLedger.length === 0 ? (
+              <p className="roadmap-muted">No materials are attached to this roadmap.</p>
+            ) : (
+              materialLedger.map((material) => {
+                const progressPercent = material.estimatedMinutes > 0
+                  ? Math.round((material.estimatedConsumedMinutes / material.estimatedMinutes) * 100)
+                  : 0
+                return (
+                  <div className="dir-row" key={material.materialId}>
+                    <div className="material-icon art" aria-hidden="true">
+                      {material.title.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="dir-prog">
+                      <div className="dir-title">{material.title}</div>
+                      <div className="dir-bar" aria-hidden="true">
+                        <span style={{ width: `${Math.min(100, progressPercent)}%` }} />
+                      </div>
+                      <div className="dir-meta">
+                        {material.done ? 'done' : material.started ? 'in progress' : 'not started'} · {formatMinutes(material.estimatedConsumedMinutes)} of {formatMinutes(material.estimatedMinutes)}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      type="button"
+                      disabled={readOnly}
+                      onClick={() => setProgressMaterial(material)}
+                    >
+                      Mark progress
+                    </button>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        )}
       </section>
 
       <footer className="roadmap-footer">
@@ -511,12 +630,26 @@ export function RoadmapCalendar({
       <SessionDetailModal
         bubble={selectedBubble}
         onClose={() => setSelectedBubble(null)}
-        canEdit={isEditableBubble(selectedBubble, today, readOnly)}
-        onLogSession={(bubble) => void handleLogSession(bubble)}
-        onRename={(bubble, title) => void handleRename(bubble, title)}
-        onNudgeMinutes={(bubble, deltaMinutes) => void handleNudgeMinutes(bubble, deltaMinutes)}
-        onMoveNextDay={(bubble) => void handleMoveNextDay(bubble)}
-        onMarkDone={(bubble) => void handleMarkDone(bubble)}
+        canEdit={false}
+      />
+      <BookingEditorSheet
+        bubble={selectedBooking}
+        materials={materialOptions}
+        onClose={() => setSelectedBooking(null)}
+        onSave={(bubble, draft) => void handleSaveBooking(bubble, draft)}
+        onRemove={(bubble) => void handleRemoveBooking(bubble)}
+      />
+      <AddSessionSheet
+        date={addSessionDate}
+        materials={materialOptions}
+        capMinutes={todayCapMinutes}
+        onClose={() => setAddSessionDate(null)}
+        onCreate={(draft) => void handleCreateBooking(draft)}
+      />
+      <MaterialProgressSheet
+        material={progressMaterial}
+        onClose={() => setProgressMaterial(null)}
+        onSave={(material, percentDone) => void handleMarkMaterialProgress(material, percentDone)}
       />
     </div>
   )

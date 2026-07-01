@@ -30,10 +30,10 @@ export function statusCopyFor(status: CalendarBubbleStatus): StatusCopy {
   switch (status) {
     case 'done':
       return { pillLabel: 'Completed', actionLabel: 'View session' }
-    case 'pending':
-      return { pillLabel: 'Planned', actionLabel: 'Start session' }
-    case 'skipped':
-      return { pillLabel: 'Skipped', actionLabel: 'Log it late' }
+    case 'booked':
+      return { pillLabel: 'Booked', actionLabel: 'View booking' }
+    case 'missed':
+      return { pillLabel: 'Missed', actionLabel: 'View booking' }
     case 'unplanned':
       return { pillLabel: 'Unplanned', actionLabel: 'View session' }
   }
@@ -59,11 +59,11 @@ function sessionBody(bubble: CalendarBubble): string {
     return `${formatMinutes(logged)} logged against ${formatMinutes(planned)} planned.`
   }
 
-  if (bubble.status === 'pending') {
+  if (bubble.status === 'booked') {
     return `${formatMinutes(planned)} planned. Nothing has been logged yet.`
   }
 
-  if (bubble.status === 'skipped') {
+  if (bubble.status === 'missed') {
     return `${formatMinutes(planned)} planned. No matching session was logged.`
   }
 
@@ -205,9 +205,7 @@ export function SessionDetailModal({
           </div>
         </div>
       ) : (
-        <button className="btn btn-accent btn-block" type="button" disabled>
-          {copy.actionLabel}
-        </button>
+        <p className="roadmap-readonly-detail">{copy.actionLabel}</p>
       )}
     </ModalFrame>
   )
