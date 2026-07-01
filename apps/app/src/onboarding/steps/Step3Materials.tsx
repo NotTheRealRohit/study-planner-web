@@ -49,6 +49,7 @@ export function Step3Materials() {
   const [playlistPickerId, setPlaylistPickerId] = useState<string | null>(null)
   const [loadingPlaylistId, setLoadingPlaylistId] = useState<string | null>(null)
   const [openMaterialIds, setOpenMaterialIds] = useState<Set<string>>(new Set())
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   const [pasteAnimKey, setPasteAnimKey] = useState(0)
   const [lastPastedUrl, setLastPastedUrl] = useState('')
   const youtubePopupMaterial = youtubePopupMaterialId ? state.materials.find(m => m.id === youtubePopupMaterialId) : null
@@ -195,6 +196,14 @@ export function Step3Materials() {
       return next
     })
   }
+  const toggleGroupCollapsed = (key: string) => {
+    setCollapsedGroups((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
   const handleBack = () => navigate('/onboarding/2')
   const handleBuildPlan = () => {
     dispatch({ type: 'SET_STEP_REACHED', step: 3 })
@@ -259,13 +268,20 @@ export function Step3Materials() {
           <div className="material-groups">
             {state.playlists.length > 0 && (
               <section className="material-group">
-                <div className="material-group-head">
+                <button
+                  type="button"
+                  className="material-group-head"
+                  aria-expanded={!collapsedGroups.has('playlists')}
+                  onClick={() => toggleGroupCollapsed('playlists')}
+                >
                   <div className="material-icon pl group-icon">PL</div>
                   <span className="material-group-title">Playlists</span>
                   <span className="material-group-count">
                     {state.playlists.length} · {formatDuration(state.playlists.reduce((sum, playlist) => sum + playlistDuration(playlist), 0))}
                   </span>
-                </div>
+                  <svg className="icon icon-sm material-group-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {!collapsedGroups.has('playlists') && (
                 <div className="material-compact-list">
                   {[...state.playlists].sort((a, b) => a.additionOrder - b.additionOrder).map((playlist) => {
                     const selectedCount = playlist.videos.filter(video => video.selected).length
@@ -325,18 +341,26 @@ export function Step3Materials() {
                     )
                   })}
                 </div>
+                )}
               </section>
             )}
 
             {materialGroups.map((group) => (
               <section key={group.key} className="material-group">
-                <div className="material-group-head">
+                <button
+                  type="button"
+                  className="material-group-head"
+                  aria-expanded={!collapsedGroups.has(group.key)}
+                  onClick={() => toggleGroupCollapsed(group.key)}
+                >
                   <div className={`${group.iconClass} group-icon`}>{group.iconLabel}</div>
                   <span className="material-group-title">{group.title}</span>
                   <span className="material-group-count">
                     {group.materials.length} · {formatDuration(group.materials.reduce((sum, material) => sum + material.estimatedDuration, 0))}
                   </span>
-                </div>
+                  <svg className="icon icon-sm material-group-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                {!collapsedGroups.has(group.key) && (
                 <div className="material-compact-list">
                   {[...group.materials].sort((a, b) => a.additionOrder - b.additionOrder).map((material) => {
                     const icon = materialIcon(material)
@@ -384,6 +408,7 @@ export function Step3Materials() {
                     )
                   })}
                 </div>
+                )}
               </section>
             ))}
           </div>

@@ -3,12 +3,19 @@ import { ROLE_TO_LABEL } from '@study-tracker/roadmap-engine';
 import type { SessionSlotData } from './types';
 import type { SessionMaterialOption } from './sessionPlanning';
 import { withSelectedMaterial } from './sessionPlanning';
+import { SessionDial } from './SessionDial';
 
 interface PreSessionSetupProps {
   initialSlotData?: SessionSlotData;
   materials: SessionMaterialOption[];
   onStart: (slotData: SessionSlotData) => void | Promise<void>;
   onCancel: () => void;
+  /** Today's daily study budget in minutes (hoursPerDay × 60). */
+  dailyCapacityMinutes?: number;
+  /** Minutes already logged today; the soft cap is capacity − done (D5). */
+  minutesDoneToday?: number;
+  /** Recommended planned length (already clamped to the cap). */
+  recommendedMinutes?: number;
 }
 
 function formatMinutes(minutes: number): string {
@@ -18,10 +25,25 @@ function formatMinutes(minutes: number): string {
   return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }
 
+/** Compact duration matching the mock's rec-line ("1h", "2h", "1h 30m"). */
+function compactDuration(minutes: number): string {
+  const mm = Math.max(0, Math.round(minutes));
+  const h = Math.floor(mm / 60);
+  const r = mm % 60;
+  if (h === 0) return `${r}m`;
+  return r === 0 ? `${h}h` : `${h}h ${r}m`;
+}
+
 function iconFor(kind: SessionMaterialOption['kind']): string {
   if (kind === 'youtube') return 'YT';
   if (kind === 'article') return 'AR';
   return 'NB';
+}
+
+function kindLabel(kind: SessionMaterialOption['kind']): string {
+  if (kind === 'youtube') return 'YouTube';
+  if (kind === 'article') return 'Article';
+  return 'Manual';
 }
 
 export function PreSessionSetup({
@@ -29,6 +51,9 @@ export function PreSessionSetup({
   materials,
   onStart,
   onCancel,
+  dailyCapacityMinutes,
+  minutesDoneToday = 0,
+  recommendedMinutes,
 }: PreSessionSetupProps) {
   const [selectedMaterialId, setSelectedMaterialId] = useState(
     initialSlotData?.materialId ?? materials[0]?.materialId ?? '',
@@ -46,7 +71,10 @@ export function PreSessionSetup({
     [materials, selectedMaterialId],
   );
 
-  const maxMinutes = Math.max(30, Math.ceil(Math.max(plannedMinutes, initialSlotData?.plannedMinutes ?? 50) / 15) * 15, 180);
+  // Fall back to a 2h budget when capacity is unknown so the dial still scales.
+  const budgetMinutes = dailyCapacityMinutes && dailyCapacityMinutes > 0 ? dailyCapacityMinutes : 120;
+  const capMinutes = Math.max(0, budgetMinutes - minutesDoneToday);
+  const recommended = recommendedMinutes ?? initialSlotData?.plannedMinutes ?? 50;
   const startDisabled = !initialSlotData || !selectedMaterial;
 
   const handleStart = async () => {
@@ -82,7 +110,7 @@ export function PreSessionSetup({
         </div>
         <div className="session-title">{selectedMaterial.title}</div>
         <div className="session-subtitle">
-          Suggested material · {ROLE_TO_LABEL[selectedMaterial.role]} · est ~{formatMinutes(selectedMaterial.remainingEstimatedMinutes || selectedMaterial.estimatedMinutes)}
+          Suggested for today · {kindLabel(selectedMaterial.kind)} · est ~{formatMinutes(selectedMaterial.remainingEstimatedMinutes || selectedMaterial.estimatedMinutes)}
         </div>
 
         <div className="material-strip session-setup-strip">
@@ -98,25 +126,18 @@ export function PreSessionSetup({
           </button>
         </div>
 
-        <div className="session-dial-wrap">
-          <div className="session-dial-face" aria-live="polite">
-            <div className="session-dial-value">{formatMinutes(plannedMinutes)}</div>
-            <div className="session-dial-label">planned length</div>
-          </div>
-          <input
-            className="session-dial-range"
-            aria-label="Planned session length"
-            type="range"
-            min={5}
-            max={maxMinutes}
-            step={5}
-            value={plannedMinutes}
-            onChange={(event) => setPlannedMinutes(Number(event.target.value))}
-          />
-          <div className="session-dial-meta">
-            Recommended {formatMinutes(initialSlotData.plannedMinutes)}
-          </div>
+        <div className="rec-line">
+          <span className="dot" /> Recommended <strong>{compactDuration(recommended)}</strong>
+          {capMinutes > 0 ? ` · within today's ${compactDuration(capMinutes)} cap` : null}
         </div>
+
+        <SessionDial
+          budgetMinutes={budgetMinutes}
+          doneMinutes={minutesDoneToday}
+          recommendedMinutes={recommended}
+          value={plannedMinutes}
+          onChange={setPlannedMinutes}
+        />
 
         <div className="session-actions">
           <button className="btn btn-accent" onClick={() => void handleStart()} disabled={startDisabled}>

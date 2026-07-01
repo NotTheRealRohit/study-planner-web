@@ -188,8 +188,24 @@
   align-items: center;
   gap: 8px;
   min-height: 44px;
+  width: 100%;
   padding: 10px 12px;
   background: var(--surface-card);
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.material-group-chev {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.material-group-head[aria-expanded='false'] .material-group-chev {
+  transform: rotate(-90deg);
 }
 
 .material-group-title {

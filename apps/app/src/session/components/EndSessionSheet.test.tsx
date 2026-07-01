@@ -65,4 +65,39 @@ describe('EndSessionSheet', () => {
     expect(onInterrupt).toHaveBeenCalledWith({ kind: 'percent', value: 75, ofTotal: 100 });
     expect(onComplete).not.toHaveBeenCalled();
   });
+
+  it('captures YouTube position automatically (read-only) instead of the manual slider (D18)', () => {
+    const onComplete = vi.fn();
+    const onInterrupt = vi.fn();
+    const record = makeRecord({
+      kind: 'youtube',
+      currentVideoIndex: 2,
+      videos: [
+        { youtubeVideoId: 'a', title: 'A', durationMinutes: 10 },
+        { youtubeVideoId: 'b', title: 'B', durationMinutes: 10 },
+        { youtubeVideoId: 'c', title: 'C', durationMinutes: 10 },
+        { youtubeVideoId: 'd', title: 'D', durationMinutes: 10 },
+      ],
+    });
+
+    render(
+      <EndSessionSheet
+        record={record}
+        unusual={false}
+        onUnusualChange={vi.fn()}
+        onComplete={onComplete}
+        onInterrupt={onInterrupt}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    // No manual preset/slider for YouTube — position comes from the player.
+    expect(screen.queryByRole('button', { name: '75%' })).toBeNull();
+    expect(screen.getByText('2 of 4 videos watched')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log session' }));
+
+    expect(onInterrupt).toHaveBeenCalledWith({ kind: 'videos', value: 2, ofTotal: 4 });
+    expect(onComplete).not.toHaveBeenCalled();
+  });
 });

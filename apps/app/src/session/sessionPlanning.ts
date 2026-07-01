@@ -1,4 +1,4 @@
-import { buildMaterialLedger, type MaterialLedgerEntry } from '@study-tracker/progress';
+import { buildDailyActivity, buildMaterialLedger, type MaterialLedgerEntry } from '@study-tracker/progress';
 import {
   suggestMaterialForBooking,
   type Booking,
@@ -37,6 +37,48 @@ export interface SessionPlan {
   slotData?: SessionSlotData;
   materials: SessionMaterialOption[];
   suggestedMaterial?: SessionMaterialOption;
+  /** Today's daily study budget in minutes (hoursPerDay × 60). */
+  dailyCapacityMinutes: number;
+  /** Minutes already logged today (soft cap = capacity − done, D5). */
+  minutesDoneToday: number;
+  /** Recommended planned length, clamped to the remaining daily cap (D5/D6). */
+  recommendedMinutes: number;
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+function isWeekendISO(iso: string): boolean {
+  const day = new Date(`${iso}T00:00:00.000Z`).getUTCDay();
+  const name = DAY_NAMES[day];
+  return name === 'Sat' || name === 'Sun';
+}
+
+/** Today's study budget in minutes from the roadmap's weekday/weekend hours. */
+export function dailyCapacityForDate(entry: RoadmapLifecycleEntry | undefined, date: string): number {
+  if (!entry) return 0;
+  const hours = isWeekendISO(date) ? entry.payload.weekendHours : entry.payload.weekdayHours;
+  return Math.round((hours ?? 0) * 60);
+}
+
+/** D5 soft cap: budget minus minutes already logged today, floored at 0. */
+export function softCapMinutes(capacity: number, doneToday: number): number {
+  return Math.max(0, capacity - Math.max(0, doneToday));
+}
+
+/**
+ * Recommended planned length (D5/D6). Pace-first tuning is gated on Phase 6's
+ * ETA/pace model; until then the recommendation is the booking target clamped
+ * to the remaining daily cap so it can never suggest past the soft cap.
+ */
+function recommendedForBooking(
+  booking: Booking | undefined,
+  material: SessionMaterialOption | undefined,
+  cap: number,
+): number {
+  const target = booking?.estimatedDuration ??
+    Math.max(15, Math.min(60, material?.remainingEstimatedMinutes || material?.estimatedMinutes || 50));
+  if (cap <= 0) return Math.max(5, target);
+  return Math.max(5, Math.min(cap, target));
 }
 
 function dayDiff(start: string, end: string): number {
@@ -111,7 +153,9 @@ export function slotDataForBooking(
 
 export function deriveTodaySessionPlan(events: Event[], today: string): SessionPlan {
   const active = deriveRoadmapLifecycle(events).active[0];
-  if (!active) return { materials: [] };
+  if (!active) {
+    return { materials: [], dailyCapacityMinutes: 0, minutesDoneToday: 0, recommendedMinutes: 50 };
+  }
 
   const materialPayloads = mapMaterialsForRoadmap(events, active);
   const sessions = mapSessions(events);
@@ -142,6 +186,11 @@ export function deriveTodaySessionPlan(events: Event[], today: string): SessionP
     materials.find((material) => !material.done) ??
     materials[0];
 
+  const dailyCapacityMinutes = dailyCapacityForDate(active, today);
+  const minutesDoneToday = buildDailyActivity(sessions).find((day) => day.date === today)?.minutes ?? 0;
+  const cap = softCapMinutes(dailyCapacityMinutes, minutesDoneToday);
+  const recommendedMinutes = recommendedForBooking(booking, suggestedMaterial, cap);
+
   return {
     roadmapEntry: active,
     roadmapCreatedAt: active.roadmapCreatedAt,
@@ -149,6 +198,9 @@ export function deriveTodaySessionPlan(events: Event[], today: string): SessionP
     materials,
     suggestedMaterial,
     slotData: suggestedMaterial ? slotDataForBooking(booking, suggestedMaterial, active, today) : undefined,
+    dailyCapacityMinutes,
+    minutesDoneToday,
+    recommendedMinutes,
   };
 }
 

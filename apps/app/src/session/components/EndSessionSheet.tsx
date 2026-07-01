@@ -18,21 +18,27 @@ export function EndSessionSheet({
   onInterrupt,
   onCancel,
 }: EndSessionSheetProps) {
+  // D18: YouTube/playlist position is captured automatically (read-only) from
+  // video progress; only non-YouTube materials use the manual preset/slider.
+  const totalVideos = record.videos?.length ?? 0;
+  const isYouTubeAuto = record.kind === 'youtube' && totalVideos > 0;
+  const videosCompleted = Math.max(0, Math.min(totalVideos, record.currentVideoIndex ?? 0));
+
   const startPercent = record.materialStartPosition?.kind === 'percent'
     ? Math.round(record.materialStartPosition.value)
     : 0;
   const [position, setPosition] = useState(Math.max(0, Math.min(100, startPercent || 50)));
-  const [finished, setFinished] = useState(position >= 100);
+  const [finished, setFinished] = useState(
+    isYouTubeAuto ? videosCompleted >= totalVideos : position >= 100,
+  );
 
   useEffect(() => {
-    setFinished(position >= 100);
-  }, [position]);
+    if (!isYouTubeAuto) setFinished(position >= 100);
+  }, [position, isYouTubeAuto]);
 
-  const materialPosition: MaterialPosition = {
-    kind: 'percent',
-    value: finished ? 100 : position,
-    ofTotal: 100,
-  };
+  const materialPosition: MaterialPosition = isYouTubeAuto
+    ? { kind: 'videos', value: finished ? totalVideos : videosCompleted, ofTotal: totalVideos }
+    : { kind: 'percent', value: finished ? 100 : position, ofTotal: 100 };
 
   const handleLog = async () => {
     if (finished) await onComplete(materialPosition);
@@ -45,31 +51,43 @@ export function EndSessionSheet({
         <div className="modal-eyebrow">End session</div>
         <div className="modal-title">{record.sessionTitle}</div>
 
-        <div className="session-position-presets" aria-label="Material position">
-          {[25, 50, 75, 100].map((preset) => (
-            <button
-              key={preset}
-              className={`btn btn-sm ${position === preset ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setPosition(preset)}
-            >
-              {preset === 100 ? 'Done' : `${preset}%`}
-            </button>
-          ))}
-        </div>
+        {isYouTubeAuto ? (
+          <div className="session-position-auto" aria-label="Material position">
+            <span className="field-label">Video progress</span>
+            <span className="session-position-auto-value">
+              {videosCompleted} of {totalVideos} videos watched
+            </span>
+            <span className="field-helper">Captured automatically from the player.</span>
+          </div>
+        ) : (
+          <>
+            <div className="session-position-presets" aria-label="Material position">
+              {[25, 50, 75, 100].map((preset) => (
+                <button
+                  key={preset}
+                  className={`btn btn-sm ${position === preset ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => setPosition(preset)}
+                >
+                  {preset === 100 ? 'Done' : `${preset}%`}
+                </button>
+              ))}
+            </div>
 
-        <label className="field-group session-position-slider">
-          <span className="field-label">Current position</span>
-          <input
-            className="session-dial-range"
-            type="range"
-            min={0}
-            max={100}
-            step={5}
-            value={position}
-            onChange={(event) => setPosition(Number(event.target.value))}
-          />
-          <span className="field-helper">{finished ? 'Finished' : `${position}% complete`}</span>
-        </label>
+            <label className="field-group session-position-slider">
+              <span className="field-label">Current position</span>
+              <input
+                className="session-dial-range"
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={position}
+                onChange={(event) => setPosition(Number(event.target.value))}
+              />
+              <span className="field-helper">{finished ? 'Finished' : `${position}% complete`}</span>
+            </label>
+          </>
+        )}
 
         <div className="session-completion-choice">
           <button

@@ -114,7 +114,7 @@ No correctness defects found in the code itself — `sessionsCount === completed
 
 ---
 
-## Phase 3 — Onboarding page 3 · Status: 🟡 Implemented; awaiting reviewer
+## Phase 3 — Onboarding page 3 · Status: ✅ Verified
 
 **Acceptance criteria** (visual contract `mocks/proposed/onboarding-3.html`)
 - [x] `SchedulePreview`, `SwapFab`, tie-resolution, `previewEdits`, `generateRoadmap` slot path removed from `Step3Preview.tsx`.
@@ -131,12 +131,20 @@ No correctness defects found in the code itself — `sessionsCount === completed
 - What changed: replaced the slot packer preview with a booking summary, capacity bar, stats, material directory chips, and expandable calendar; grouped material rows by type; reused `PlaylistPickerPopup`; changed commit to emit `RoadmapCreated{materialIds}` with no `slots` followed by deterministic `SessionBooked` events.
 - Deviations: group headers are not collapsible; rows expand for edit/attention states. Visual behavior is aligned with the mock intent but not a pixel-identical port.
 - Self-check: `pnpm --filter app typecheck` passed; `pnpm --filter app test -- onboarding` passed (`55` files / `476` tests under the filter run after Phase 4 additions); `grep -n "SchedulePreview\|SwapFab" apps/app/src/onboarding/steps/Step3Preview.tsx` returned no matches; `git diff --check` passed. Authored Playwright coverage in `e2e/material-session-decoupling.spec.ts` includes `/study/onboarding/3?new=1` summary/no-tie assertions and was discovery-checked with `pnpm exec playwright test --config e2e/playwright.config.ts e2e/material-session-decoupling.spec.ts --list` (not executed).
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+
+**Reviewer findings (2026-07-01, Cowork senior review — read against `git show de2339a`):** **Status: ✅ Verified**
+- [x] `Step3Preview.tsx` fully retires the slot packer: no `SchedulePreview`/`SwapFab`/`generateRoadmap`/tie/`previewEdits` (grep clean). Preview = provisional-eyebrow projected-finish toggle card (`role=button`, `aria-expanded`/`aria-controls`, Enter/Space) → slide-down multi-month calendar with `‹ ›` nav disabled at `calendarMonthBounds`, booked days marked; capacity bar + sessions/total/buffer stats + "What you'll study" directory chips. Matches D13/D13a. ✅
+- [x] `handleCommit` emits exact order **MaterialAdded → RoadmapCreated{materialIds, slots:undefined} → SessionBooked×N → OnboardingCompleted**, clears the onboarding draft, and keeps the new-roadmap-while-active guard (routes to `/roadmaps`). Test `Step3Preview.test.tsx:178` asserts the kind order **and the cross-phase linkage** — `SessionBooked.roadmapCreatedAt === RoadmapCreated`'s explicit `createdAt` (via the new `logEvent(kind,payload,createdAt)` plumbing) with deterministic `planned:0:2026-07-01` IDs. This is the load-bearing tie between Phases 1–4 and it is proven. ✅
+- [x] Materials grouped by type (Videos / Playlists / Links & articles / Manual) with count + total and compact expand-on-edit rows; playlist rows open the existing `PlaylistPickerPopup` (D14a). ✅
+- [x] `logEvent`/`SyncEngine.logEvent`/`EventStore.append` `createdAt` param is optional + defaulted → backward compatible; also removes the prior local-vs-queue timestamp divergence. No sync regression. ✅
+- [x] `pnpm --filter app typecheck` + `pnpm --filter app test -- onboarding` re-run by reviewer → green (55 files / 476 tests). Playwright authored (not run) per env constraint. ✅
+- [~] **Non-blocking deviation (D14):** group section headers are not collapsible ("collapse finished buckets" unmet). Substance of D14 (grouped-by-type, counts, expand-on-edit, playlist modal) is met; collapsibility is cosmetic. Tracked as a follow-up, not a phase blocker.
+
+**Resolution:** _n/a — verified; group-collapsibility tracked in follow-ups below._
 
 ---
 
-## Phase 4 — Session flow (Home → pre-session → running end-sheet) · Status: 🟡 Implemented; awaiting reviewer
+## Phase 4 — Session flow (Home → pre-session → running end-sheet) · Status: ✅ Verified
 
 **Acceptance criteria** (contracts `home.html`, `session-presession.html`, `session-running.html`)
 - [x] Home booking card reads "Study session · ~Nmin" + **"Suggested material: <title>"**; Start passes `SessionSlotData{bookingId, materialId, plannedMinutes, …}` to `/session` (D15). Continue card preserved.
@@ -154,8 +162,33 @@ No correctness defects found in the code itself — `sessionsCount === completed
 - What changed: Home now derives today's booking/material suggestion from booking events + material ledger; `/session` now renders setup instead of auto-starting when idle, derives direct-route suggestions, preserves active-record Continue bypass, logs ad-hoc `SessionBooked` before start, carries booking/material metadata into the active record, opens an end sheet for complete/interrupted logging, emits `materialPosition`/`materialConsumedMinutes`, and auto-interrupts stale-midnight sessions.
 - Deviations: pre-session uses a range-backed dial rather than the full SVG radial interaction; cap math is booking-target based; YouTube auto-position capture remains manual through the percent sheet. These are UI/interaction fidelity gaps, not event-model blockers.
 - Self-check: `pnpm --filter app typecheck` passed; `pnpm --filter app test -- session` passed (`55` files / `476` tests); `grep -n "interrupt\|materialPosition\|materialConsumedMinutes" apps/app/src/session/SessionLifecycle.ts` shows the Phase 4 lifecycle path; `grep -n "PreSessionSetup\|EndSessionSheet" apps/app/src/pages/Session.tsx apps/app/src/session/components/*` shows the wiring; `git diff --check` passed. Authored Playwright coverage in `e2e/material-session-decoupling.spec.ts` covers Home → pre-session → start → interrupt partial and Continue bypass; discovery checked with `pnpm exec playwright test --config e2e/playwright.config.ts e2e/material-session-decoupling.spec.ts --list` (not executed).
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+
+**Reviewer findings (2026-07-01, Cowork senior review — read against `git show de2339a`):** **Status: ✅ Verified**
+- [x] `Session.tsx` gate (D-06): on `idle` + no active record → renders `PreSessionSetup` (no auto-start); direct `/session` without location state derives today's plan via `deriveTodaySessionPlan`; when a record exists (`state!=='idle'`) the running layout renders directly → **Continue bypasses setup**. `this.record` is set (SessionLifecycle:91) before the stale check, so the new stale-midnight `interrupt()` path is safe. ✅
+- [x] Ad-hoc start (`handleStartFromSetup`): when `!bookingId && setupRoadmapCreatedAt`, emits `SessionBooked{bookingId: crypto.randomUUID(), date, estimatedDuration, materialId}` **before** `lc.start(...)` with that bookingId (D9a #3). Random UUID here is correct (user-created, not engine-deterministic). ✅
+- [x] `SessionLifecycle`: `interrupt(pos?)` → `logSession('interrupted', …)` leaves material open; `end(pos?)` → `logSession('completed', …)`. `logSession` now emits `bookingId`, `plannedSessionMinutes`, `materialPosition`, `materialConsumedMinutes`, then clears the `activeSession` record and returns to idle. `stale_midnight` now `interrupt()`s (auto-logs the partial) instead of `SessionAbandoned` (D-04). Tests prove `materialConsumedMinutes=30` (25%→50% of 120min delta), interrupted resolution + fields, and no `SessionAbandoned` on midnight crossing. ✅
+- [x] `materialConsumedMinutes` = position-delta converted vs `materialEstimatedMinutes` (completed⇒remaining-to-100%; interrupted⇒`min(remaining, start+active)`; fallback to `activeMinutes` when position unchanged) — matches D-04/D8; calibration denominator (Phase 2 helper) consumes it, so partials feed throughput not the dial target. ✅
+- [x] `EndSessionSheet` (D18): single **End session** opens it; presets ¼/½/¾/Done + % slider; complete-vs-keep-open with smart default (`finished = position≥100`); "unusual" checkbox; one primary **Log session** → complete vs interrupt. Pause·come-back-later stays a ghost; running numeric timer/frame unchanged (D-05, no dial on running screen). ✅
+- [x] Home (`Home.tsx`) surfaces the booking + suggested material via `deriveTodaySessionPlan` and passes `SessionSlotData` to `/session`; Continue card preserved. ✅
+- [x] `pnpm --filter app typecheck` + `pnpm --filter app test -- session` re-run by reviewer → green (55 files / 476 tests). Playwright authored (not run). ✅
+- [~] **Non-blocking deviations (UI fidelity, honestly disclosed):**
+  1. Pre-session dial is a Marginalia-skinned `range` input, not the SVG radial from `SessionDial.jsx` (D7/D15a). Interaction is functionally equivalent for capturing `plannedMinutes`.
+  2. Dial cap/recommendation is booking-target based, not the D5 soft-cap (`hoursPerDay − minutesLoggedToday`) nor the D6 pace-first nudge. The D6 pace-first recommendation is genuinely gated on Phase 6 (ETA/pace); the pure D5 soft-cap is buildable now — see follow-ups.
+  3. `EndSessionSheet` YouTube auto-position (D18: "auto from video progress, read-only") is not pre-filled; user sets % manually. `videosCompleted` still flows into `SessionLogged`, so YouTube throughput signal is intact.
+  None touch the event model, the D-06 gate, D-04 complete/interrupt semantics, or the calibration feed — all of which later phases depend on and all of which are correct + tested.
+
+**Resolution:** _n/a — verified; deviations tracked in follow-ups below._
+
+---
+
+## Follow-ups tracked from Phase 3 & 4 review — RECTIFIED 2026-07-01 (post-review deviation fixes)
+- [x] **D7/D15a** — Built the radial `SessionDial` (`apps/app/src/session/SessionDial.tsx`), a faithful port of `mocks/proposed/session-presession.html` (270° sweep, comfort/stretch bands split at cap, terracotta dashed `cap` notch, moss `rec` triangle, draggable ink knob, center readout). A visually-hidden `range` (aria-label "Planned session length") preserves keyboard/AT control + existing tests. Wired into `PreSessionSetup`. **Playwright visual check:** app dial screenshot is pixel-identical to the mock `#dial1`; full pre-session frame matches (eyebrow, title, strip, "Recommended 1h · within today's 2h cap", legend, terracotta primary).
+- [x] **D5** — Pre-session soft-cap now derives from `hoursPerDay − minutesLoggedToday`: `sessionPlanning.dailyCapacityForDate` (weekday/weekend hours from the active roadmap payload) + `softCapMinutes` + today's minutes from `buildDailyActivity`; threaded through `SessionPlan` → `Session.tsx` → `PreSessionSetup` → `SessionDial`. Over-cap is allowed but flagged. Unit-tested (`sessionPlanning.test.ts`).
+- [x] **D14** — Onboarding material group headers (Playlists + each type group) are now collapsible `<button>`s with `aria-expanded` + rotating chevron; body renders conditionally (`Step3Materials.tsx`).
+- [x] **D18** — `EndSessionSheet` captures YouTube/playlist position automatically (read-only "N of M videos watched" → `materialPosition {kind:'videos', value, ofTotal}`) instead of the manual slider; non-YouTube keeps presets/slider. Unit-tested.
+- [ ] **D6** — pace-first *nudge* still genuinely gated on Phase 6 (needs the ETA/pace model). Current recommendation is the booking target clamped to the D5 soft-cap (never suggests past cap), which is the honest pace-independent behavior until P6 lands.
+
+**Verification of the fixes:** `pnpm --filter app typecheck` clean; `pnpm --filter app test` green (**56 files / 480 tests**, +4: EndSessionSheet YouTube, 3× sessionPlanning); Playwright screenshot diff of the pre-session dial vs mock confirmed matching (throwaway preview harness used then removed). D6 remains the only open item and is correctly deferred to Phase 6.
 
 ---
 

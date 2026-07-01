@@ -64,6 +64,9 @@ export function Session() {
   const [setupSlotData, setSetupSlotData] = useState<SessionSlotData | undefined>(undefined);
   const [setupMaterials, setSetupMaterials] = useState<SessionMaterialOption[]>([]);
   const [setupRoadmapCreatedAt, setSetupRoadmapCreatedAt] = useState<string | undefined>(undefined);
+  const [setupCapacityMinutes, setSetupCapacityMinutes] = useState(0);
+  const [setupDoneToday, setSetupDoneToday] = useState(0);
+  const [setupRecommendedMinutes, setSetupRecommendedMinutes] = useState(50);
   const [interstitialVisible, setInterstitialVisible] = useState(false);
   const [nextVideoTitle, setNextVideoTitle] = useState('');
   const interstitialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -95,6 +98,9 @@ export function Session() {
         setSetupMaterials(plan.materials);
         setSetupRoadmapCreatedAt(plan.roadmapCreatedAt);
         setSetupSlotData(slotData ?? plan.slotData);
+        setSetupCapacityMinutes(plan.dailyCapacityMinutes);
+        setSetupDoneToday(plan.minutesDoneToday);
+        setSetupRecommendedMinutes(plan.recommendedMinutes);
       }
 
       if (state !== 'idle' && lc.getRecord()?.kind === 'article') {
@@ -368,6 +374,9 @@ export function Session() {
         materials={setupMaterials}
         onStart={handleStartFromSetup}
         onCancel={() => navigate('/home')}
+        dailyCapacityMinutes={setupCapacityMinutes}
+        minutesDoneToday={setupDoneToday}
+        recommendedMinutes={setupRecommendedMinutes}
       />
     );
   }
