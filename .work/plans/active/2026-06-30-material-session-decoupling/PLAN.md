@@ -589,7 +589,7 @@ Revert `projectFinish.ts` + the `progress.ts` swap → falls back to plain GP `f
 
 ### Phase 7: Replan window — levers → live re-projection
 
-**Status:** ☐ Not started
+**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
 **Depends on:** Phase 1, Phase 2, Phase 6
 **Estimated scope:** ~4 files. Visual contract: [`mocks/proposed/replan.html`](./mocks/proposed/replan.html) (D22/D-09).
 

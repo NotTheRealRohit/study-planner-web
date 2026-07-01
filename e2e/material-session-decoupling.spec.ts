@@ -393,4 +393,60 @@ test.describe('Material/session decoupling', () => {
     )).toBeTruthy();
     expect(events.some((event) => event.kind === 'SessionLogged')).toBeFalsy();
   });
+
+  test('Replan levers UI: extend deadline → emit RoadmapReplanned with no slots + BookingCleared + SessionBooked', async ({ page }) => {
+    const email = testEmail('decoupled-replan');
+    const password = 'TestPassword123!';
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await seedEvents(page, todayEvents());
+
+    // Navigate to /replan
+    await page.goto(`${APP_URL}/study/replan`);
+    await expect(page.getByText('Adjust your plan')).toBeVisible();
+    await expect(page.getByText('Extend the deadline')).toBeVisible();
+
+    // Select +1 week deadline extension preset
+    await page.getByRole('button', { name: '+1 week' }).click();
+    await expect(page.getByRole('button', { name: '+1 week' })).toHaveAttribute('aria-pressed', 'true');
+
+    // The outcome panel should show a new finish date
+    const outcomeLive = page.locator('.rp-big');
+    await expect(outcomeLive).not.toBeEmpty();
+
+    // Apply the changes
+    await page.getByRole('button', { name: 'Apply changes' }).click();
+    await page.waitForURL(/\/study\/roadmap/, { timeout: 10000 });
+
+    // Verify the emitted events
+    const events = await readStoredEvents(page);
+    // RoadmapReplanned with no slots and updated deadline
+    const replanEvent = events.find((e) => e.kind === 'RoadmapReplanned');
+    expect(replanEvent).toBeDefined();
+    expect(replanEvent!.payload.slots).toBeUndefined();
+    expect(typeof replanEvent!.payload.deadline).toBe('string');
+    // BookingCleared for old future bookings
+    expect(events.some((e) => e.kind === 'BookingCleared')).toBeTruthy();
+    // SessionBooked for new bookings
+    expect(events.some((e) => e.kind === 'SessionBooked' && e.payload.roadmapCreatedAt === replanEvent!.payload.roadmapCreatedAt)).toBeTruthy();
+  });
+
+  test('Replan Keep current navigates back without emitting events', async ({ page }) => {
+    const email = testEmail('decoupled-replan-keep');
+    const password = 'TestPassword123!';
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await seedEvents(page, todayEvents());
+
+    await page.goto(`${APP_URL}/study/replan`);
+    await expect(page.getByText('Adjust your plan')).toBeVisible();
+
+    const eventsBefore = await readStoredEvents(page);
+    await page.getByRole('button', { name: 'Keep current' }).click();
+    await page.waitForURL(/\/study\/roadmap/, { timeout: 10000 });
+
+    const eventsAfter = await readStoredEvents(page);
+    // No new events were emitted
+    expect(eventsAfter.length).toBe(eventsBefore.length);
+  });
 });
