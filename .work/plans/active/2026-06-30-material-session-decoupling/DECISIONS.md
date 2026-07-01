@@ -291,6 +291,24 @@ replacement. R6 still guards external validity on real N=1 data.
 > derivations) is planned **here too**, not elsewhere. Goal: one cohesive, concrete plan family
 > incorporating UI + UX + logic. Append every decision below as `D12+`.
 
+### 7.0 Screen status index (catch-up — keep current)
+
+| Screen | Status | Baseline (before) | Canonical proposed | Decisions |
+|---|---|---|---|---|
+| Onboarding page 3 | ✅ agreed | `mocks/baseline/onboarding-3.html` | `mocks/proposed/onboarding-3.html` | D13, D13a, D14, D14a |
+| Home | ✅ agreed | `mocks/baseline/home.html` | `mocks/proposed/home.html` | D15 |
+| Session — pre-session setup | ✅ agreed | — (new page) | `mocks/proposed/session-presession.html` | D15a, D16, D17 |
+| Session — running | ✅ agreed | `mocks/baseline/session-running.html` | `mocks/proposed/session-running.html` | D18 (+D16/D17) |
+| Roadmap (+ booking interactions) | ✅ agreed | `mocks/baseline/roadmap.html` | `mocks/proposed/roadmap.html` | D20, D21 |
+| Week | ✅ no visual change | — | — (derivation only) | D19 |
+| Replan window | ✅ agreed | `mocks/baseline/replan.html` | `mocks/proposed/replan.html` | D22 |
+
+Cross-cutting locked: D12 (plan-here), D8/D8a (throughput), D9/D9a (booking model), D10 (progress capture),
+D11 (events + read-time adapter). **Gated:** #3 ETA composite → research R4.
+Rejected-but-retained option mocks: `mocks/proposed/onboarding-3-option{A,B,C}-*`,
+`mocks/proposed/onboarding-3-left-options`, `mocks/proposed/session-presession-options`,
+`mocks/proposed/roadmap-option{A,C}-*`.
+
 ### D12 — Planning scope & packaging ✅
 The whole decoupling (foundation + UI + UX + logic) is planned in **this folder**. We will
 clarify the UI/UX design through grilling first, then produce a concrete `PLAN.md` (+ companion
@@ -451,7 +469,129 @@ Rohit: "use frontend-design principles for UI decisions." Decisions, with the pr
   (interactive: tap End → sheet; slider/presets drive the smart default). ETA/“over plan” still shown the
   current way (terracotta numeric + planned-end line) — no dial on this screen (D17).
 
-<!-- append D19+ here as the grill resolves them -->
+### D19 — Week page: no visual redesign; derivation-only change ✅
+The Week page (`pages/Week.tsx`) keeps its current UI (week nav, verdict, "logged Xh against Yh target",
+sessions/hours, `DailyMinutesChart`, `BurnUpChart`, slipping→Replan CTA). Decoupling changes only what feeds
+it:
+- **Weekly target (D9):** `weeklyStats.plannedMinutesThisWeek` is recomputed from **capacity**
+  (`hoursPerDay × study-days that week`, or that week's booked-session minutes) instead of summed slot
+  `plannedMinutes`. Same text/line, new source — a Phase-0/`mapEvents`+`progress` change.
+- **Burn-up planned line + verdict** ride on the projection → flagged **provisional pending R4** (#3).
+- **Replan CTA** stays; its target (replan service contract) is a separate open item.
+- **Declined:** optional "booked vs unplanned day" marker on `DailyMinutesChart` — kept out of scope to keep
+  the change tight (Rohit: leave Week visually untouched). No Week mock built.
+
+### D20 — Roadmap page redesign (🟡 designing)
+Baseline mocked (`mocks/baseline/roadmap.html`): current slot-based calendar — header + progress card,
+month-nav, 4-status legend (done/planned/skipped/unplanned), bubble grid (`CalendarCell` →
+`roadmap-bubble` chips), footer (complete/abandon/edit-disabled/replan), detail modals. Built on
+`deriveSlotStatuses` — **being replaced** (D9).
+**Redesign scope (to mock):**
+- **Calendar status semantics (D9):** past = **activity** (done) / unplanned-logged; future = **bookings**
+  (booked, with/without suggested material) / missed. Keyed by `bookingId` (exact), replacing the fuzzy
+  date+materialId FCFS. Legend changes: done / **booked** / missed / unplanned.
+- **Future bubble** shows a booking ("Session · 1h", or suggested material) — visually distinct from past
+  activity (e.g. outlined vs filled).
+- **Click a future booking → attach/swap material; click an empty day → "+ add a session"** (creates a
+  booking). Booking edit (move/duration/attach/detach/remove) replaces slot-coord `RoadmapEdited` →
+  `SessionBooked`/`BookingEdited`/`BookingCleared` (D11). `SessionDetailModal` becomes a booking editor.
+- **Material directory view (§5b):** browse materials + per-material progress; mark progress out-of-session
+  (D10(ii)). Placement is the key structural fork (tab vs panel vs split).
+- **ETA / burn-up (#3):** finish-date projection + burn-up, **provisional pending R4**.
+**Options rendered (choose one):** all three fold in the new statuses (Done/Booked/Missed/Unplanned),
+future **bookings as outlined bubbles** vs past **activity filled**, blank booking = "Session · pick at
+start", **"+ add session"** on empty in-month days (hover), a **material directory** (per-material progress
++ "mark progress"), and a header **ETA card** (finish Jul 13 + burn-up sparkline, `provisional`).
+- **A — Calendar / Materials tabs** (`roadmap-optionA-tabs.html`): one view at a time; least clutter; extra
+  tap to reach materials.
+- **B — Directory panel below calendar** (`roadmap-optionB-panel.html`): calendar always visible, collapsible
+  Materials panel under it; good default; long-scroll on mobile.
+- **C — Split calendar + directory** (`roadmap-optionC-split.html`): side-by-side on desktop; materials always
+  in view; tighter calendar width; stacks on mobile.
+**Common sub-decisions folded in:** future=outlined/dashed bubble, past=filled status chip; ETA as a dedicated
+header card (replaces the plain progress card); add-session affordance on empty days.
+**✅ Chosen = Option B (directory panel below calendar).** Canonical mock: `mocks/proposed/roadmap.html`
+(copy of the fixed Option B). Rejected A (tabs) / C (split) retained under `mocks/proposed/roadmap-option*`.
+**Bug fixed:** the option mocks rendered only 4 week rows — July 2026 needs **5** (week of Jul 27–31 was
+missing, which looked like a clipped calendar). Fixed in Option B + the canonical file; a note for the plan:
+the real grid comes from `buildMonthGrid` so it's correct in-app — the bug was mock-only, but flags that any
+month-grid mock must render all 5–6 rows.
+
+### ✅ ROADMAP — UI AGREED (visual contract)
+Chosen **Option B** frozen as the visual contract: **`mocks/proposed/roadmap.html`** is canonical. New booking
+statuses (Done/Booked/Missed/Unplanned), outlined future bookings vs filled past activity, blank booking =
+"Session · pick at start", "+ add session" on empty days, collapsible material directory (per-material
+progress + mark-progress), header ETA card (finish + burn-up sparkline, **provisional pending R4**). Baseline
+"before" = `mocks/baseline/roadmap.html`. Rejected A/C retained under `mocks/proposed/roadmap-option*`.
+
+### ✅ ALL FOUR SCREENS — UI AGREED
+Onboarding p3 (D13/D13a/D14/D14a) · Home (D15) · Session pre-session V1 (D15a) + running (D18) + state model
+(D16) + dial-pre-session-only (D17) · Roadmap (D20) · Week no-visual-change (D19). Each has a frozen
+`mocks/baseline/*` and a locked `mocks/proposed/*`. These mocks are the **visual contract** for the PLAN.md.
+
+### D21 — Booking interaction model ✅ (wired into canonical `roadmap.html`)
+How bookings behave on the Roadmap (D9/D9a/D11). Mocked into the canonical `roadmap.html` as interactive
+sheets:
+- **Edit a booking** (click a future booking bubble) → **booking editor** sheet: attached/suggested material
+  (Swap / Clear / Attach → material picker), **duration stepper** (−/+ 15m; *not* the dial — D17), **Move to
+  another day**, **Remove booking**. Save → `BookingEdited`; remove → `BookingCleared`; detach material →
+  `BookingEdited(materialId:null)`.
+- **Add a session** (click "+ add session" on an empty day) → **add-session** sheet: duration stepper
+  (cap-aware note), optional Attach material else "leave open — pick at start". Add → `SessionBooked`.
+- **Material picker** reused (radio list, suggested pre-selected) for attach/swap.
+- Principles: duration via stepper (quick, bounded) not the dial (dial stays the pre-session planned-length
+  instrument); destructive **Remove** is a quiet ghost, not primary; suggested-preferring order on attach.
+- **Balance refinement (Rohit feedback — "cluttered, left-aligned, empty right space"):** switched to a
+  **settings-row layout** — label left / control right, `justify-content:space-between` so rows fill the
+  sheet width (no lopsided gap). Material collapsed from a card + two buttons into **one tappable material
+  card** (opens the picker; picker now carries the "No material · pick at start" option — removes the
+  Clear/Swap button clutter). Softer sentence-case labels (not shouty mono-caps), one full-width primary,
+  Remove as a small centred ghost link. Alignment + whitespace balanced; fewer competing elements.
+
+### D22 — Replan window redesign (🟡 designing)
+**Current (`pages/Replan.tsx`, baseline `mocks/baseline/replan.html`):** full `/replan` page that previews a
+**regenerated slot grid** via `SchedulePreview` (weeks/planned/warnings summary) + Apply / Keep current;
+`?intent=extend` adds a week; built on `mapToRegenerateRequest` → `replanRoadmap` → `/v1/roadmap/regenerate`
+(returns slots). **This whole slot-regen preview is retired** (D1/D9).
+**Redesign — replan = pull levers → re-project finish (D6), no slot repack.** Triggers: Week "Replan the
+rest" (slipping), Home `RecalibrationModal` → Replan (pace changed), Roadmap footer Replan (manual).
+Content: **why** (context: "at this pace you'll finish Jul 28 — 8 days past Jul 20"), the **levers** —
+(1) **extend deadline**, (2) **adjust capacity** (hours/day + study days), (3) **drop or shorten materials**,
+(4) **accept the later finish** — and a **live projected-finish** that updates as levers move (**provisional
+pending R4**), then Apply / Keep current. Emits capacity/deadline/material edits + re-projection, **not**
+slot regen; replan service contract (`/v1/roadmap/regenerate`) becomes a re-projection/capacity-deadline
+adjust (open item).
+**Options rendered (full `/replan` page; live finish updates as levers move — illustrative model,
+provisional pending R4):**
+- **A — single column** (`mocks/proposed/replan-optionA-single.html`): context banner → **sticky live-finish
+  card** → stacked lever cards (extend / capacity / drop-shorten) → Apply / Keep current. Mobile-first, linear.
+- **B — split** (`mocks/proposed/replan-optionB-split.html`): levers left, **sticky outcome panel right**
+  (new finish + delta + "was" + Apply/Keep). Desktop cause↔effect side-by-side; stacks on mobile.
+Both: levers = extend-deadline presets, hours/day stepper + study-day chips, per-material Drop; "Keep current"
+= **accept the later finish** (D6's 4th lever). Chose full-page over modal (too many levers + live preview for
+a modal).
+**✅ Chosen = Option B (split levers + sticky outcome).** Canonical mock: `mocks/proposed/replan.html`.
+**Materials-lever fix (Rohit):** the heading said "Drop **or shorten**" but only Drop existed. Now each row
+has a **remaining-length stepper (shorten)** — state line shows `planned` / `shortened · was Xh` / `dropped` —
+**plus a `×` to drop** (remaining→0). Control now matches the label; both shrink the backlog and move the live
+finish. Rejected A retained at `mocks/proposed/replan-optionA-single.html`. ETA/finish provisional pending R4.
+
+### ✅ REPLAN — UI AGREED (visual contract)
+**`mocks/proposed/replan.html`** is canonical (Option B): full `/replan` page, split **levers (left) + sticky
+live-outcome panel (right)**. Levers = extend-deadline presets · hours/day stepper + study-day chips ·
+per-material **shorten stepper + × drop** · "Keep current" = accept the later finish (D6). Live projected
+finish is **provisional pending R4**. Baseline "before" = `mocks/baseline/replan.html` (retired slot-regen
+preview). Rejected A retained at `mocks/proposed/replan-optionA-single.html`. Replaces the slot-regen model:
+replan now = capacity/deadline/material edits → re-projection (service contract `/v1/roadmap/regenerate` →
+re-projection is an open plan-time item).
+
+### ✅ DESIGN PASS COMPLETE
+All screens agreed with frozen baselines + locked proposed mocks (see §7.0 index): onboarding p3, Home,
+Session (pre-session + running), Roadmap (+ bookings), Week (no-visual), **Replan**. `DECISIONS.md` D1–D22 is
+the source of truth; the `mocks/` are the **visual contract** for the eventual `PLAN.md` (Phase 0 foundation →
+per-screen vertical slices; ETA elements gated on research R4).
+
+<!-- append D23+ here as the grill resolves them -->
 
 ## 6. Change log
 
@@ -477,6 +617,27 @@ Rohit: "use frontend-design principles for UI decisions." Decisions, with the pr
   extend the generator, regression-test calibration/detection, **benchmark the ETA composite (R4)** on the
   existing `research/comparison/` harness with A-series rigour, guard circularity via Phase-5 real data.
   #3 composite is now 🟡 gated on R4.
+- **2026-07-01** — Research verdicts baton read (`handovers/2026-07-01-research-verdicts-for-ui-impl.md`):
+  G1 calibration transfers (keep `enriched_shrink`, INCLUDE partials), G2 keep CUSUM, G3 ETA #3 QUALIFIED
+  (GP + analytic cold-start fallback, `COLD_START_N=5`, actual-minutes, provisional; not a GP replacement).
+  **`PLAN.md` + `VERIFICATION.md` authored** in this folder — 7 phases (2 foundation: engine→bookings +
+  events, then derivations + read-time adapter; then onboarding-p3, session-flow, roadmap, ETA+week, replan),
+  grounded in real symbols, mocks as visual contract, D-01…D-10 decisions log, OQ-01…05. Ready for
+  Codex/Sonnet (Step 0 = commit docs). Design pass (D1–D22) → implementation plan complete.
+- **2026-06-30 (grill session 2)** — **D22 locked:** Replan window = **Option B** (split levers + sticky live
+  outcome), canonical `mocks/proposed/replan.html`. Replan reframed from slot-regen → **pull levers →
+  re-project finish** (extend deadline / capacity / shorten+drop materials / accept later finish). Materials
+  lever fixed: stepper **shortens**, × **drops** (label now matches the control). **Design pass complete** —
+  §7.0 index tracks all agreed screens. Next: assemble `PLAN.md` + `VERIFICATION.md`.
+- **2026-06-30 (grill session 2)** — All four screens UI-agreed + documented as visual contracts. **D21:**
+  booking interactions wired into canonical `roadmap.html` — booking editor (swap/clear/duration-stepper/
+  move/remove → `BookingEdited`/`BookingCleared`), add-session sheet (→ `SessionBooked`), material picker.
+  Duration via **stepper** not dial (D17). Next: assemble PLAN.md.
+- **2026-06-30 (grill session 2)** — **D20 locked:** Roadmap = **Option B** (calendar + collapsible Materials
+  panel), canonical `mocks/proposed/roadmap.html`. New booking statuses (Done/Booked/Missed/Unplanned),
+  outlined future bookings vs filled past activity, "+ add session" on empty days, material directory with
+  per-material progress, provisional ETA card. Fixed mock calendar-row bug (5 rows for July). All four
+  screens now designed (onboarding p3, Home+pre-session+running, Roadmap). Next: assemble the PLAN.md.
 - **2026-06-30 (grill session 2)** — **D16** (session state model: pre-session runs once; Continue resumes
   the running timer via the persisted `activeSession` record, bypassing the pre-req) + **D17** (dial is
   pre-session-only; running session keeps the existing numeric timer — rejects dial-as-running-timer) locked.
