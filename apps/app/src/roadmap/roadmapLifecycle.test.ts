@@ -39,6 +39,15 @@ function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): Roadmap
   }
 }
 
+function noSlotsRoadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): RoadmapCreatedPayload {
+  const payload = roadmapPayload({
+    materialIds: ['mat-1', 'mat-2'],
+    ...overrides,
+  })
+  delete payload.slots
+  return payload
+}
+
 function event(
   kind: string,
   payload: unknown,
@@ -315,5 +324,84 @@ describe('roadmapLifecycle', () => {
     expect(groups.completed[0].percentComplete).toBe(50)
     expect(groups.abandoned.map((entry) => entry.title)).toEqual(['Second'])
     expect(groups.active.map((entry) => entry.title)).toEqual(['Current'])
+  })
+
+  it('computes no-slots progress from booking events', () => {
+    const createdAt = '2026-06-01T00:00:00.000Z'
+    const groups = deriveRoadmapLifecycle([
+      event('RoadmapCreated', noSlotsRoadmapPayload(), createdAt),
+      event(
+        'SessionBooked',
+        {
+          roadmapCreatedAt: createdAt,
+          bookingId: 'booking-1',
+          date: '2026-06-03',
+          estimatedDuration: 60,
+          materialId: 'mat-1',
+        },
+        '2026-06-01T00:10:00.000Z',
+      ),
+      event(
+        'SessionBooked',
+        {
+          roadmapCreatedAt: createdAt,
+          bookingId: 'booking-2',
+          date: '2026-06-05',
+          estimatedDuration: 45,
+          materialId: 'mat-2',
+        },
+        '2026-06-01T00:20:00.000Z',
+      ),
+      event(
+        'SessionBooked',
+        {
+          roadmapCreatedAt: createdAt,
+          bookingId: 'cleared-booking',
+          date: '2026-06-07',
+          estimatedDuration: 30,
+        },
+        '2026-06-01T00:30:00.000Z',
+      ),
+      event(
+        'BookingCleared',
+        {
+          roadmapCreatedAt: createdAt,
+          bookingId: 'cleared-booking',
+        },
+        '2026-06-01T00:40:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 's1',
+          date: '2026-06-03',
+          materialId: 'mat-1',
+          bookingId: 'booking-1',
+          resolution: 'completed',
+          duration: 60,
+        },
+        '2026-06-03T12:00:00.000Z',
+      ),
+      event(
+        'SessionLogged',
+        {
+          sessionId: 's2',
+          date: '2026-06-05',
+          materialId: 'mat-2',
+          bookingId: 'booking-2',
+          resolution: 'interrupted',
+          duration: 20,
+        },
+        '2026-06-05T12:00:00.000Z',
+      ),
+    ])
+
+    expect(groups.active).toHaveLength(1)
+    expect(groups.active[0].payload.slots).toBeUndefined()
+    expect(groups.active[0]).toMatchObject({
+      totalSlots: 2,
+      completedSlots: 1,
+      percentComplete: 50,
+    })
   })
 })

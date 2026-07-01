@@ -214,7 +214,7 @@ Intelligence layer math is unchanged (calibration `enriched_shrink`, detection C
 
 ### Phase 1: Foundation — engine emits bookings + booking/session event shapes
 
-**Status:** 🟡 In progress — implemented in `327ca45`; awaiting review
+**Status:** ✅ Complete — `327ca45`
 **Depends on:** none — can start immediately
 **Estimated scope:** ~5 files (engine + its tests, `sync/types.ts`, `session/types.ts`). Large; the implementer may sub-split engine vs types.
 
@@ -307,7 +307,7 @@ Revert the engine + types changes. No data migration (events are additive; legac
 
 ### Phase 2: Foundation — booking-status derivations + read-time legacy adapter
 
-**Status:** 🟡 In progress — implemented in `327ca45`; awaiting review
+**Status:** 🟡 In progress — redo tests implemented locally; awaiting reviewer sign-off
 **Depends on:** Phase 1
 **Estimated scope:** ~5 files (3 new in `packages/progress`, `progress/index.ts`, `apps/app/src/progress/mapEvents.ts`).
 

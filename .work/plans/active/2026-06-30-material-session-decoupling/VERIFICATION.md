@@ -24,7 +24,7 @@ Cross-cutting invariants (must hold at every phase):
 
 ---
 
-## Phase 1 — engine bookings + event shapes · Status: 🟡 Implemented awaiting review
+## Phase 1 — engine bookings + event shapes · Status: ✅ Verified
 
 **Acceptance criteria**
 - [x] `Booking { id, date, estimatedDuration, materialId?, status }` + `BookingStatus` exported from `packages/roadmap-engine/src/index.ts`.
@@ -43,13 +43,20 @@ Cross-cutting invariants (must hold at every phase):
 - Deviations: retained legacy slot packer tests instead of deleting them because current app callers still import deprecated slot APIs. No new booking path depends on the packer.
 - Self-check: `pnpm --filter @study-tracker/roadmap-engine test` passed (`36` tests); `pnpm --filter app typecheck` passed; `git diff --check` passed.
 
-**Reviewer findings:** _(per-criterion verdict · issues · required changes · status)_
+**Reviewer findings (2026-07-01, Cowork senior review — read against `git show 327ca45`):** **Status: ✅ Verified**
+- [x] `Booking`/`BookingStatus`/`BookingLayoutInput` + `generateBookings` + `suggestMaterialForBooking` exported from `index.ts` (verified in diff).
+- [x] `generateBookings` is book-to-exhaustion + buffer, blank bookings, deterministic `planned:<ordinal>:<date>` IDs, weekday/weekend capacity honored, no RNG. Tests assert count (`ceil` = 3 for 180min@60), buffer day unbooked, ID stability across repeated calls, mixed weekend capacity. ✅
+- [x] Packer quarantined: `generateBookings` contains no `candidateMaterialIds`/`__rest__`/`tagRoleCandidates`/`assignMaterialsToSlots`; `generateRoadmap` + slot mutators kept and tagged `@deprecated`; `inferRole`/`ROLE_TO_LABEL`/`LABEL_TO_ROLE` retained. ✅
+- [x] `sync/types.ts`: `SessionBookedPayload`, `BookingEditedPayload` (`materialId?: string|null` detach), `BookingClearedPayload`, `MaterialProgressMarkedPayload`; `RoadmapCreatedPayload.materialIds?`/`materialDurationOverrides?` added; `slots?` made optional (not deleted). ✅
+- [x] Session payload/record fields added (`bookingId`, `resolution:'…|interrupted'`, `materialPosition`, `plannedSessionMinutes`, `materialConsumedMinutes`, `materialEstimatedMinutes`, `materialStartPosition`) — all optional, back-compat preserved. ✅
+- [x] `pnpm --filter @study-tracker/roadmap-engine test` = 36 green (re-run by reviewer); `pnpm --filter app typecheck` green (re-run). Optional-slot guards in `Step4Confirm`/`RoadmapCalendar`/`mapToRegenerateRequest` are non-behavioral (`payload.slots ?? []`). ✅
+- Non-blocking nits (do not gate Phase 1): (1) `suggestMaterialForBooking` applies role order **sequentially** (all foundation, then anchor, then practice) rather than a true interleave, and drops the `usedMaterialIds` guard in the second (fallback) role loop — acceptable under the plan's wording, revisit if the suggestion UX in P3/P4 needs interleave. (2) `roadmapIdentity` is now duplicated across `mapEvents.ts`, `roadmapLifecycle.ts`, `mapToRegenerateRequest.ts` — consider hoisting to one shared util in a later phase.
 
-**Resolution (on redo):** _(loop until ✅ Verified)_
+**Resolution (on redo):** _n/a — verified as-is._
 
 ---
 
-## Phase 2 — derivations + read-time adapter · Status: 🟡 Implemented awaiting review
+## Phase 2 — derivations + read-time adapter · Status: 🔁 Changes requested — redo implemented awaiting review
 
 **Acceptance criteria**
 - [x] `deriveBookingStatuses(bookings, sessions, today)` → per-booking `done|booked|missed|unplanned` by **exact `bookingId`**; interrupted session does **not** mark `done`; unplanned = logged w/o matching bookingId grouped by date (D-03).
@@ -69,8 +76,35 @@ Cross-cutting invariants (must hold at every phase):
 - What changed: added booking status derivation, material ledger, daily activity, calibration denominator helper, new SessionEvent fields, booking event folding, legacy-slot-to-booking adapter, material scoping by `materialIds`, no-slot active-roadmap bridge, no-slot lifecycle/progress summaries, and capacity weekly-target helper.
 - Deviations: `deriveBookingStatuses` uses a local structural `BookingLike` instead of importing `@study-tracker/roadmap-engine` because `@study-tracker/progress` does not declare that package as a dependency and app typecheck caught the boundary. This preserves structural compatibility without adding a package dependency.
 - Self-check: `pnpm --filter @study-tracker/progress test` passed (`90` tests); `pnpm --filter app test -- mapEvents` passed (`52` app test files / `472` tests under the filter run); `pnpm --filter app typecheck` passed; `git diff --check` passed.
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+**Reviewer findings (2026-07-01, Cowork senior review — read against `git show 327ca45`):** **Status: 🔁 Changes requested**
+
+Logic is correct and complete; the block is a **missing-test** gap that the plan explicitly requires.
+
+- [x] `deriveBookingStatuses` — exact-`bookingId` match; interrupted session does **not** mark done (test asserts `missed`); future/past unmatched → `booked`/`missed`; unplanned grouped by date. Verified + well-tested. ✅
+- [x] `buildMaterialLedger` — `estimatedConsumedMinutes = max(Σ materialConsumedMinutes, latest-position-converted)`; folds in-session + out-of-session marks; `done`/`started`/`lastPosition`/`remaining` correct. `buildDailyActivity` per-day. Both exported + tested. ✅
+- [x] **Calibration denominator** helper `materialConsumedMinutes ?? plannedMinutes` wired into **all four** modules (`bayesian`, `cusum`, `trend`, `calibration`) via `isCalibrationSession`/`calibrationDenominator`; test proves a partial session yields ratio `30/20` (multiplier > 1), not `30/60`. Legacy events fall back to `plannedMinutes` → back-compat intact (G1/D8). ✅
+- [x] `SessionEvent` gains `bookingId`/`materialPosition`/`materialConsumedMinutes`/`plannedSessionMinutes`/`resolution`; `mapSessions` maps them. ✅
+- [x] `mapBookings` folds `SessionBooked`/`BookingEdited`/`BookingCleared` by `bookingId` in event order, scoped to roadmap; detach via `materialId:null` tested; `BookingCleared` order tested. ✅
+- [x] Legacy adapter `deriveBookingsForRoadmap` maps future legacy slots → bookings then applies booking events on top; `mapMaterialsForRoadmap` scopes by `materialIds` (falls back to slot candidates for legacy) — tested (`mat-2` only, not all `MaterialAdded`). ✅
+- [x] `findActiveRoadmap`/`findRoadmap`/`roadmapLifecycle.ts`/`roadmapProgress.ts` tolerate `slots === undefined`; `roadmapIdentity` correctly reroutes `RoadmapReplanned` booking scope to the original `roadmapCreatedAt`. ✅ (compiles + typecheck green)
+- [x] `deriveSlotStatuses` tagged `@deprecated`, still present. `capacityWeeklyTarget` (D-08) present + exported. ✅
+- [~] **`pnpm --filter @study-tracker/progress test` (90) + `mapEvents` (472) green — BUT one plan test requirement is unmet.** The Phase-2 "Tests" block requires: *"`roadmapLifecycle.test.ts` + `roadmapProgress.test.ts`: no-slots roadmap does not crash and computes active dashboard progress from bookings/sessions."*
+  - `roadmapLifecycle.test.ts` received **only** mechanical `base.slots![0]` non-null fixups — **no** new test exercising the new no-slots path (`bookingIdsForRoadmap` / `completedBookingCount`).
+  - **`roadmapProgress.test.ts` does not exist.** The ~90-line no-slots branch of `summarizeRoadmapProgress` (`bookingsForEntry`, `materialLedgerForEntry`, completed-booking counting, ledger-vs-booking `totalPlanned`/`toGo`) is the **largest new logic block in Phase 2 and has zero coverage.** VERIFICATION checks the "tolerate `slots===undefined`" criterion `[x]`, but that tolerance is untested for the progress summary.
+
+**Required changes to reach ✅ Verified (Phase 2):**
+1. Add `apps/app/src/roadmap/roadmapProgress.test.ts`: a no-slots `RoadmapLifecycleEntry` (payload with `materialIds`, no `slots`) + `MaterialAdded` + `SessionBooked` + `SessionLogged` (one completed, one `interrupted`) → assert `summarizeRoadmapProgress` returns correct `completedSlots`/`totalSlots`/`loggedMinutes`/`toGoMinutes`/`percentComplete`, that an `interrupted` session does **not** count as completed, and that ledger-based `totalPlanned`/`toGo` are used when `materialIds` resolve.
+2. Add a no-slots case to `roadmapLifecycle.test.ts` proving `deriveRoadmapLifecycle` computes `totalSlots`/`completedSlots`/`percentComplete` from booking events (via `bookingIdsForRoadmap`/`completedBookingCount`) and does not crash when `payload.slots === undefined`.
+3. Re-run `pnpm --filter @study-tracker/progress test && pnpm --filter app test -- roadmapProgress roadmapLifecycle` and update the implementer report.
+
+No correctness defects found in the code itself — `sessionsCount === completedSlots` matches the legacy branch's own semantics, so no behavioral drift for existing consumers.
+
+**Resolution (redo 2026-07-01):**
+- Analysis: the Phase 2 logic was correct, but my first self-check over-weighted green package/mapEvents tests and missed the plan's app-level test line for `roadmapLifecycle.test.ts` + `roadmapProgress.test.ts`. That left the no-slots dashboard progress branch unguarded despite being production logic.
+- Added `apps/app/src/roadmap/roadmapProgress.test.ts`: no-slots `RoadmapLifecycleEntry` with `materialIds`, `MaterialAdded`, `SessionBooked`, and `SessionLogged` events; asserts `completedSlots=1`, `totalSlots=2`, `loggedMinutes=70`, `totalPlannedMinutes=180`, `toGoMinutes=60`, and `percentComplete=50`; interrupted booked session is logged but does not count complete; material-ledger totals win over booking-duration fallback.
+- Added a no-slots case to `apps/app/src/roadmap/roadmapLifecycle.test.ts`: proves `deriveRoadmapLifecycle` handles `payload.slots === undefined`, counts active booking events after `BookingCleared`, ignores interrupted sessions for completion, and returns `totalSlots=2`, `completedSlots=1`, `percentComplete=50`.
+- Verification: `pnpm --filter @study-tracker/progress test` passed (`90` tests); `pnpm --filter app test -- roadmapProgress roadmapLifecycle` passed (`53` files / `474` tests under the filter run); `pnpm --filter app typecheck` passed; `git diff --check` passed.
+- Status: redo implemented locally; awaiting Cowork reviewer re-check. Not self-marking Phase 2 verified.
 
 ---
 

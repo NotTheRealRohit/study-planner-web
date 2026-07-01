@@ -1,17 +1,18 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T11:37_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T11:59_
 
 ## Now
-Phases 1 and 2 are implemented, locally verified, committed as `327ca45`, and recorded in `PLAN.md`, `VERIFICATION.md`, and `.work/STATUS.md`. Awaiting reviewer sign-off.
+Phase 2 redo is implemented locally and verified by focused tests. Added the missing no-slots app-level tests for `roadmapLifecycle.ts` and `roadmapProgress.ts`, updated `PLAN.md`, `VERIFICATION.md`, and `.work/STATUS.md`; awaiting Cowork reviewer re-check.
 
 ## Alignment
-Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists as `8c65b07 docs: prepare material-session decoupling implementation`; Phase 1/2 implementation is `327ca45 feat(planner): add booking foundations`. Implementation intentionally leaves Phases 1/2 awaiting reviewer verification rather than self-marking them verified.
+Aligned with `PLAN.md` and the Cowork Phase 2 review in `VERIFICATION.md`. Phase 1 is now marked complete/verified. Phase 2 remains in-progress because the redo is not reviewer-verified yet; do not mark it ✅ from implementer-side tests alone.
 
 ## Open
-- Reviewer should check the deviations recorded in `VERIFICATION.md`: retained deprecated slot tests; `BookingLike` structural type in progress package.
+- Await Cowork re-check of Phase 2 redo. The missing-test checklist is now implemented and logged in `VERIFICATION.md`.
+- Commit boundary is pending for the redo unless the user asks to commit.
 
 ## Blockers
-- None active.
+- Phase 2 cannot be marked verified by the implementer; leave it awaiting reviewer redo/sign-off.
 
 ## Deferrals
 - Leave `/v1/progress` service parity deferred by the plan; this session is not implementing ETA composite/server parity.
@@ -29,15 +30,16 @@ Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists a
 - [x] Run Phase 2 focused verification.
 - [x] Update `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad with final state.
 - [x] Commit Phase 1/2 implementation as `327ca45`.
+- [x] Read Phase 2 reviewer changes-requested checklist.
+- [x] Add no-slots `roadmapProgress.test.ts`.
+- [x] Add no-slots `roadmapLifecycle.test.ts` coverage.
+- [x] Run required Phase 2 redo verification.
+- [x] Update `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad with redo result.
 
 ## In-flight edits
-- Implemented booking API/tests in `packages/roadmap-engine/src/roadmap-engine.ts`, `index.ts`, and `roadmap-engine.test.ts`.
-- Added booking/session/material-progress payload fields in `apps/app/src/sync/types.ts` and `apps/app/src/session/types.ts`.
-- Added progress derivations/tests: `deriveBookingStatuses`, `materialLedger`, `dailyActivity`, and `calibrationDenominator`.
-- Updated app mapper/lifecycle/progress bridge for optional-slot roadmaps and booking events.
-- Updated `PLAN.md` phase statuses and `VERIFICATION.md` implementer reports for Phases 1–2; updated `.work/STATUS.md`.
-- Recorded implementation commit `327ca45` in active task docs.
-- Restored active `SCRATCHPAD.md`; archived copy remains untouched.
+- Modified `apps/app/src/roadmap/roadmapLifecycle.test.ts` with a no-slots booking-count case.
+- Added `apps/app/src/roadmap/roadmapProgress.test.ts` covering ledger-backed no-slots progress summary.
+- Updated `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad for the Phase 2 redo.
 
 ## Decisions in force
 - Use project-local skills/rules only for this repo.
@@ -46,8 +48,10 @@ Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists a
 - Roadmap engine generated booking IDs must be deterministic; no random IDs in `@study-tracker/roadmap-engine`.
 - Legacy slot APIs stay present and deprecated during Phases 1/2; no destructive event migration.
 - Calibration denominator for decoupled material throughput is `materialConsumedMinutes ?? plannedMinutes`, not the pre-session dial target alone.
+- The review miss was a verification-scope mistake: the package/mapEvents tests were green, but the app-level no-slots branches named in the Phase 2 Tests block were not covered.
 
 ## Resolved (recent)
 - Active scratchpad deletion at session start resolved by recreating the task-local `SCRATCHPAD.md`; archived copy left untouched.
 - Phase 1 app typecheck failure from optional `slots` resolved by Phase 2 no-slot bridge and minimal legacy compatibility guards.
 - Implementation commit boundary resolved as `327ca45`.
+- Phase 2 missing-test blocker addressed with `roadmapProgress.test.ts` and no-slots lifecycle coverage; verification passed: `pnpm --filter @study-tracker/progress test`, `pnpm --filter app test -- roadmapProgress roadmapLifecycle`, `pnpm --filter app typecheck`, `git diff --check`.
