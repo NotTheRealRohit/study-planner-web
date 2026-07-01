@@ -1,45 +1,47 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T15:00_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T20:35_
 
 ## Now
-Implementing Phase 7: Replan window — levers → live re-projection. Phases 1–6 are all ✅ Verified.
+Phase 7 (replan levers) implemented and committed at `31feaa2`. Awaiting Cowork review. All 7 phases are now implemented — Phase 7 is the only one not yet Cowork-verified.
 
 ## Alignment
-Aligned. Phase 7 replaces the `SchedulePreview`/`replanRoadmap`/`mapToRegenerateRequest` slot path in `Replan.tsx` with a levers + live-outcome layout per `mocks/proposed/replan.html`. Commit emits `RoadmapReplanned{materialIds, materialDurationOverrides, no slots}` + `BookingCleared` (future bookings) + `SessionBooked` (new bookings from `generateBookings`). No `/v1/roadmap/regenerate` call.
+Aligned. Phase 7 built per plan + mock. Three intentional deviations documented in VERIFICATION.md Phase 7 implementer report (analytic-only re-projection, single hoursPerDay stepper, clear-all+regen commit strategy).
 
 ## Open
-- Exact `weeklyHours` computation (using `hoursPerDay * selectedStudyDays.length` since single stepper)
-- Booking commit order: `RoadmapReplanned` → `BookingCleared` × N → `SessionBooked` × M
+- Cowork review of Phase 7.
 
 ## Blockers
 - — none
 
 ## Deferrals
-- `replanRoadmap.ts` and `mapToRegenerateRequest.ts` are kept (not deleted) but no longer called from `Replan.tsx`.
-- `/v1/roadmap/regenerate` service call removed from replan path per D-09.
+- `replanRoadmap.ts` / `mapToRegenerateRequest.ts` kept but no longer called from Replan.tsx (retired from live path).
+- `/v1/roadmap/regenerate` removed from replan path per D-09.
+- E2E specs authored (not run) per project constraint.
 
 ## Checklist
-- [ ] Add new `.rp-*`/`.lever`/`.stepper`/`.daychip`/`.preset`/`.matline`/`.mshort`/`.mdrop`/`.provisional` CSS to `roadmap.css`
-- [ ] Rewrite `commitReplan.ts` — new interface (no RoadmapOutput, no slots; takes deadline/capacity/materialIds/materialDurationOverrides/materials; clears future bookings + generates new SessionBooked events)
-- [ ] Rewrite `Replan.tsx` — delete SchedulePreview/replanRoadmap/mapToRegenerateRequest; build levers + sticky outcome panel; live re-projection via projectFinish (analytic path)
-- [ ] Update `commitReplan.test.ts` — test new behavior
-- [ ] New `Replan.test.tsx` — levers update live finish; commit emits correct events; Keep current emits nothing
-- [ ] Author (not run) E2E coverage in `e2e/material-session-decoupling.spec.ts`
-- [ ] Run `pnpm --filter app typecheck && pnpm --filter app test -- Replan`
-- [ ] Update `PLAN.md` Phase 7 status + fill `VERIFICATION.md` Phase 7 implementer report
+- [x] Add new CSS classes to roadmap.css
+- [x] Rewrite commitReplan.ts + test
+- [x] Rewrite Replan.tsx with levers + live outcome
+- [x] New Replan.test.tsx (8 tests) + updated pages/Replan.test.tsx (2 tests)
+- [x] Author E2E Playwright specs (2 new replan specs)
+- [x] pnpm --filter app typecheck clean
+- [x] pnpm --filter app test green (58 files / 504 tests)
+- [x] pnpm lint clean (0 errors)
+- [x] PLAN.md Phase 7 status updated
+- [x] VERIFICATION.md Phase 7 implementer report filled
+- [x] STATUS.md updated
+- [x] git commit `31feaa2`
 
 ## In-flight edits
-- (nothing yet — starting now)
+— none; all committed.
 
 ## Decisions in force
-- commitReplan commit order: RoadmapReplanned → BookingCleared × N → SessionBooked × M
-- Live finish projection: analytic-only (empty gpCurve) so it's fast + pure
-- Single `hoursPerDay` stepper applied to both weekdayHours and weekendHours
-- `materialDurationOverrides[matId]` = target remaining minutes after shorten lever
-- Drop = exclude from materialIds + override = 0
-- `?intent=extend` query param pre-selects +1 week extend preset (backward compat)
+- Commit order: RoadmapReplanned → BookingCleared × N → SessionBooked × M
+- Live re-projection: analytic-only (empty gpCurve) — fast, no calibration needed
+- Single hoursPerDay stepper applies to both weekday/weekend
+- Replan.test.tsx mocks commitReplan; commitReplan.test.ts covers the full emit sequence
 
 ## Resolved (recent)
-- Phase 3 and Phase 4 are reviewer-verified.
 - Phase 5/6 deviations rectified + E2E run green; both ✅ Verified.
 - D6 pace-first recommendation implemented and verified (Phase 6 resolution).
+- Phase 7 implemented at 31feaa2; awaiting review.
