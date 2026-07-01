@@ -99,9 +99,10 @@ describe('Step3Materials', () => {
     await screen.findByText('Add manually')
     fireEvent.click(screen.getByText('Add manually'))
 
+    expect(screen.getByText('Manual')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Material title')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Min')).toBeInTheDocument()
-    expect(screen.getByText('BK')).toBeInTheDocument()
+    expect(screen.getAllByText('BK').length).toBeGreaterThan(0)
   })
 
   it('type dropdown has 3 correct labels', async () => {
@@ -148,11 +149,12 @@ describe('Step3Materials', () => {
     const input = screen.getByPlaceholderText(/youtube.com/)
     fireEvent.paste(input, { clipboardData: { getData: () => 'https://youtube.com/watch?v=abc123' } })
 
-    expect(screen.getByText('YT')).toBeInTheDocument()
+    expect(screen.getByText('Videos')).toBeInTheDocument()
+    expect(screen.getAllByText('YT').length).toBeGreaterThan(0)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Test Video')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('45')).toBeInTheDocument()
+      expect(screen.getByText('Test Video')).toBeInTheDocument()
+      expect(screen.getAllByText(/45m/).length).toBeGreaterThan(0)
     })
   })
 
@@ -168,10 +170,11 @@ describe('Step3Materials', () => {
     const input = screen.getByPlaceholderText(/youtube.com/)
     fireEvent.paste(input, { clipboardData: { getData: () => 'https://example.com/article' } })
 
-    expect(screen.getByText('ART')).toBeInTheDocument()
+    expect(screen.getByText('Links & articles')).toBeInTheDocument()
+    expect(screen.getAllByText('ART').length).toBeGreaterThan(0)
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Article Title')).toBeInTheDocument()
+      expect(screen.getByText('Article Title')).toBeInTheDocument()
     })
   })
 

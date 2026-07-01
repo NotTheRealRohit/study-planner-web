@@ -465,3 +465,183 @@
   color: var(--text-secondary);
   margin-top: var(--space-2);
 }
+
+/* =================================================================
+   Pre-session setup + end sheet
+   ================================================================= */
+.session-setup-strip {
+  margin-bottom: var(--space-5);
+}
+
+.session-setup-change {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.session-dial-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.session-dial-face {
+  width: 184px;
+  height: 184px;
+  border-radius: 50%;
+  border: 14px solid rgba(74, 107, 58, 0.16);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-card);
+}
+
+.session-dial-value {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.session-dial-label,
+.session-dial-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+}
+
+.session-dial-range {
+  width: min(320px, 100%);
+  accent-color: var(--moss);
+}
+
+.session-material-picker,
+.session-end-sheet {
+  max-width: 440px;
+  width: calc(100vw - 32px);
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  align-self: center;
+}
+
+.chooser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.chooser-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chooser-row:hover {
+  background: var(--surface-recessed);
+}
+
+.chooser-row.sel {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.chooser-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.chooser-row.sel .chooser-radio {
+  border-color: var(--ink);
+}
+
+.chooser-row.sel .chooser-radio::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.chooser-icon {
+  width: 30px;
+  height: 30px;
+}
+
+.session-picker-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-4);
+}
+
+.session-end-overlay {
+  align-items: flex-end;
+}
+
+.session-position-presets,
+.session-completion-choice {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.session-position-presets {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.session-position-slider {
+  margin-top: var(--space-4);
+}
+
+.session-completion-choice {
+  grid-template-columns: 1fr 1fr;
+}
+
+.session-choice {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  padding: var(--space-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.session-choice.selected {
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+.session-choice-title,
+.session-choice-copy {
+  display: block;
+}
+
+.session-choice-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.session-choice-copy {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}

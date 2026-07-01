@@ -1,175 +1,159 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { differenceInCalendarDays, format, parseISO } from 'date-fns'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { generateRoadmap, type RoadmapInput, type RoadmapOutput } from '@study-tracker/roadmap-engine'
-import { differenceInCalendarDays } from 'date-fns'
-import { useOnboarding, type OnboardingSlotEdit } from '../OnboardingProvider'
+import {
+  generateBookings,
+  type Booking,
+  type BookingLayoutInput,
+  type CapacityCheck,
+  type Material as RoadmapMaterial,
+} from '@study-tracker/roadmap-engine'
+import { useOnboarding } from '../OnboardingProvider'
 import { useSync } from '../../sync/useSync'
 import { useEventStore } from '../../events/useEventStore'
-import { SchedulePreview } from '../components/SchedulePreview'
-import { OverCapacityModal, UnderCapacityBanner } from '../components/CapacityPrompt'
-import { SwapFab } from '../components/SwapFab'
-import { useSwapStateMachine, type SlotKey } from '../components/useSwapStateMachine'
-import { computeSwapEdits } from '../components/computeSwapEdits'
-import { useMatchMedia } from '../../lib/useMatchMedia'
-import type { MaterialAddedPayload, RoadmapCreatedPayload } from '../../sync/types'
+import type {
+  MaterialAddedPayload,
+  RoadmapCreatedPayload,
+  SessionBookedPayload,
+} from '../../sync/types'
 import { deriveRoadmapLifecycle } from '../../roadmap/roadmapLifecycle'
+import {
+  buildMonthGrid,
+  calendarMonthBounds,
+  clampMonth,
+  monthKeyForDate,
+  shiftMonth,
+} from '../../roadmap/calendarModel'
 import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
-function useDebouncedValue<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(timer)
-  }, [value, delay])
-  return debounced
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+function todayISO(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function formatMinutes(minutes: number): string {
+  const rounded = Math.max(0, Math.round(minutes))
+  if (rounded < 60) return `${rounded}m`
+  const hours = Math.floor(rounded / 60)
+  const rest = rounded % 60
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
+}
+
+function formatShortDate(iso: string): string {
+  return format(parseISO(iso), 'MMM d')
+}
+
+function roadmapWeeks(startDate: string, deadline: string): number {
+  const days = differenceInCalendarDays(parseISO(deadline), parseISO(startDate))
+  return Math.max(1, Math.ceil(Math.max(0, days) / 7))
+}
+
+function capacityHeadline(capacityCheck: CapacityCheck): string {
+  if (capacityCheck.status === 'over-capacity') return 'Needs more time'
+  return 'Your backlog fits your time'
+}
+
+function capacityMeta(capacityCheck: CapacityCheck): string {
+  return `${formatMinutes(capacityCheck.totalMaterialMinutes)} of ${formatMinutes(capacityCheck.totalCapacityMinutes)} capacity`
+}
+
+function materialIcon(kind: string | undefined): string {
+  if (kind === 'youtube') return 'YT'
+  if (kind === 'article') return 'ART'
+  return 'BK'
+}
+
+function bookingByDate(bookings: Booking[]): Map<string, Booking[]> {
+  const byDate = new Map<string, Booking[]>()
+  for (const booking of bookings) {
+    const list = byDate.get(booking.date) ?? []
+    list.push(booking)
+    byDate.set(booking.date, list)
+  }
+  return byDate
 }
 
 export function Step3Preview() {
-  const { state, dispatch, expandedMaterials } = useOnboarding()
+  const { state, expandedMaterials } = useOnboarding()
   const { logEvent } = useSync()
   const eventStore = useEventStore()
   const location = useLocation()
   const navigate = useNavigate()
   const stepNavigate = useOnboardingNavigate()
   const [committing, setCommitting] = useState(false)
+  const [calendarOpen, setCalendarOpen] = useState(false)
+  const startDate = useMemo(() => todayISO(), [])
   const newRoadmapMode =
     new URLSearchParams(location.search).get('new') === '1' ||
     (location.state as { newRoadmap?: boolean } | null)?.newRoadmap === true
 
-  const previewEdits = useMemo(() => {
-    const edits = new Map<string, { materialId: string | null; sessionTitle: string | null; plannedMinutes: number }>()
-    for (const e of state.previewEdits) {
-      edits.set(`${e.weekIndex}:${e.dayOfWeek}`, { materialId: e.materialId, sessionTitle: e.sessionTitle, plannedMinutes: e.plannedMinutes })
-    }
-    return edits
-  }, [state.previewEdits])
+  const roadmapMaterials = useMemo((): RoadmapMaterial[] => (
+    expandedMaterials
+      .filter((material) => material.title && material.estimatedDuration > 0)
+      .map((material, index) => ({
+        id: material.id,
+        title: material.title,
+        totalMinutes: material.estimatedDuration,
+        role: material.role,
+        additionOrder: index,
+      }))
+  ), [expandedMaterials])
 
-  const roadmapInput = useMemo((): RoadmapInput | null => {
-    if (!state.deadline || state.selectedStudyDays.length === 0 || expandedMaterials.length === 0) return null
-    const today = new Date().toISOString().split('T')[0]
-    const days = differenceInCalendarDays(state.deadline, today)
-    const weeks = Math.max(1, Math.ceil(days / 7))
+  const bookingInput = useMemo((): BookingLayoutInput | null => {
+    if (!state.deadline || state.selectedStudyDays.length === 0 || roadmapMaterials.length === 0) return null
     return {
-      materials: expandedMaterials
-        .filter(m => m.title && m.estimatedDuration > 0)
-        .map((m, i) => ({ id: m.id, title: m.title, totalMinutes: m.estimatedDuration, role: m.role, additionOrder: i })),
-      weeks,
-      startDate: today,
+      startDate,
+      deadline: state.deadline,
       selectedStudyDays: state.selectedStudyDays,
       weekdayHours: state.weekdayHours,
       weekendHours: state.weekendHours,
+      materials: roadmapMaterials,
     }
-  }, [state.deadline, state.selectedStudyDays, state.weekdayHours, state.weekendHours, expandedMaterials])
+  }, [roadmapMaterials, startDate, state.deadline, state.selectedStudyDays, state.weekdayHours, state.weekendHours])
 
-  const debouncedInput = useDebouncedValue(roadmapInput, 150)
-  const roadmap = useMemo((): RoadmapOutput | null => {
-    if (!debouncedInput || debouncedInput.materials.length === 0) return null
-    return generateRoadmap(debouncedInput)
-  }, [debouncedInput])
+  const bookingResult = useMemo(() => {
+    if (!bookingInput) return null
+    return generateBookings(bookingInput)
+  }, [bookingInput])
 
-  const displayRoadmap = useMemo((): RoadmapOutput | null => {
-    if (!roadmap) return null
-    const resolved = { ...roadmap, weeks: roadmap.weeks.map(w => ({ ...w, slots: w.slots.map(s => ({ ...s })) })) }
-    for (const week of resolved.weeks) {
-      for (const slot of week.slots) {
-        const key = `${slot.weekIndex}:${slot.dayOfWeek}`
-        const edit = previewEdits.get(key)
-        if (edit) {
-          if (edit.materialId !== undefined) {
-            slot.candidateMaterialIds = edit.materialId ? [edit.materialId] : []
-            if (!edit.materialId) slot.role = null
-          }
-          if (edit.sessionTitle !== null) {
-            slot.sessionTitle = edit.sessionTitle
-          }
-          if (edit.plannedMinutes > 0) {
-            slot.plannedMinutes = edit.plannedMinutes
-          }
-        }
-        if (slot.candidateMaterialIds.length === 1 && !slot.role) {
-          const mat = expandedMaterials.find(m => m.id === slot.candidateMaterialIds[0])
-          if (mat) {
-            slot.role = mat.role
-            if (!slot.sessionTitle) slot.sessionTitle = mat.title
-          }
-        }
-      }
-    }
-    const remainingTies = resolved.weeks
-      .flatMap(w => w.slots)
-      .filter(s => s.candidateMaterialIds.length >= 2).length
-    resolved.warnings = resolved.warnings
-      .filter(w => w.kind !== 'unresolved-tie-count')
-      .concat(remainingTies > 0 ? [{ kind: 'unresolved-tie-count' as const, detail: { count: remainingTies } }] : [])
-    return resolved
-  }, [roadmap, previewEdits, expandedMaterials])
+  const bookings = bookingResult?.bookings ?? []
+  const capacityCheck = bookingResult?.capacityCheck
+  const finishDate = bookings[bookings.length - 1]?.date ?? state.deadline ?? startDate
+  const bufferDays = state.deadline
+    ? Math.max(0, differenceInCalendarDays(parseISO(state.deadline), parseISO(finishDate)))
+    : 0
+  const capacityPercent = capacityCheck && capacityCheck.totalCapacityMinutes > 0
+    ? Math.min(100, Math.round((capacityCheck.totalMaterialMinutes / capacityCheck.totalCapacityMinutes) * 100))
+    : 0
 
-  const capacityCheck = displayRoadmap?.capacityCheck
-  const unresolvedTieCount = (displayRoadmap?.warnings.find(w => w.kind === 'unresolved-tie-count')?.detail?.count as number) ?? 0
+  const bounds = useMemo(() => {
+    if (!state.deadline) return null
+    return calendarMonthBounds(startDate, state.deadline)
+  }, [startDate, state.deadline])
+  const [viewMonth, setViewMonth] = useState(() => monthKeyForDate(finishDate))
 
-  const handleResolveTie = useCallback((weekIndex: number, dayOfWeek: string, materialId: string | null, capacityMinutes: number) => {
-    const edits: OnboardingSlotEdit[] = [...state.previewEdits]
-    const existingIdx = edits.findIndex(e => e.weekIndex === weekIndex && e.dayOfWeek === dayOfWeek)
+  useEffect(() => {
+    if (!bounds) return
+    setViewMonth(clampMonth(finishDate, bounds))
+  }, [bounds, finishDate])
 
-    let sessionTitle: string | null = null
-    let plannedMinutes = 0
-    if (materialId) {
-      const mat = expandedMaterials.find(m => m.id === materialId)
-      sessionTitle = `Review · ${mat?.title ?? materialId}`
-      plannedMinutes = capacityMinutes
-    }
+  const calendar = useMemo(() => buildMonthGrid(`${viewMonth}-01`), [viewMonth])
+  const bookingsForDate = useMemo(() => bookingByDate(bookings), [bookings])
 
-    if (existingIdx >= 0) {
-      edits[existingIdx] = { ...edits[existingIdx], materialId, sessionTitle, plannedMinutes }
-    } else {
-      edits.push({ weekIndex, dayOfWeek, materialId, sessionTitle, plannedMinutes })
-    }
-    dispatch({ type: 'SET_PREVIEW_EDITS', edits })
-  }, [state.previewEdits, dispatch, expandedMaterials])
-
-  const handleRename = useCallback((weekIndex: number, dayOfWeek: string, sessionTitle: string) => {
-    const edits: OnboardingSlotEdit[] = [...state.previewEdits]
-    const existingIdx = edits.findIndex(e => e.weekIndex === weekIndex && e.dayOfWeek === dayOfWeek)
-    if (existingIdx >= 0) {
-      edits[existingIdx] = { ...edits[existingIdx], sessionTitle }
-    } else {
-      edits.push({ weekIndex, dayOfWeek, materialId: null, sessionTitle, plannedMinutes: 0 })
-    }
-    dispatch({ type: 'SET_PREVIEW_EDITS', edits })
-  }, [state.previewEdits, dispatch])
-
-  const isDesktop = useMatchMedia('(min-width: 1024px)')
-
-  const isSlotSwappable = useCallback((key: SlotKey): boolean => {
-    if (!displayRoadmap) return false
-    const slot = displayRoadmap.weeks
-      .flatMap(w => w.slots)
-      .find(s => s.weekIndex === key.weekIndex && s.dayOfWeek === key.dayOfWeek)
-    return !!slot && slot.candidateMaterialIds.length < 2
-  }, [displayRoadmap])
-
-  const handleSwap = useCallback((source: SlotKey, dest: SlotKey) => {
-    if (!displayRoadmap) return
-    const allSlots = displayRoadmap.weeks.flatMap(w => w.slots)
-    const sourceSlot = allSlots.find(s => s.weekIndex === source.weekIndex && s.dayOfWeek === source.dayOfWeek)
-    const destSlot = allSlots.find(s => s.weekIndex === dest.weekIndex && s.dayOfWeek === dest.dayOfWeek)
-    if (!sourceSlot || !destSlot) return
-    const newEdits = computeSwapEdits(sourceSlot, destSlot, state.previewEdits)
-    dispatch({ type: 'SET_PREVIEW_EDITS', edits: newEdits })
-  }, [displayRoadmap, state.previewEdits, dispatch])
-
-  const swapMachine = useSwapStateMachine({
-    isSlotSwappable,
-    onExecuteSwap: handleSwap,
-  })
-
-  const handleCompress = useCallback(() => {
-    // Recompute with capacityCheck.suggestedWeeks. See OQ-03 for the
-    // reconciliation between deadline-driven weeks and compressed weeks.
+  const toggleCalendar = useCallback(() => {
+    setCalendarOpen((open) => !open)
   }, [])
 
+  const handleCalendarKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      toggleCalendar()
+    }
+  }, [toggleCalendar])
+
   const handleCommit = useCallback(async () => {
-    if (!displayRoadmap || committing || unresolvedTieCount > 0) return
+    if (!bookingInput || !capacityCheck || capacityCheck.status === 'over-capacity' || committing) return
     setCommitting(true)
     try {
       const existingEvents = await eventStore.getAll()
@@ -177,53 +161,57 @@ export function Step3Preview() {
       const hasActiveRoadmap = deriveRoadmapLifecycle(existingEvents).active.length > 0
 
       if (newRoadmapMode && hasCompletedOnboarding && hasActiveRoadmap) {
-        // D-04: keep this wizard state as the single next-roadmap draft.
         navigate('/roadmaps')
         return
       }
 
-      const committedIds = new Set<string>()
-
-      for (const mat of expandedMaterials) {
-        if (!mat.title || mat.estimatedDuration <= 0) continue
-        committedIds.add(mat.id)
+      const committedMaterialIds: string[] = []
+      for (const material of expandedMaterials) {
+        if (!material.title || material.estimatedDuration <= 0) continue
+        committedMaterialIds.push(material.id)
         const payload: MaterialAddedPayload = {
-          materialId: mat.id,
-          title: mat.title,
-          estimatedDuration: mat.estimatedDuration,
-          url: mat.url,
-          kind: mat.kind ?? 'manual',
-          role: mat.role,
-          playlistId: mat.playlistId,
-          youtubeVideoId: mat.youtubeVideoId,
-          videos: mat.playlistVideos?.map(v => ({
-            youtubeVideoId: v.youtubeVideoId,
-            title: v.title,
-            durationMinutes: v.durationMinutes,
+          materialId: material.id,
+          title: material.title,
+          estimatedDuration: material.estimatedDuration,
+          url: material.url,
+          kind: material.kind ?? 'manual',
+          role: material.role,
+          playlistId: material.playlistId,
+          youtubeVideoId: material.youtubeVideoId,
+          videos: material.playlistVideos?.map((video) => ({
+            youtubeVideoId: video.youtubeVideoId,
+            title: video.title,
+            durationMinutes: video.durationMinutes,
           })),
         }
         await logEvent('MaterialAdded', payload as unknown as Record<string, unknown>)
       }
 
-      const allSlots = displayRoadmap.weeks.flatMap(w => w.slots)
-        .map(s => ({
-          ...s,
-          candidateMaterialIds: s.candidateMaterialIds.filter(id => committedIds.has(id)),
-        }))
-
+      const roadmapCreatedAt = new Date().toISOString()
       const roadmapPayload: RoadmapCreatedPayload = {
-        startDate: roadmapInput!.startDate,
-        deadline: state.deadline!,
-        weeks: roadmapInput!.weeks,
+        startDate: bookingInput.startDate,
+        deadline: bookingInput.deadline,
+        weeks: roadmapWeeks(bookingInput.startDate, bookingInput.deadline),
         purpose: state.purpose || undefined,
         selectedStudyDays: state.selectedStudyDays,
         weekdayHours: state.weekdayHours,
         weekendHours: state.weekendHours,
         weeklyHours: state.weeklyHours,
-        slots: allSlots,
+        materialIds: committedMaterialIds,
       }
 
-      await logEvent('RoadmapCreated', roadmapPayload as unknown as Record<string, unknown>)
+      await logEvent('RoadmapCreated', roadmapPayload as unknown as Record<string, unknown>, roadmapCreatedAt)
+
+      for (const booking of bookings) {
+        const payload: SessionBookedPayload = {
+          roadmapCreatedAt,
+          bookingId: booking.id,
+          date: booking.date,
+          estimatedDuration: booking.estimatedDuration,
+        }
+        await logEvent('SessionBooked', payload as unknown as Record<string, unknown>)
+      }
+
       if (!hasCompletedOnboarding) {
         await logEvent('OnboardingCompleted', {})
       }
@@ -233,9 +221,24 @@ export function Step3Preview() {
     } finally {
       setCommitting(false)
     }
-  }, [displayRoadmap, state, expandedMaterials, committing, unresolvedTieCount, logEvent, eventStore, navigate, roadmapInput, newRoadmapMode])
+  }, [
+    bookingInput,
+    bookings,
+    capacityCheck,
+    committing,
+    eventStore,
+    expandedMaterials,
+    logEvent,
+    navigate,
+    newRoadmapMode,
+    state.purpose,
+    state.selectedStudyDays,
+    state.weekdayHours,
+    state.weekendHours,
+    state.weeklyHours,
+  ])
 
-  if (!roadmapInput) {
+  if (!bookingInput || !capacityCheck) {
     return (
       <p className="onboarding-empty-preview">
         Add at least one material to see your plan preview.
@@ -243,77 +246,166 @@ export function Step3Preview() {
     )
   }
 
-  const sessionsCount = roadmapInput.materials.length * roadmapInput.weeks
-  const totalHours = Math.round((capacityCheck?.totalMaterialMinutes ?? 0) / 60)
+  const canGoPrevious = bounds ? viewMonth > bounds.startMonth : false
+  const canGoNext = bounds ? viewMonth < bounds.endMonth : false
+  const commitDisabled = committing || capacityCheck.status === 'over-capacity' || bookings.length === 0
 
   return (
-    <div className="onboarding-step onboarding-preview">
-      {/* Mobile-only heading + lead. CSS hides on desktop fused. */}
+    <div className="onboarding-step onboarding-preview onboarding-booking-preview">
       <h1 className="onboarding-h1 onboarding-preview-mobile-only">
         Here's a <em>plan</em>.
       </h1>
       <p className="onboarding-lead onboarding-preview-mobile-only">
-        Done by {state.deadline} · {roadmapInput.weeks} week{roadmapInput.weeks !== 1 ? 's' : ''} · {state.weeklyHours}h/week. Tap a row to edit.
+        Booked until {formatShortDate(finishDate)} · {bookings.length} session{bookings.length !== 1 ? 's' : ''} · {formatMinutes(capacityCheck.totalMaterialMinutes)} total.
       </p>
 
-      {/* Mobile stat block */}
-      <div className="onboarding-preview-stats onboarding-preview-mobile-only">
-        <div className="stat"><div className="stat-value sm">{roadmapInput.weeks}</div><div className="stat-label">weeks</div></div>
-        <div className="stat"><div className="stat-value sm">{sessionsCount}</div><div className="stat-label">sessions</div></div>
-        <div className="stat"><div className="stat-value sm">{totalHours}h</div><div className="stat-label">total</div></div>
+      <section
+        className="onboarding-verdict-card finish-toggle"
+        role="button"
+        tabIndex={0}
+        aria-expanded={calendarOpen}
+        aria-controls="onboarding-booking-calendar"
+        onClick={toggleCalendar}
+        onKeyDown={handleCalendarKeyDown}
+      >
+        <div className="onboarding-verdict-row">
+          <div>
+            <div className="stat-label">Projected finish</div>
+            <div className={`stat-value md ${capacityCheck.status === 'over-capacity' ? 'rust' : 'moss'}`}>
+              {formatShortDate(finishDate)}
+            </div>
+          </div>
+          <span className="cal-affordance">
+            Calendar
+            <svg className="icon icon-sm cal-chev" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </div>
+        <div className="mono-caps onboarding-estimate-line">
+          <span className="provisional">estimate</span>
+          {state.deadline ? ` · ${bufferDays} day${bufferDays !== 1 ? 's' : ''} before your ${formatShortDate(state.deadline)} deadline` : null}
+        </div>
+        <div className="finish-hint">Tap to see your booked study days and deadline.</div>
+      </section>
+
+      <section
+        id="onboarding-booking-calendar"
+        className={`onboarding-calendar-panel${calendarOpen ? ' open' : ''}`}
+        aria-hidden={!calendarOpen}
+      >
+        <div className="cal-monthnav">
+          <button
+            type="button"
+            className="cal-navbtn"
+            aria-label="Previous month"
+            disabled={!canGoPrevious}
+            onClick={() => bounds && setViewMonth((month) => shiftMonth(month, -1, bounds))}
+          >
+            <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><polyline points="15 6 9 12 15 18"/></svg>
+          </button>
+          <span className="cal-monthlabel">{calendar.monthLabel}</span>
+          <button
+            type="button"
+            className="cal-navbtn"
+            aria-label="Next month"
+            disabled={!canGoNext}
+            onClick={() => bounds && setViewMonth((month) => shiftMonth(month, 1, bounds))}
+          >
+            <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+          </button>
+        </div>
+
+        <div className="roadmap-calendar-shell onboarding-mini-calendar" aria-label={`${calendar.monthLabel} booked sessions`}>
+          <div className="roadmap-weekdays" role="row">
+            {WEEKDAY_LABELS.map((label) => (
+              <div key={label} className="roadmap-weekday" role="columnheader">{label}</div>
+            ))}
+          </div>
+          <div role="grid">
+            {calendar.weeks.map((week) => (
+              <div key={week[0].date} className="roadmap-week-row" role="row">
+                {week.map((day) => {
+                  const dayBookings = bookingsForDate.get(day.date) ?? []
+                  const isDeadline = day.date === state.deadline && day.isInMonth
+                  return (
+                    <div
+                      key={day.date}
+                      className={[
+                        'roadmap-day',
+                        day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
+                        day.date === startDate && 'roadmap-day-today',
+                        isDeadline && 'roadmap-day-deadline',
+                      ].filter(Boolean).join(' ')}
+                      role="gridcell"
+                    >
+                      <div className="roadmap-day-head">
+                        <span className="roadmap-day-number">{day.dayOfMonth}</span>
+                        <span className="roadmap-day-markers">
+                          {day.date === startDate && <span className="roadmap-today-pill">Today</span>}
+                          {isDeadline && <span className="roadmap-deadline-pill">Deadline</span>}
+                        </span>
+                      </div>
+                      <div className="roadmap-bubble-stack">
+                        {dayBookings.map((booking) => (
+                          <div
+                            key={booking.id}
+                            className="roadmap-bubble roadmap-chip-done"
+                            data-status="booked"
+                          >
+                            <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                              <circle cx="12" cy="12" r="8" />
+                              <path d="M12 8v5l3 2" />
+                            </svg>
+                            <span className="roadmap-bubble-label">Session</span>
+                            <span className="roadmap-bubble-minutes">{formatMinutes(booking.estimatedDuration)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="cal-legend">
+          <span><span className="cal-swatch booked" />booked session</span>
+          <span><span className="cal-swatch today" />today</span>
+          <span><span className="cal-swatch deadline" />deadline</span>
+        </div>
+      </section>
+
+      <section className="onboarding-verdict-card">
+        <div className="onboarding-verdict-row">
+          <span className="stat-label">{capacityHeadline(capacityCheck)}</span>
+          <span className="t-body-sm">{capacityMeta(capacityCheck)}</span>
+        </div>
+        <div className="cap-bar" aria-hidden="true">
+          <span style={{ width: `${capacityPercent}%` }} />
+        </div>
+        <div className="t-body-sm onboarding-muted">
+          We book study sessions until your materials are done, then leave the rest as buffer.
+        </div>
+      </section>
+
+      <div className="onboarding-preview-stats">
+        <div className="stat"><div className="stat-value sm">{bookings.length}</div><div className="stat-label">sessions</div></div>
+        <div className="stat"><div className="stat-value sm">{formatMinutes(capacityCheck.totalMaterialMinutes)}</div><div className="stat-label">total</div></div>
+        <div className="stat"><div className="stat-value sm">{bufferDays} d</div><div className="stat-label">buffer</div></div>
       </div>
 
-      {/* Desktop stat block */}
-      <div className="onboarding-preview-stats onboarding-preview-desktop-only">
-        <div className="stat"><div className="stat-value md">{state.deadline}</div><div className="stat-label">target finish</div></div>
-        <div className="stat"><div className="stat-value md">{roadmapInput.weeks}</div><div className="stat-label">weeks</div></div>
-        <div className="stat"><div className="stat-value md">{state.weeklyHours}h</div><div className="stat-label">per week</div></div>
+      <div className="mono-caps onboarding-directory-label">What you'll study</div>
+      <div className="chip-row onboarding-directory-chips">
+        {expandedMaterials
+          .filter((material) => material.title && material.estimatedDuration > 0)
+          .map((material) => (
+            <span key={material.id} className="chip dir-chip">
+              <span className={`material-icon tiny ${material.kind === 'youtube' ? 'yt' : material.kind === 'article' ? 'art' : 'bk'}`}>
+                {materialIcon(material.kind)}
+              </span>
+              {material.title}
+            </span>
+          ))}
       </div>
-
-      {capacityCheck && (
-        <>
-          <UnderCapacityBanner
-            capacityCheck={capacityCheck}
-            warnings={displayRoadmap?.warnings ?? []}
-            onCompress={handleCompress}
-            onKeepBuffer={() => {}}
-          />
-          <OverCapacityModal
-            capacityCheck={capacityCheck}
-            warnings={displayRoadmap?.warnings ?? []}
-            onCompress={handleCompress}
-            onKeepBuffer={() => {}}
-          />
-        </>
-      )}
-
-      {displayRoadmap && (
-        <SchedulePreview
-          roadmap={displayRoadmap}
-          materials={expandedMaterials.map(m => ({ id: m.id, title: m.title }))}
-          onResolveTie={handleResolveTie}
-          onRename={handleRename}
-          swapState={swapMachine.state}
-          onTapSlot={swapMachine.tapSlot}
-          onStartDrag={swapMachine.startDrag}
-          onDrop={swapMachine.drop}
-          onCancelDrag={swapMachine.cancelDrag}
-          isDesktop={isDesktop}
-        />
-      )}
-
-      <SwapFab
-        swapState={swapMachine.state}
-        onEnterSwapMode={swapMachine.enterSwapMode}
-        onExitSwapMode={swapMachine.exitSwapMode}
-        onProceed={swapMachine.proceed}
-      />
-
-      <button className="btn btn-ghost btn-sm btn-block onboarding-preview-mobile-only">
-        Show all {roadmapInput.weeks} weeks
-      </button>
-
-      <div className="onboarding-spacer onboarding-preview-mobile-only" />
 
       <div className="onboarding-actions onboarding-preview-actions">
         <button
@@ -325,11 +417,11 @@ export function Step3Preview() {
         </button>
         <button
           className="btn btn-primary btn-lg onboarding-continue-btn"
-          disabled={unresolvedTieCount > 0 || committing || capacityCheck?.status === 'over-capacity'}
-          title={unresolvedTieCount > 0 ? `Resolve ${unresolvedTieCount} undecided slot${unresolvedTieCount !== 1 ? 's' : ''} to continue.` : undefined}
+          disabled={commitDisabled}
+          title={capacityCheck.status === 'over-capacity' ? 'Add more study time or remove material to continue.' : undefined}
           onClick={handleCommit}
         >
-          {committing ? 'Saving…' : 'Looks good'}
+          {committing ? 'Saving...' : 'Looks good'}
           <svg className="icon" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
       </div>

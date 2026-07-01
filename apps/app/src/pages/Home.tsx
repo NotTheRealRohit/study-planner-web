@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '../auth/useAuth';
 import { useEventStore } from '../events/useEventStore';
-import { totalMinutesLogged, getUpNextSlot } from '../events/ProgressEngine';
+import { totalMinutesLogged } from '../events/ProgressEngine';
 import type { Event } from '../events/EventStore';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useSync } from '../sync/useSync';
@@ -9,13 +9,12 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { StreakCard } from '../components/StreakCard';
 import { Link, useNavigate } from 'react-router-dom';
-import { ROLE_TO_LABEL } from '@study-tracker/roadmap-engine';
-import type { RoadmapSlot } from '@study-tracker/progress';
-import type { ActiveSessionRecord, SessionSlotData, MaterialKind } from '../session/types';
+import type { ActiveSessionRecord } from '../session/types';
 import { AbandonedSessionBanner } from '../session/components/AbandonedSessionBanner';
 import { PlannedEndBanner } from '../session/components';
 import { useCalibrationState, useProgressSnapshot, usePromptDetail } from '../progress';
 import { findActiveRoadmap } from '../progress/mapEvents';
+import { deriveTodaySessionPlan } from '../session/sessionPlanning';
 import { RecalibrationBanner } from '../components/RecalibrationBanner';
 import { RecalibrationModal } from '../components/RecalibrationModal';
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
@@ -53,15 +52,6 @@ function getGreeting(): string {
   if (hour < 12) return 'Good morning';
   if (hour < 17) return 'Good afternoon';
   return 'Good evening';
-}
-
-function computePlaylistCursor(
-  events: Array<{ kind: string; payload: Record<string, unknown> }>,
-  materialId: string,
-): number {
-  return events
-    .filter(e => e.kind === 'SessionLogged' && e.payload.materialId === materialId)
-    .reduce((sum, e) => sum + ((e.payload.videosCompleted as number) ?? 0), 0);
 }
 
 export function Home() {
@@ -129,7 +119,7 @@ export function Home() {
   const roadmapPayload = findActiveRoadmap(events as Event[]);
   const roadmapEnded = deriveRoadmapEndedState(events as Event[]);
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const upNextSlot: RoadmapSlot | null = roadmapPayload ? getUpNextSlot(roadmapPayload, todayStr) : null;
+  const todaySessionPlan = deriveTodaySessionPlan(events as Event[], todayStr);
 
   const projectedFinish = progress?.projection?.finishDate ?? null;
   const confidenceInterval = progress?.projection?.confidenceInterval ?? null;
@@ -261,43 +251,25 @@ export function Home() {
               <Link to="/session" className="btn btn-accent">Continue session</Link>
             </div>
           </Card>
-        ) : upNextSlot ? (
+        ) : todaySessionPlan.booking && todaySessionPlan.slotData ? (
           <Card variant="inverted" style={{ marginBottom: '1.5rem' }}>
-            <div className="card-eyebrow">Up next · {formatDateNice(upNextSlot.date)}</div>
-            <div className="card-title">{upNextSlot.sessionTitle || 'Study session'}</div>
+            <div className="card-eyebrow">Study session · {formatDateNice(todaySessionPlan.booking.date)}</div>
+            <div className="card-title">Study session · ~{todaySessionPlan.booking.estimatedDuration} min</div>
             <div className="card-meta">
-              {upNextSlot.role && (
-                <><span className={`tag tag-sm ${upNextSlot.role === 'anchor' ? 'tag-terracotta' : upNextSlot.role === 'practice' ? 'tag-moss' : ''}`}>
-                  {ROLE_TO_LABEL[upNextSlot.role]}
-                </span>{' · '}</>
+              {todaySessionPlan.suggestedMaterial ? (
+                <>
+                  Suggested material:{' '}
+                  <span className="tag tag-sm">{todaySessionPlan.suggestedMaterial.title}</span>
+                </>
+              ) : (
+                'Pick a material before you start.'
               )}
-              ~{upNextSlot.plannedMinutes} min planned
             </div>
             <div className="upnext-actions">
               <button
                 className="btn btn-accent"
                 onClick={() => {
-                  const materials = events.filter(e => e.kind === 'MaterialAdded');
-                  const material = materials.find(m => (m.payload.materialId as string) === upNextSlot.candidateMaterialIds[0]);
-                  const allVideos = material?.payload.videos as SessionSlotData['videos'];
-                  const cursor = allVideos
-                    ? computePlaylistCursor(events, upNextSlot.candidateMaterialIds[0])
-                    : 0;
-                  const remainingVideos = allVideos ? allVideos.slice(cursor) : undefined;
-
-                  const sessionSlot: SessionSlotData = {
-                    materialId: upNextSlot.candidateMaterialIds[0] ?? '',
-                    sessionTitle: upNextSlot.sessionTitle ?? 'Study session',
-                    slotDate: upNextSlot.date,
-                    weekIndex: upNextSlot.weekIndex,
-                    plannedMinutes: upNextSlot.plannedMinutes,
-                    materialUrl: material?.payload.url as string | undefined,
-                    role: upNextSlot.role as SessionSlotData['role'],
-                    kind: (material?.payload.kind as MaterialKind | undefined) ?? 'manual',
-                    youtubeVideoId: material?.payload.youtubeVideoId as string | undefined,
-                    videos: remainingVideos,
-                  };
-                  navigate('/session', { state: sessionSlot });
+                  navigate('/session', { state: todaySessionPlan.slotData });
                 }}
               >
                 Start session
@@ -308,8 +280,11 @@ export function Home() {
           <Card variant="inverted" style={{ marginBottom: '1.5rem' }}>
             <div className="card-eyebrow">No session today</div>
             <div className="card-title">A planned rest day.</div>
-            <div className="card-meta">Or log a session you did elsewhere.</div>
+            <div className="card-meta">Browse your material directory or log a session you did elsewhere.</div>
             <div className="upnext-actions">
+              <button className="btn btn-accent" style={{ flex: 1 }} onClick={() => navigate('/session')}>
+                Start ad-hoc session
+              </button>
               <Link to="/log" className="btn btn-ghost-dark" style={{ flex: 1 }}>Log a session</Link>
             </div>
           </Card>

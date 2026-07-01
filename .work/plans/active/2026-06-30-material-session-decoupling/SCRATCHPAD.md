@@ -1,18 +1,18 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T11:59_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T12:49_
 
 ## Now
-Phase 2 redo is implemented locally and verified by focused tests. Added the missing no-slots app-level tests for `roadmapLifecycle.ts` and `roadmapProgress.ts`, updated `PLAN.md`, `VERIFICATION.md`, and `.work/STATUS.md`; awaiting Cowork reviewer re-check.
+Phase 3 and Phase 4 are implemented locally and focused verification is green. They are deliberately left awaiting reviewer sign-off in `VERIFICATION.md` / `PLAN.md`; do not self-mark them verified.
 
 ## Alignment
-Aligned with `PLAN.md` and the Cowork Phase 2 review in `VERIFICATION.md`. Phase 1 is now marked complete/verified. Phase 2 remains in-progress because the redo is not reviewer-verified yet; do not mark it ✅ from implementer-side tests alone.
+Aligned with the active plan. Phase 2 is now reflected as reviewer-verified in `VERIFICATION.md`; Phase 3/4 are implementation-complete pending Cowork review.
 
 ## Open
-- Await Cowork re-check of Phase 2 redo. The missing-test checklist is now implemented and logged in `VERIFICATION.md`.
-- Commit boundary is pending for the redo unless the user asks to commit.
+- Reviewer should inspect fidelity gaps called out in `VERIFICATION.md`: group headers not collapsible; pre-session dial is range-backed rather than full SVG radial/cap math; YouTube auto-position capture is not implemented.
+- Commit boundary remains undecided in-session; preserve pre-existing dirty docs/untracked archive unless staging later.
 
 ## Blockers
-- Phase 2 cannot be marked verified by the implementer; leave it awaiting reviewer redo/sign-off.
+- — none active.
 
 ## Deferrals
 - Leave `/v1/progress` service parity deferred by the plan; this session is not implementing ETA composite/server parity.
@@ -35,11 +35,24 @@ Aligned with `PLAN.md` and the Cowork Phase 2 review in `VERIFICATION.md`. Phase
 - [x] Add no-slots `roadmapLifecycle.test.ts` coverage.
 - [x] Run required Phase 2 redo verification.
 - [x] Update `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad with redo result.
+- [x] Read project-local plan-implementor, tdd, debug-session, frontend-design, code-memory, scratchpad, and work-journal skills.
+- [x] Read `.work/README.md`, `.work/STATUS.md`, `PLAN.md`, `VERIFICATION.md`, `DECISIONS.md`, UI/research handovers, and Phase 3/4 mocks.
+- [x] Read applicable local rules: onboarding architecture, form spacing, CSS workspace packages, React Router basename, sync/eventstore, Dexie tests, sync-provider tests, pnpm registry, roadmap engine, Playwright config.
+- [x] Run Phase 3 prereq checks.
+- [x] Implement Phase 3 onboarding page 3.
+- [x] Verify Phase 3 (`pnpm --filter app typecheck`, `pnpm --filter app test -- onboarding`, authored Playwright as applicable).
+- [x] Run Phase 4 prereq checks.
+- [x] Implement Phase 4 Home/session flow.
+- [x] Verify Phase 4 (`pnpm --filter app typecheck`, `pnpm --filter app test -- session`, authored Playwright as applicable).
+- [x] Update `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad with Phase 3/4 result.
 
 ## In-flight edits
-- Modified `apps/app/src/roadmap/roadmapLifecycle.test.ts` with a no-slots booking-count case.
-- Added `apps/app/src/roadmap/roadmapProgress.test.ts` covering ledger-backed no-slots progress summary.
-- Updated `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad for the Phase 2 redo.
+- Phase 3 implemented: sync write path optional `createdAt`; `Step3Preview.tsx` booking summary/calendar/no-slot commit flow; `Step3Materials.tsx` grouped compact material sections with existing playlist modals; onboarding styles/tests updated.
+- Phase 4 implemented: `sessionPlanning.ts`, Home suggested-material booking card, `/session` pre-session gate, `PreSessionSetup`, `EndSessionSheet`, lifecycle interrupt/material-consumed logging, stale-midnight auto-interrupt, and focused component/lifecycle tests.
+- Authored Playwright coverage added in `e2e/material-session-decoupling.spec.ts`; discovery checked, not executed.
+- Verification passed: `pnpm --filter app typecheck`; `pnpm --filter app test -- onboarding`; `pnpm --filter app test -- session`; `pnpm exec playwright test --config e2e/playwright.config.ts e2e/material-session-decoupling.spec.ts --list`; `git diff --check`; Phase 3/4 grep checks.
+- Pre-existing tracked dirty change: `VERIFICATION.md` contains Cowork Phase 2 reviewer re-check; preserve.
+- Pre-existing untracked folder: `.work/plans/active/2026-06-30-material-session-decoupling/archive/`; leave untouched unless wrapping the whole task.
 
 ## Decisions in force
 - Use project-local skills/rules only for this repo.
@@ -55,3 +68,5 @@ Aligned with `PLAN.md` and the Cowork Phase 2 review in `VERIFICATION.md`. Phase
 - Phase 1 app typecheck failure from optional `slots` resolved by Phase 2 no-slot bridge and minimal legacy compatibility guards.
 - Implementation commit boundary resolved as `327ca45`.
 - Phase 2 missing-test blocker addressed with `roadmapProgress.test.ts` and no-slots lifecycle coverage; verification passed: `pnpm --filter @study-tracker/progress test`, `pnpm --filter app test -- roadmapProgress roadmapLifecycle`, `pnpm --filter app typecheck`, `git diff --check`.
+- Phase 2 reviewer re-check landed in `VERIFICATION.md`; implementation may proceed to Phase 3.
+- Phase 3/4 implementation reports landed in `VERIFICATION.md`; `.work/STATUS.md` and `PLAN.md` now reflect implemented-awaiting-review state.

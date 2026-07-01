@@ -1,21 +1,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useEventStore } from '../events/useEventStore';
+import type { Event } from '../events/EventStore';
 import { useSync } from '../sync/useSync';
 import { DurabilityHooks } from '../lib/DurabilityHooks';
 import { useMatchMedia } from '../lib/useMatchMedia';
 import { SessionLifecycle } from '../session/SessionLifecycle';
 import { TabNotificationStrategy, createBrowserDeps } from '../session/NotificationStrategy';
 import { DEFAULT_POMODORO_CONFIG } from '../session/types';
-import type { SessionState, SessionSlotData, WalkAwayResolution, RecoveryResolution } from '../session/types';
+import type { MaterialPosition, SessionState, SessionSlotData, WalkAwayResolution, RecoveryResolution } from '../session/types';
 import type { PomodoroPhase } from '../session/pomodoro';
 import type { YouTubePlayerAdapter, YouTubePlayerState } from '../session/YouTubePlayerAdapter';
+import { PreSessionSetup } from '../session/PreSessionSetup';
+import { deriveTodaySessionPlan, type SessionMaterialOption } from '../session/sessionPlanning';
 import {
   WalkAwayDialog,
   RecoveryDialog,
   SessionDefaultLayout,
   SessionYouTubeLayout,
   EscapeConfirmModal,
+  EndSessionSheet,
 } from '../session/components';
 import '../session/session.css';
 
@@ -23,6 +27,10 @@ function formatDuration(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
   const s = Math.floor(totalSeconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function Session() {
@@ -52,6 +60,10 @@ export function Session() {
   const [plannedEndReached, setPlannedEndReached] = useState(false);
   const [plannedEndDismissed, setPlannedEndDismissed] = useState(false);
   const [unusual, setUnusual] = useState(false);
+  const [endSheetOpen, setEndSheetOpen] = useState(false);
+  const [setupSlotData, setSetupSlotData] = useState<SessionSlotData | undefined>(undefined);
+  const [setupMaterials, setSetupMaterials] = useState<SessionMaterialOption[]>([]);
+  const [setupRoadmapCreatedAt, setSetupRoadmapCreatedAt] = useState<string | undefined>(undefined);
   const [interstitialVisible, setInterstitialVisible] = useState(false);
   const [nextVideoTitle, setNextVideoTitle] = useState('');
   const interstitialTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,19 +89,12 @@ export function Session() {
     const init = async () => {
       const state = await lc.initialize();
 
-      if (state === 'idle' && slotData) {
-        if (slotData.kind === 'article' && slotData.materialUrl) {
-          window.open(slotData.materialUrl, '_blank');
-          window.focus();
-          setArticleAutoOpened(true);
-        }
-
-        try {
-          audioCtxRef.current = new AudioContext();
-        } catch {
-          // AudioContext not available
-        }
-        await lc.start(slotData);
+      if (state === 'idle') {
+        const events = await eventStore.getAll();
+        const plan = deriveTodaySessionPlan(events as Event[], todayISO());
+        setSetupMaterials(plan.materials);
+        setSetupRoadmapCreatedAt(plan.roadmapCreatedAt);
+        setSetupSlotData(slotData ?? plan.slotData);
       }
 
       if (state !== 'idle' && lc.getRecord()?.kind === 'article') {
@@ -222,17 +227,73 @@ export function Session() {
     }
   }, [sessionState]);
 
-  const handleEnd = useCallback(async () => {
+  const handleStartFromSetup = useCallback(async (nextSlotData: SessionSlotData) => {
+    const lc = lcRef.current;
+    if (!lc) return;
+
+    let slotToStart = nextSlotData;
+    if (!slotToStart.bookingId && setupRoadmapCreatedAt) {
+      const bookingId = crypto.randomUUID();
+      await logEvent('SessionBooked', {
+        roadmapCreatedAt: setupRoadmapCreatedAt,
+        bookingId,
+        date: slotToStart.slotDate,
+        estimatedDuration: slotToStart.plannedMinutes,
+        materialId: slotToStart.materialId,
+      });
+      slotToStart = { ...slotToStart, bookingId };
+    }
+
+    if (slotToStart.kind === 'article' && slotToStart.materialUrl) {
+      window.open(slotToStart.materialUrl, '_blank');
+      window.focus();
+      setArticleAutoOpened(true);
+    }
+
+    try {
+      audioCtxRef.current = new AudioContext();
+    } catch {
+      // AudioContext not available
+    }
+
+    await lc.start(slotToStart);
+    setSetupSlotData(undefined);
+    setSetupMaterials([]);
+    setSetupRoadmapCreatedAt(undefined);
+    setSessionState(lc.getState());
+  }, [logEvent, setupRoadmapCreatedAt]);
+
+  const handleRequestEnd = useCallback(() => {
+    setEndSheetOpen(true);
+  }, []);
+
+  const handleCompleteSession = useCallback(async (materialPosition: MaterialPosition) => {
     const lc = lcRef.current;
     if (!lc) return;
     const record = lc.getRecord();
-    await lc.end();
+    await lc.end(materialPosition);
     if (unusual && record) {
       await logEvent('SessionTaggedExceptional', {
         sessionId: record.sessionId,
         exceptional: true,
       });
     }
+    setEndSheetOpen(false);
+    navigate('/home');
+  }, [navigate, unusual, logEvent]);
+
+  const handleInterruptSession = useCallback(async (materialPosition: MaterialPosition) => {
+    const lc = lcRef.current;
+    if (!lc) return;
+    const record = lc.getRecord();
+    await lc.interrupt(materialPosition);
+    if (unusual && record) {
+      await logEvent('SessionTaggedExceptional', {
+        sessionId: record.sessionId,
+        exceptional: true,
+      });
+    }
+    setEndSheetOpen(false);
     navigate('/home');
   }, [navigate, unusual, logEvent]);
 
@@ -269,11 +330,8 @@ export function Session() {
 
   const handleEscapeConfirm = useCallback(async () => {
     setEscapeModalVisible(false);
-    const lc = lcRef.current;
-    if (!lc) return;
-    await lc.end();
-    navigate('/home');
-  }, [navigate]);
+    setEndSheetOpen(true);
+  }, []);
 
   const handleEscapeCancel = useCallback(async () => {
     setEscapeModalVisible(false);
@@ -305,11 +363,12 @@ export function Session() {
 
   if (sessionState === 'idle') {
     return (
-      <div className="session-empty">
-        <p className="t-body">No active session.</p>
-        <p>Start one from your home screen.</p>
-        <Link to="/home" className="btn btn-secondary">Go to Home</Link>
-      </div>
+      <PreSessionSetup
+        initialSlotData={setupSlotData}
+        materials={setupMaterials}
+        onStart={handleStartFromSetup}
+        onCancel={() => navigate('/home')}
+      />
     );
   }
 
@@ -347,7 +406,7 @@ export function Session() {
           overrunMinutes={overrunMinutes}
           isDesktop={isDesktop}
           onPauseResume={handlePauseResume}
-          onEnd={handleEnd}
+          onEnd={handleRequestEnd}
           onComeBackLater={handleComeBackLater}
           playerAdapterRef={playerAdapterRef}
           playerState={playerState}
@@ -360,9 +419,7 @@ export function Session() {
           plannedEndReached={plannedEndReached}
           plannedEndDismissed={plannedEndDismissed}
           onDismissPlannedEnd={handleDismissPlannedEnd}
-          onEndFromBanner={handleEnd}
-          unusual={unusual}
-          onUnusualChange={setUnusual}
+          onEndFromBanner={handleRequestEnd}
           activeVideoId={activeVideoId}
           videoProgress={lcRef.current?.getVideoProgress() ?? null}
           interstitialVisible={interstitialVisible}
@@ -380,15 +437,24 @@ export function Session() {
           isBreak={isBreak}
           overrunMinutes={overrunMinutes}
           onPauseResume={handlePauseResume}
-          onEnd={handleEnd}
+          onEnd={handleRequestEnd}
           onComeBackLater={handleComeBackLater}
           articleAutoOpened={articleAutoOpened}
           plannedEndReached={plannedEndReached}
           plannedEndDismissed={plannedEndDismissed}
           onDismissPlannedEnd={handleDismissPlannedEnd}
-          onEndFromBanner={handleEnd}
+          onEndFromBanner={handleRequestEnd}
+        />
+      )}
+
+      {endSheetOpen && (
+        <EndSessionSheet
+          record={record}
           unusual={unusual}
           onUnusualChange={setUnusual}
+          onComplete={handleCompleteSession}
+          onInterrupt={handleInterruptSession}
+          onCancel={() => setEndSheetOpen(false)}
         />
       )}
 

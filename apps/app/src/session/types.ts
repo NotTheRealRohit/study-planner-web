@@ -72,6 +72,10 @@ export interface SessionStartedPayload {
   weekIndex: number;
   /** How long the slot was planned for, in minutes */
   plannedMinutes: number;
+  /** Exact booked-session identity when the session starts from a booking. */
+  bookingId?: string;
+  /** The pre-session dial target; defaults to plannedMinutes. */
+  plannedSessionMinutes?: number;
   /** ISO timestamp — when the user tapped "Start session" */
   startedAt: string;
   /**

@@ -10,7 +10,7 @@ const DEFAULT_OPTIONS = {
 
 interface SyncContextValue {
   syncState: SyncState;
-  logEvent: (kind: string, payload: Record<string, unknown>) => Promise<number>;
+  logEvent: (kind: string, payload: Record<string, unknown>, createdAt?: string) => Promise<number>;
   forceSyncNow: () => Promise<void>;
 }
 
@@ -122,11 +122,11 @@ export function SyncProvider({ children, supabase, supabaseUrl, userId, eventSto
     };
   }, []);
 
-  const logEvent = async (kind: string, payload: Record<string, unknown>): Promise<number> => {
+  const logEvent = async (kind: string, payload: Record<string, unknown>, createdAt?: string): Promise<number> => {
     if (!engineRef.current) {
       throw new Error('SyncEngine not initialized');
     }
-    return engineRef.current.logEvent(kind, payload);
+    return engineRef.current.logEvent(kind, payload, createdAt);
   };
 
   const forceSyncNow = async (): Promise<void> => {

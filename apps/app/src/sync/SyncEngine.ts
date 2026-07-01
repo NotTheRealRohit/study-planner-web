@@ -92,11 +92,10 @@ export class SyncEngine {
 
   // ─── Write path ───────────────────────────────────────────────────────────
 
-  async logEvent(kind: string, payload: Record<string, unknown>): Promise<number> {
+  async logEvent(kind: string, payload: Record<string, unknown>, createdAt = new Date().toISOString()): Promise<number> {
     if (this.destroyed) throw new Error('SyncEngine has been destroyed');
 
-    const localId = await this.eventStore.append(kind, payload);
-    const createdAt = new Date().toISOString();
+    const localId = await this.eventStore.append(kind, payload, createdAt);
 
     await this.eventStore.table('sync_queue').add({
       kind,

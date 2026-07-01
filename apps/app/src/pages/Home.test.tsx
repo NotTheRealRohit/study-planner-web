@@ -75,13 +75,26 @@ describe('Home', () => {
     expect(screen.queryByText(/Up next/)).not.toBeInTheDocument()
   })
 
-  it('shows Up next card when RoadmapCreated event exists', () => {
+  it("shows a booking card with suggested material when today's booking exists", () => {
     const today = new Date().toISOString().split('T')[0]
     const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const roadmapCreatedAt = new Date().toISOString()
 
     mockEvents = [
       {
         id: 1,
+        kind: 'MaterialAdded',
+        payload: {
+          materialId: 'mat-1',
+          title: 'DDIA Chapter 1',
+          estimatedDuration: 120,
+          kind: 'manual',
+          role: 'anchor',
+        },
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 2,
         kind: 'RoadmapCreated',
         payload: {
           startDate: today,
@@ -91,28 +104,18 @@ describe('Home', () => {
           weekdayHours: 2,
           weekendHours: 0,
           weeklyHours: 6,
-          slots: [
-            {
-              weekIndex: 0,
-              dayOfWeek: 'Mon',
-              date: today,
-              capacityMinutes: 120,
-              role: 'anchor',
-              candidateMaterialIds: ['mat-1'],
-              plannedMinutes: 60,
-              sessionTitle: 'DDIA Chapter 1',
-            },
-            {
-              weekIndex: 0,
-              dayOfWeek: 'Wed',
-              date: futureDate,
-              capacityMinutes: 120,
-              role: 'practice',
-              candidateMaterialIds: ['mat-2'],
-              plannedMinutes: 45,
-              sessionTitle: 'LeetCode session 1',
-            },
-          ],
+          materialIds: ['mat-1'],
+        },
+        createdAt: roadmapCreatedAt,
+      },
+      {
+        id: 3,
+        kind: 'SessionBooked',
+        payload: {
+          roadmapCreatedAt,
+          bookingId: 'planned:0:test',
+          date: today,
+          estimatedDuration: 60,
         },
         createdAt: new Date().toISOString(),
       },
@@ -124,7 +127,8 @@ describe('Home', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByText(/Up next/)).toBeInTheDocument()
+    expect(screen.getAllByText(/Study session/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Suggested material/)).toBeInTheDocument()
     expect(screen.getByText('DDIA Chapter 1')).toBeInTheDocument()
   })
 

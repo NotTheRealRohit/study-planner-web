@@ -15,11 +15,11 @@ export class EventStore {
     this.db = db;
   }
 
-  async append(kind: string, payload: Record<string, unknown>): Promise<number> {
+  async append(kind: string, payload: Record<string, unknown>, createdAt = new Date().toISOString()): Promise<number> {
     const event: Omit<Event, 'id'> = {
       kind,
       payload,
-      createdAt: new Date().toISOString()
+      createdAt,
     };
 
     return await this.db.table('events').add(event) as number;

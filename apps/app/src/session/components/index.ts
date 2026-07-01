@@ -21,3 +21,4 @@ export { SessionYouTubeLayout } from './SessionYouTubeLayout';
 export { YouTubeEmbed } from './YouTubeEmbed';
 export { VideoStatusStrip } from './VideoStatusStrip';
 export { EscapeConfirmModal } from './EscapeConfirmModal';
+export { EndSessionSheet } from './EndSessionSheet';

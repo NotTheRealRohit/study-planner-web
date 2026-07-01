@@ -16,10 +16,10 @@ vi.mock('../CheckpointGate', () => ({
   CheckpointGate: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 vi.mock('@study-tracker/roadmap-engine', async () => {
-  const actual = await vi.importActual('@study-tracker/roadmap-engine')
+  const actual = await vi.importActual<typeof import('@study-tracker/roadmap-engine')>('@study-tracker/roadmap-engine')
   return {
     ...actual,
-    generateRoadmap: vi.fn(),
+    generateBookings: vi.fn(actual.generateBookings),
   }
 })
 
@@ -61,84 +61,38 @@ function seedOnboardingState(db: Dexie, overrides: Record<string, unknown> = {})
   return db.table('onboardingDraft').put({
     id: 1,
     state: {
-      deadline: '2026-06-01',
+      deadline: '2026-07-20',
       purpose: 'Test exam',
       weeklyHours: 10,
-      weekdayHours: 6,
-      weekendHours: 4,
-      selectedStudyDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      weekdayHours: 2,
+      weekendHours: 1,
+      selectedStudyDays: ['Mon', 'Wed', 'Fri'],
       materials: [
-        { id: 'mat-1', title: 'Designing Data-Intensive Applications', estimatedDuration: 120, role: 'anchor', additionOrder: 0, userOverrodeType: false },
+        { id: 'mat-1', title: 'Designing Data-Intensive Applications', estimatedDuration: 120, role: 'anchor', additionOrder: 0, userOverrodeType: false, kind: 'manual', fetchStatus: 'success' },
       ],
+      playlists: [],
       previewEdits: [],
       stepReached: 3,
+      nextAdditionOrder: 1,
       ...overrides,
     },
   })
 }
 
-function mockBalancedRoadmap() {
+function mockBookingResult(overrides: Record<string, unknown> = {}) {
   return {
-    weeks: [
-      {
-        weekIndex: 0,
-        startDate: '2026-05-04',
-        slots: [
-          { weekIndex: 0, dayOfWeek: 'Mon' as const, date: '2026-05-04', candidateMaterialIds: ['mat-1'], role: 'anchor' as const, sessionTitle: 'Designing Data-Intensive Applications', plannedMinutes: 120, capacityMinutes: 120 },
-          { weekIndex: 0, dayOfWeek: 'Tue' as const, date: '2026-05-05', candidateMaterialIds: [] as string[], role: null, sessionTitle: null, plannedMinutes: 0, capacityMinutes: 120 },
-        ],
-      },
+    bookings: [
+      { id: 'planned:0:2026-07-01', date: '2026-07-01', estimatedDuration: 120, status: 'booked' as const },
+      { id: 'planned:1:2026-07-03', date: '2026-07-03', estimatedDuration: 120, status: 'booked' as const },
     ],
     capacityCheck: {
       status: 'fits' as const,
       totalMaterialMinutes: 120,
-      totalCapacityMinutes: 240,
+      totalCapacityMinutes: 480,
       suggestedWeeks: undefined,
     },
     warnings: [],
-  }
-}
-
-function mockTieRoadmap() {
-  return {
-    weeks: [
-      {
-        weekIndex: 0,
-        startDate: '2026-05-04',
-        slots: [
-          { weekIndex: 0, dayOfWeek: 'Mon' as const, date: '2026-05-04', candidateMaterialIds: ['mat-1', 'mat-2'], role: null, sessionTitle: null, plannedMinutes: 60, capacityMinutes: 120 },
-        ],
-      },
-    ],
-    capacityCheck: {
-      status: 'fits' as const,
-      totalMaterialMinutes: 60,
-      totalCapacityMinutes: 120,
-      suggestedWeeks: undefined,
-    },
-    warnings: [{ kind: 'unresolved-tie-count' as const, detail: { count: 1 } }],
-  }
-}
-
-function mockBoundaryRoadmap() {
-  return {
-    weeks: [
-      {
-        weekIndex: 0,
-        startDate: '2026-05-04',
-        slots: [
-          { weekIndex: 0, dayOfWeek: 'Mon' as const, date: '2026-05-04', candidateMaterialIds: ['mat-1'], role: 'foundation' as const, sessionTitle: 'DDIA · session 1 of 1', plannedMinutes: 60, capacityMinutes: 120 },
-          { weekIndex: 0, dayOfWeek: 'Wed' as const, date: '2026-05-06', candidateMaterialIds: ['mat-1', '__rest__'], role: 'foundation' as const, sessionTitle: null, plannedMinutes: 0, capacityMinutes: 120 },
-        ],
-      },
-    ],
-    capacityCheck: {
-      status: 'fits' as const,
-      totalMaterialMinutes: 60,
-      totalCapacityMinutes: 240,
-      suggestedWeeks: undefined,
-    },
-    warnings: [{ kind: 'unresolved-tie-count' as const, detail: { count: 1 } }],
+    ...overrides,
   }
 }
 
@@ -153,7 +107,6 @@ describe('Step3Preview', () => {
     await testDb.table('onboardingDraft').clear()
 
     logEventMock = vi.fn().mockResolvedValue(1)
-
     getAllMock = vi.fn().mockResolvedValue([])
 
     const mockEventStore = {
@@ -168,6 +121,9 @@ describe('Step3Preview', () => {
     })
     mockUseEventStore.mockReturnValue(mockEventStore as never)
     mockUseSync.mockReturnValue({ logEvent: logEventMock, syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null }, forceSyncNow: vi.fn() } as never)
+
+    const { generateBookings } = await import('@study-tracker/roadmap-engine')
+    vi.mocked(generateBookings).mockReturnValue(mockBookingResult())
   })
 
   function renderPreview(initialEntry = '/onboarding/3/preview') {
@@ -179,100 +135,105 @@ describe('Step3Preview', () => {
               <Step3Preview />
             </OnboardingProvider>
           } />
+          <Route path="/onboarding/4" element={<div data-testid="onboarding-step-4">Step 4</div>} />
           <Route path="/roadmaps" element={<div data-testid="roadmaps-route">Roadmaps</div>} />
         </Routes>
       </MemoryRouter>,
     )
   }
 
-  it('renders schedule with session title and duration', async () => {
+  it('renders a capacity summary and material directory instead of a slot schedule', async () => {
     await seedOnboardingState(testDb)
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
+
+    renderPreview()
+
+    await waitFor(() => {
+      expect(screen.getByText('Projected finish')).toBeInTheDocument()
+      expect(screen.getByText('Your backlog fits your time')).toBeInTheDocument()
+      expect(screen.getByText('Designing Data-Intensive Applications')).toBeInTheDocument()
+      expect(screen.queryByText('Rest day')).not.toBeInTheDocument()
+      expect(screen.queryByText('Pick one')).not.toBeInTheDocument()
+    })
+  })
+
+  it('expands the multi-month calendar from the projected finish card', async () => {
+    await seedOnboardingState(testDb)
+
+    renderPreview()
+
+    await waitFor(() => {
+      expect(screen.getByText('Calendar')).toBeInTheDocument()
+    })
+
+    const finishToggle = screen.getByText('Projected finish').closest('[role="button"]')
+    expect(finishToggle).not.toBeNull()
+    expect(finishToggle).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(finishToggle!)
+
+    expect(finishToggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getAllByText('Session').length).toBeGreaterThan(0)
+  })
+
+  it('committing emits materials, no-slot roadmap, generated bookings, then onboarding completion in order', async () => {
+    await seedOnboardingState(testDb)
 
     renderPreview()
 
     await waitFor(() => {
       expect(screen.getByText('Designing Data-Intensive Applications')).toBeInTheDocument()
-      expect(screen.getByText('2h 0m')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /Looks good/ }))
+
+    await waitFor(() => {
+      expect(logEventMock).toHaveBeenCalledTimes(5)
+    })
+
+    const calls = logEventMock.mock.calls
+    const kinds = calls.map((call: unknown[]) => call[0] as string)
+    expect(kinds).toEqual([
+      'MaterialAdded',
+      'RoadmapCreated',
+      'SessionBooked',
+      'SessionBooked',
+      'OnboardingCompleted',
+    ])
+
+    const roadmapPayload = calls[1][1] as Record<string, unknown>
+    const roadmapCreatedAt = calls[1][2] as string
+    expect(roadmapPayload.materialIds).toEqual(['mat-1'])
+    expect(roadmapPayload.slots).toBeUndefined()
+    expect(typeof roadmapCreatedAt).toBe('string')
+
+    const firstBookingPayload = calls[2][1] as Record<string, unknown>
+    expect(firstBookingPayload).toMatchObject({
+      roadmapCreatedAt,
+      bookingId: 'planned:0:2026-07-01',
+      date: '2026-07-01',
+      estimatedDuration: 120,
     })
   })
 
-  it('displays rest day rows for slots with no candidate materials', async () => {
+  it('disables commit when the booked capacity does not fit', async () => {
     await seedOnboardingState(testDb)
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
+    const { generateBookings } = await import('@study-tracker/roadmap-engine')
+    vi.mocked(generateBookings).mockReturnValue(mockBookingResult({
+      bookings: [],
+      capacityCheck: {
+        status: 'over-capacity' as const,
+        totalMaterialMinutes: 600,
+        totalCapacityMinutes: 120,
+      },
+    }))
 
     renderPreview()
 
     await waitFor(() => {
-      expect(screen.getByText('Rest day')).toBeInTheDocument()
+      expect(screen.getByText('Needs more time')).toBeInTheDocument()
     })
-  })
 
-  it('shows tie resolver chip picker for multi-candidate slots', async () => {
-    await seedOnboardingState(testDb, {
-      materials: [
-        { id: 'mat-1', title: 'DDIA', estimatedDuration: 60, role: 'anchor', additionOrder: 0, userOverrodeType: false },
-        { id: 'mat-2', title: 'Clean Code', estimatedDuration: 60, role: 'foundation', additionOrder: 1, userOverrodeType: false },
-      ],
-    })
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockTieRoadmap())
-
-    renderPreview()
-
-    await waitFor(() => {
-      expect(screen.getByText('Pick one')).toBeInTheDocument()
-      expect(screen.getByText('Review DDIA')).toBeInTheDocument()
-      expect(screen.getByText('Review Clean Code')).toBeInTheDocument()
-    })
-  })
-
-  it('pencil icon is present next to session titles for inline rename', async () => {
-    await seedOnboardingState(testDb)
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
-
-    renderPreview()
-
-    await waitFor(() => {
-      const titleSpan = screen.getByText('Designing Data-Intensive Applications')
-      const pencilIcon = titleSpan.querySelector('svg')
-      expect(pencilIcon).not.toBeNull()
-      expect(pencilIcon?.classList.contains('icon')).toBe(true)
-    })
-  })
-
-  it('commit button is disabled when unresolved ties exist', async () => {
-    await seedOnboardingState(testDb, {
-      materials: [
-        { id: 'mat-1', title: 'DDIA', estimatedDuration: 60, role: 'anchor', additionOrder: 0, userOverrodeType: false },
-        { id: 'mat-2', title: 'Clean Code', estimatedDuration: 60, role: 'foundation', additionOrder: 1, userOverrodeType: false },
-      ],
-    })
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockTieRoadmap())
-
-    renderPreview()
-
-    await waitFor(() => {
-      const button = screen.getByRole('button', { name: /Looks good/ })
-      expect(button).toBeDisabled()
-    })
-  })
-
-  it('commit button is enabled when no unresolved ties', async () => {
-    await seedOnboardingState(testDb)
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
-
-    renderPreview()
-
-    await waitFor(() => {
-      const button = screen.getByRole('button', { name: /Looks good/ })
-      expect(button).toBeEnabled()
-    })
+    expect(screen.getByRole('button', { name: /Looks good/ })).toBeDisabled()
   })
 
   it('finishing a new roadmap while one is active saves a draft without creating another roadmap', async () => {
@@ -289,13 +250,21 @@ describe('Step3Preview', () => {
           weekdayHours: 1,
           weekendHours: 0,
           weeklyHours: 1,
-          slots: [],
+          materialIds: ['mat-1'],
         },
         createdAt: '2026-05-01T00:00:00.000Z',
       },
+      {
+        kind: 'SessionBooked',
+        payload: {
+          roadmapCreatedAt: '2026-05-01T00:00:00.000Z',
+          bookingId: 'planned:0:2026-05-04',
+          date: '2026-05-04',
+          estimatedDuration: 60,
+        },
+        createdAt: '2026-05-01T00:00:01.000Z',
+      },
     ])
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
 
     renderPreview('/onboarding/3/preview?new=1')
 
@@ -310,9 +279,7 @@ describe('Step3Preview', () => {
     })
 
     const kinds = logEventMock.mock.calls.map((call: unknown[]) => call[0] as string)
-    expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(0)
-    expect(kinds).not.toContain('RoadmapCreated')
-    expect(kinds).not.toContain('OnboardingCompleted')
+    expect(kinds).toHaveLength(0)
     await expect(testDb.table('onboardingDraft').get(1)).resolves.toBeDefined()
   })
 
@@ -321,8 +288,6 @@ describe('Step3Preview', () => {
     getAllMock.mockResolvedValue([
       { kind: 'OnboardingCompleted', payload: {}, createdAt: '2026-05-01T00:00:00.000Z' },
     ])
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBalancedRoadmap())
 
     renderPreview('/onboarding/3/preview?new=1')
 
@@ -339,30 +304,8 @@ describe('Step3Preview', () => {
     const kinds = logEventMock.mock.calls.map((call: unknown[]) => call[0] as string)
     expect(kinds.filter((kind) => kind === 'MaterialAdded')).toHaveLength(1)
     expect(kinds.filter((kind) => kind === 'RoadmapCreated')).toHaveLength(1)
+    expect(kinds.filter((kind) => kind === 'SessionBooked')).toHaveLength(2)
     expect(kinds).not.toContain('OnboardingCompleted')
     await expect(testDb.table('onboardingDraft').get(1)).resolves.toBeUndefined()
-  })
-
-  it('resolving a boundary tie sets session title and planned minutes', async () => {
-    await seedOnboardingState(testDb, {
-      materials: [
-        { id: 'mat-1', title: 'DDIA', estimatedDuration: 60, role: 'foundation', additionOrder: 0, userOverrodeType: false },
-      ],
-    })
-    const { generateRoadmap } = await import('@study-tracker/roadmap-engine')
-    vi.mocked(generateRoadmap).mockReturnValue(mockBoundaryRoadmap())
-
-    renderPreview()
-
-    await waitFor(() => {
-      expect(screen.getByText('Review DDIA')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByText('Review DDIA'))
-
-    await waitFor(() => {
-      expect(screen.getByText('Review · DDIA')).toBeInTheDocument()
-      expect(screen.getByText('2h 0m')).toBeInTheDocument()
-    })
   })
 })

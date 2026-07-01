@@ -102,6 +102,54 @@ describe('SessionLifecycle', () => {
       lc.destroy();
     });
 
+    it('persists booking and material metadata from pre-session start data', async () => {
+      const lc = new SessionLifecycle(makeDeps());
+      await lc.start({
+        ...slotData,
+        bookingId: 'booking-1',
+        plannedSessionMinutes: 45,
+        materialEstimatedMinutes: 120,
+        materialStartPosition: { kind: 'percent', value: 25, ofTotal: 100 },
+      });
+
+      const record = lc.getRecord();
+      expect(record?.bookingId).toBe('booking-1');
+      expect(record?.plannedSessionMinutes).toBe(45);
+      expect(record?.materialEstimatedMinutes).toBe(120);
+      expect(record?.materialStartPosition).toEqual({ kind: 'percent', value: 25, ofTotal: 100 });
+
+      const events = await eventStore.getAll();
+      const started = events.find(e => e.kind === SESSION_EVENT_KINDS.STARTED);
+      expect(started?.payload.bookingId).toBe('booking-1');
+      expect(started?.payload.plannedSessionMinutes).toBe(45);
+
+      lc.destroy();
+    });
+
+    it('interrupt logs a partial with booking and material-position fields', async () => {
+      const lc = new SessionLifecycle(makeDeps());
+      await lc.start({
+        ...slotData,
+        bookingId: 'booking-1',
+        plannedSessionMinutes: 45,
+        materialEstimatedMinutes: 120,
+        materialStartPosition: { kind: 'percent', value: 25, ofTotal: 100 },
+      });
+
+      currentTime = new Date('2026-04-29T09:20:00Z');
+      await lc.interrupt({ kind: 'percent', value: 50, ofTotal: 100 });
+
+      expect(lc.getState()).toBe('idle');
+      const logged = (await eventStore.getAll()).find(e => e.kind === SESSION_EVENT_KINDS.LOGGED);
+      expect(logged?.payload.resolution).toBe('interrupted');
+      expect(logged?.payload.bookingId).toBe('booking-1');
+      expect(logged?.payload.plannedSessionMinutes).toBe(45);
+      expect(logged?.payload.materialPosition).toEqual({ kind: 'percent', value: 50, ofTotal: 100 });
+      expect(logged?.payload.materialConsumedMinutes).toBe(30);
+
+      lc.destroy();
+    });
+
     it('cannot start a session when one is already active', async () => {
       const lc = new SessionLifecycle(makeDeps());
       await lc.start(slotData);
@@ -352,7 +400,7 @@ describe('SessionLifecycle', () => {
       lc.destroy();
     });
 
-    it('abandons active session crossing midnight', async () => {
+    it('logs an interrupted partial for active session crossing midnight', async () => {
       const localLateNightStart = new Date(2026, 3, 29, 23, 30);
       const record: ActiveSessionRecord = {
         id: 1,
@@ -375,8 +423,11 @@ describe('SessionLifecycle', () => {
       const state = await lc.initialize();
 
       expect(state).toBe('idle');
-      const abandoned = (await eventStore.getAll()).find(e => e.kind === SESSION_EVENT_KINDS.ABANDONED);
-      expect(abandoned!.payload.reason).toBe('stale_midnight');
+      const events = await eventStore.getAll();
+      const logged = events.find(e => e.kind === SESSION_EVENT_KINDS.LOGGED);
+      expect(logged!.payload.resolution).toBe('interrupted');
+      expect(logged!.payload.duration).toBe(120);
+      expect(events.find(e => e.kind === SESSION_EVENT_KINDS.ABANDONED)).toBeUndefined();
 
       lc.destroy();
     });

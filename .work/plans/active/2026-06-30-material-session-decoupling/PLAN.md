@@ -396,7 +396,7 @@ Revert new files + mapEvents changes; `deriveSlotStatuses` still present so call
 
 ### Phase 3: Onboarding page 3 → capacity summary + expandable calendar + grouped materials
 
-**Status:** ☐ Not started
+**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~4 files. Visual contract: [`mocks/proposed/onboarding-3.html`](./mocks/proposed/onboarding-3.html) (D13/D13a/D14/D14a).
 
@@ -438,7 +438,7 @@ Revert onboarding files; engine/derivations from P1/P2 remain.
 
 ### Phase 4: Session flow — Home suggestion → pre-session dial → running end-sheet
 
-**Status:** ☐ Not started
+**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~6 files. **Large — implementer may sub-split** (4a Home+gate, 4b pre-session, 4c end-sheet+lifecycle). Visual contracts: [`mocks/proposed/home.html`](./mocks/proposed/home.html), [`session-presession.html`](./mocks/proposed/session-presession.html), [`session-running.html`](./mocks/proposed/session-running.html). Decisions D-04/D-05/D-06 (DECISIONS D15/D15a/D16/D17/D18).
 

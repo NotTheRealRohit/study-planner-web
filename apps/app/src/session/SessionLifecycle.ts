@@ -13,6 +13,7 @@ import type {
   WalkAwayResolution,
   RecoveryResolution,
   SessionSlotData,
+  MaterialPosition,
 } from './types';
 import { SESSION_EVENT_KINDS, DEFAULT_POMODORO_CONFIG } from './types';
 import { getPomodoroPhase, type PomodoroPhase } from './pomodoro';
@@ -91,7 +92,11 @@ export class SessionLifecycle {
     const staleResult = this.checkStale(existing);
 
     if (staleResult) {
-      await this.doAbandon(staleResult);
+      if (staleResult === 'stale_midnight') {
+        await this.interrupt();
+      } else {
+        await this.doAbandon(staleResult);
+      }
       return this.state;
     }
 
@@ -160,6 +165,10 @@ export class SessionLifecycle {
       slotDate: slotData.slotDate,
       weekIndex: slotData.weekIndex,
       plannedMinutes: slotData.plannedMinutes,
+      bookingId: slotData.bookingId,
+      plannedSessionMinutes: slotData.plannedSessionMinutes ?? slotData.plannedMinutes,
+      materialEstimatedMinutes: slotData.materialEstimatedMinutes,
+      materialStartPosition: slotData.materialStartPosition,
       startedAt,
       status: 'active',
       pauseIntervals: [],
@@ -182,6 +191,8 @@ export class SessionLifecycle {
       plannedMinutes: slotData.plannedMinutes,
       startedAt,
       pomodoroConfig: this.pomodoroConfig,
+      bookingId: slotData.bookingId,
+      plannedSessionMinutes: slotData.plannedSessionMinutes ?? slotData.plannedMinutes,
     };
 
     await this.eventStore.append(
@@ -293,13 +304,19 @@ export class SessionLifecycle {
     }
   }
 
-  async end(): Promise<void> {
+  async end(materialPosition?: MaterialPosition): Promise<void> {
     if (this.state === 'idle') {
       throw new Error('No session to end');
     }
     if (!this.record) throw new Error('No active session record');
 
-    await this.logSession('completed', this.getElapsedActiveMs());
+    await this.logSession('completed', this.getElapsedActiveMs(), { materialPosition });
+  }
+
+  async interrupt(materialPosition?: MaterialPosition): Promise<void> {
+    if (!this.record) throw new Error('No active session record');
+
+    await this.logSession('interrupted', this.getElapsedActiveMs(), { materialPosition });
   }
 
   async resolveWalkAway(resolution: WalkAwayResolution): Promise<void> {
@@ -510,11 +527,48 @@ export class SessionLifecycle {
     this.notify();
   }
 
-  private async logSession(resolution: 'completed' | 'trimmed', activeMs: number): Promise<void> {
+  private positionToEstimatedMinutes(position: MaterialPosition | undefined, estimatedMinutes: number): number {
+    if (!position || estimatedMinutes <= 0) return 0;
+    if (position.kind === 'percent') {
+      return Math.max(0, Math.min(estimatedMinutes, (position.value / 100) * estimatedMinutes));
+    }
+    if (position.ofTotal && position.ofTotal > 0) {
+      return Math.max(0, Math.min(estimatedMinutes, (position.value / position.ofTotal) * estimatedMinutes));
+    }
+    return Math.max(0, Math.min(estimatedMinutes, position.value));
+  }
+
+  private materialConsumedMinutes(
+    activeMinutes: number,
+    resolution: NonNullable<SessionLoggedPayload['resolution']>,
+    materialPosition?: MaterialPosition,
+  ): number | undefined {
+    if (!this.record?.materialEstimatedMinutes) return undefined;
+
+    const estimatedMinutes = this.record.materialEstimatedMinutes;
+    const start = this.positionToEstimatedMinutes(this.record.materialStartPosition, estimatedMinutes);
+    const end = materialPosition
+      ? this.positionToEstimatedMinutes(materialPosition, estimatedMinutes)
+      : resolution === 'completed'
+        ? estimatedMinutes
+        : Math.min(estimatedMinutes, start + activeMinutes);
+    const delta = Math.max(0, end - start);
+    const remaining = Math.max(0, estimatedMinutes - start);
+    return Math.round(Math.min(remaining, delta || activeMinutes));
+  }
+
+  private async logSession(
+    resolution: NonNullable<SessionLoggedPayload['resolution']>,
+    activeMs: number,
+    options: { materialPosition?: MaterialPosition } = {},
+  ): Promise<void> {
     if (!this.record) return;
 
     const endedAt = this.now().toISOString();
     const activeMinutes = Math.round(activeMs / 60_000);
+    const materialPosition = options.materialPosition ??
+      (resolution === 'completed' ? { kind: 'percent', value: 100, ofTotal: 100 } : undefined);
+    const materialConsumedMinutes = this.materialConsumedMinutes(activeMinutes, resolution, materialPosition);
     const totalPauseMs = this.record.pauseIntervals.reduce((sum, p) => {
       const start = new Date(p.pausedAt).getTime();
       const end = p.resumedAt ? new Date(p.resumedAt).getTime() : this.now().getTime();
@@ -533,6 +587,10 @@ export class SessionLifecycle {
       slotDate: this.record.slotDate,
       weekIndex: this.record.weekIndex,
       plannedMinutes: this.record.plannedMinutes,
+      bookingId: this.record.bookingId,
+      plannedSessionMinutes: this.record.plannedSessionMinutes ?? this.record.plannedMinutes,
+      materialPosition,
+      materialConsumedMinutes,
       startedAt: this.record.startedAt,
       endedAt,
       activeMinutes,
