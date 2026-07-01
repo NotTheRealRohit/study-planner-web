@@ -3,6 +3,7 @@ import type { HierarchicalResult } from './bayesian'
 import type { RegimeShiftResult } from './cusum'
 import { runKalmanOnPhase } from './kalman'
 import { MIN_SESSIONS_PER_BUCKET } from './config'
+import { calibrationDenominator, isCalibrationSession } from './calibrationDenominator'
 
 export function analyzeTrend(
   sessions: SessionEvent[],
@@ -10,15 +11,7 @@ export function analyzeTrend(
   bayesianResult: HierarchicalResult,
   cusumResult: RegimeShiftResult,
 ): TrendAnalysis {
-  const activeSessions = sessions.filter(
-    (s) =>
-      s.source === 'active' &&
-      s.plannedMinutes != null &&
-      s.plannedMinutes > 0 &&
-      s.activeMinutes != null &&
-      s.activeMinutes > 0 &&
-      (!s.sessionId || !exceptionalIds.has(s.sessionId)),
-  )
+  const activeSessions = sessions.filter((s) => isCalibrationSession(s, exceptionalIds))
 
   if (activeSessions.length === 0) {
     return {
@@ -30,7 +23,7 @@ export function analyzeTrend(
   }
 
   const paceRatios = activeSessions.map(
-    (s) => s.activeMinutes! / s.plannedMinutes!,
+    (s) => s.activeMinutes! / calibrationDenominator(s)!,
   )
 
   const mean = paceRatios.reduce((s, r) => s + r, 0) / paceRatios.length

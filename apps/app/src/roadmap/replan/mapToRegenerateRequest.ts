@@ -77,9 +77,10 @@ function roadmapIdentity(event: Event): string {
 
 function materialPayloads(events: Event[], roadmap: RoadmapPayload): MaterialAddedPayload[] {
   const activeMaterialIds = new Set(
-    roadmap.slots
-      .flatMap((slot) => slot.candidateMaterialIds)
-      .filter((materialId) => materialId !== '__rest__'),
+    roadmap.materialIds ??
+      (roadmap.slots ?? [])
+        .flatMap((slot) => slot.candidateMaterialIds)
+        .filter((materialId) => materialId !== '__rest__'),
   )
 
   return events
@@ -89,12 +90,13 @@ function materialPayloads(events: Event[], roadmap: RoadmapPayload): MaterialAdd
 }
 
 function toProgressRoadmap(payload: RoadmapPayload): ProgressRoadmapInput {
+  const slots = payload.slots ?? []
   return {
     startDate: payload.startDate,
     deadline: payload.deadline,
     weeks: payload.weeks,
     weeklyHours: payload.weeklyHours,
-    slots: payload.slots.map((slot) => ({
+    slots: slots.map((slot) => ({
       date: slot.date,
       dayOfWeek: slot.dayOfWeek,
       weekIndex: slot.weekIndex,
@@ -195,7 +197,7 @@ export function mapToRegenerateRequest(
     }
   }
 
-  for (const slot of payload.slots) {
+  for (const slot of payload.slots ?? []) {
     if (slot.date !== today) continue
     const pin = pinFromSlot(slot, 'today')
     if (!pinsByKey.has(pinKey(pin))) {

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { computeCalibration, getPromptDetail } from '../src/calibration'
+import { calibrationDenominator } from '../src/calibrationDenominator'
 import type {
   SessionEvent,
   ExceptionalTag,
@@ -83,6 +84,21 @@ describe('computeCalibration', () => {
     ]
     const result = computeCalibration(sessions, tags, [])
     expect(result.globalPosterior.sessionCount).toBe(7)
+  })
+
+  it('uses materialConsumedMinutes instead of plannedMinutes for partial throughput', () => {
+    const partial = makeSession({
+      plannedMinutes: 60,
+      plannedSessionMinutes: 60,
+      activeMinutes: 30,
+      materialConsumedMinutes: 20,
+      resolution: 'interrupted',
+    })
+
+    expect(calibrationDenominator(partial)).toBe(20)
+    const result = computeCalibration([partial], [], [])
+    expect(result.globalPosterior.sessionCount).toBe(1)
+    expect(result.globalMultiplier).toBeGreaterThan(1)
   })
 
   it('resets prompt after RecalibrationPromptResolved', () => {

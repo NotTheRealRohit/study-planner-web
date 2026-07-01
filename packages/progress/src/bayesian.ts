@@ -11,6 +11,7 @@ import {
   BAYESIAN_PRIOR_VARIANCE,
   MIN_SESSIONS_PER_BUCKET,
 } from './config'
+import { calibrationDenominator, isCalibrationSession } from './calibrationDenominator'
 
 export interface HierarchicalResult {
   globalPosterior: BayesianPosterior
@@ -57,15 +58,7 @@ export function computeHierarchicalModel(
   sessions: SessionEvent[],
   exceptionalIds: Set<string>,
 ): HierarchicalResult {
-  const activeSessions = sessions.filter(
-    (s) =>
-      s.source === 'active' &&
-      s.plannedMinutes != null &&
-      s.plannedMinutes > 0 &&
-      s.activeMinutes != null &&
-      s.activeMinutes > 0 &&
-      (!s.sessionId || !exceptionalIds.has(s.sessionId)),
-  )
+  const activeSessions = sessions.filter((s) => isCalibrationSession(s, exceptionalIds))
 
   if (activeSessions.length === 0) {
     return {
@@ -81,7 +74,7 @@ export function computeHierarchicalModel(
   }
 
   const paceRatios = activeSessions.map(
-    (s) => s.activeMinutes! / s.plannedMinutes!,
+    (s) => s.activeMinutes! / calibrationDenominator(s)!,
   )
   const observationVariance = computeEmpiricalVariance(paceRatios)
 
@@ -104,7 +97,7 @@ export function computeHierarchicalModel(
   for (const session of activeSessions) {
     if (session.materialRole) {
       const group = roleGroups.get(session.materialRole) ?? []
-      group.push(session.activeMinutes! / session.plannedMinutes!)
+      group.push(session.activeMinutes! / calibrationDenominator(session)!)
       roleGroups.set(session.materialRole, group)
     }
   }
@@ -140,7 +133,7 @@ export function computeHierarchicalModel(
         timeOfDay: tod,
         ratios: [],
       }
-      group.ratios.push(session.activeMinutes! / session.plannedMinutes!)
+      group.ratios.push(session.activeMinutes! / calibrationDenominator(session)!)
       contextGroups.set(key, group)
     }
   }

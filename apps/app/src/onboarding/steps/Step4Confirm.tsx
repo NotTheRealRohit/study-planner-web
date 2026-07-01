@@ -22,7 +22,7 @@ export function Step4Confirm() {
     const roadmap = roadmapEvents[roadmapEvents.length - 1].payload as unknown as RoadmapCreatedPayload
 
     const today = new Date().toISOString().split('T')[0]
-    const firstSlot = roadmap.slots
+    const firstSlot = (roadmap.slots ?? [])
       .filter(s => s.date >= today && s.candidateMaterialIds.length >= 1)
       .sort((a, b) => a.date.localeCompare(b.date))[0]
 

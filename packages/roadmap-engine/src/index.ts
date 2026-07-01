@@ -1,6 +1,8 @@
 // Public API exports
 export {
   generateRoadmap,
+  generateBookings,
+  suggestMaterialForBooking,
   inferRole,
   addMaterialToRoadmap,
   removeMaterialFromRoadmap,
@@ -20,6 +22,9 @@ export type {
   DayOfWeek,
   MaterialRole,
   Material,
+  Booking,
+  BookingStatus,
+  BookingLayoutInput,
   RoadmapInput,
   Slot,
   RoadmapWeek,

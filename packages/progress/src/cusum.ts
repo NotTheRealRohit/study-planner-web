@@ -1,5 +1,6 @@
 import type { SessionEvent, RecalibrationResolution } from './types'
 import { CUSUM_SLACK_FACTOR, CUSUM_THRESHOLD_FACTOR } from './config'
+import { calibrationDenominator, isCalibrationSession } from './calibrationDenominator'
 
 export interface CUSUMResult {
   breakpoints: number[]
@@ -64,15 +65,7 @@ export function detectRegimeShifts(
   posteriorMean: number,
   resolutions: RecalibrationResolution[],
 ): RegimeShiftResult {
-  const activeSessions = sessions.filter(
-    (s) =>
-      s.source === 'active' &&
-      s.plannedMinutes != null &&
-      s.plannedMinutes > 0 &&
-      s.activeMinutes != null &&
-      s.activeMinutes > 0 &&
-      (!s.sessionId || !exceptionalIds.has(s.sessionId)),
-  )
+  const activeSessions = sessions.filter((s) => isCalibrationSession(s, exceptionalIds))
 
   if (activeSessions.length < 3) {
     return {
@@ -83,7 +76,7 @@ export function detectRegimeShifts(
   }
 
   const paceRatios = activeSessions.map(
-    (s) => s.activeMinutes! / s.plannedMinutes!,
+    (s) => s.activeMinutes! / calibrationDenominator(s)!,
   )
 
   const mean = paceRatios.reduce((s, r) => s + r, 0) / paceRatios.length
@@ -105,7 +98,7 @@ export function detectRegimeShifts(
       )
       if (sessionsAfter.length > 0) {
         const afterRatios = sessionsAfter.map(
-          (s) => s.activeMinutes! / s.plannedMinutes!,
+          (s) => s.activeMinutes! / calibrationDenominator(s)!,
         )
         referenceMean =
           afterRatios.reduce((s, r) => s + r, 0) / afterRatios.length

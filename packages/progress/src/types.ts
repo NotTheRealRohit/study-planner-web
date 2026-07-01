@@ -8,12 +8,23 @@ export interface SessionEvent {
   date: string
   source: 'active' | 'manual'
   plannedMinutes?: number
+  plannedSessionMinutes?: number
   activeMinutes?: number
   duration: number
   materialId?: string
   materialRole?: MaterialRole
   startedAt?: string
   sessionId?: string
+  bookingId?: string
+  resolution?: 'completed' | 'trimmed' | 'interrupted'
+  materialPosition?: MaterialPosition
+  materialConsumedMinutes?: number
+}
+
+export interface MaterialPosition {
+  kind: 'percent' | 'videos' | 'position'
+  value: number
+  ofTotal?: number
 }
 
 export interface ExceptionalTag {

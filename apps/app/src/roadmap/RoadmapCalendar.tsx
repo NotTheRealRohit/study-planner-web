@@ -91,12 +91,13 @@ function collectMaterialsById(events: Event[]): Map<string, CalendarMaterial> {
 }
 
 function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
+  const slots = payload.slots ?? []
   return {
     startDate: payload.startDate,
     deadline: payload.deadline,
     weeks: payload.weeks,
     weeklyHours: payload.weeklyHours,
-    slots: payload.slots.map((slot) => ({
+    slots: slots.map((slot) => ({
       date: slot.date,
       dayOfWeek: slot.dayOfWeek,
       weekIndex: slot.weekIndex,

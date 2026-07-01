@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { generateRoadmap, inferRole, addMaterialToRoadmap, removeMaterialFromRoadmap, regenerateRoadmap } from './roadmap-engine'
-import type { RoadmapInput, Material } from './roadmap-engine'
+import {
+  addMaterialToRoadmap,
+  generateBookings,
+  generateRoadmap,
+  inferRole,
+  removeMaterialFromRoadmap,
+  regenerateRoadmap,
+  suggestMaterialForBooking,
+} from './roadmap-engine'
+import type { BookingLayoutInput, Material, RoadmapInput } from './roadmap-engine'
 
 describe('generateRoadmap', () => {
   const canonicalInput: RoadmapInput = {
@@ -112,6 +120,94 @@ describe('generateRoadmap', () => {
     // No overfill warning because partial-slot filling prevents it
     const overfilled = result.warnings.find(w => w.kind === 'material-overfilled')
     expect(overfilled).toBeUndefined()
+  })
+})
+
+describe('generateBookings', () => {
+  const bookingInput: BookingLayoutInput = {
+    materials: [
+      { id: 'cap', title: 'CAP theorem', totalMinutes: 180, role: 'foundation', additionOrder: 0 },
+    ],
+    startDate: '2026-05-04',
+    deadline: '2026-06-01',
+    selectedStudyDays: ['Mon'],
+    weekdayHours: 1,
+    weekendHours: 0,
+  }
+
+  it('books study days until material minutes are exhausted, leaving buffer days unbooked', () => {
+    const result = generateBookings(bookingInput)
+
+    expect(result.bookings).toHaveLength(3)
+    expect(result.bookings.map((booking) => booking.date)).toEqual([
+      '2026-05-04',
+      '2026-05-11',
+      '2026-05-18',
+    ])
+    expect(result.bookings).not.toContainEqual(expect.objectContaining({ date: '2026-05-25' }))
+  })
+
+  it('emits blank booked sessions with deterministic IDs', () => {
+    const a = generateBookings(bookingInput)
+    const b = generateBookings(bookingInput)
+
+    expect(a.bookings).toEqual(b.bookings)
+    expect(a.bookings[0]).toEqual({
+      id: 'planned:0:2026-05-04',
+      date: '2026-05-04',
+      estimatedDuration: 60,
+      status: 'booked',
+    })
+    expect(a.bookings[0].materialId).toBeUndefined()
+  })
+
+  it('honors weekday and weekend capacity per booking', () => {
+    const result = generateBookings({
+      materials: [
+        { id: 'ddia', title: 'DDIA', totalMinutes: 200, role: 'anchor', additionOrder: 0 },
+      ],
+      startDate: '2026-05-04',
+      deadline: '2026-05-17',
+      selectedStudyDays: ['Mon', 'Sat'],
+      weekdayHours: 1,
+      weekendHours: 2,
+    })
+
+    expect(result.bookings.map((booking) => [booking.date, booking.estimatedDuration])).toEqual([
+      ['2026-05-04', 60],
+      ['2026-05-09', 120],
+      ['2026-05-11', 60],
+    ])
+  })
+})
+
+describe('suggestMaterialForBooking', () => {
+  const materials: Material[] = [
+    { id: 'anchor', title: 'Main book', totalMinutes: 300, role: 'anchor', additionOrder: 0 },
+    { id: 'foundation', title: 'Primer', totalMinutes: 90, role: 'foundation', additionOrder: 1 },
+    { id: 'practice', title: 'Problems', totalMinutes: 120, role: 'practice', additionOrder: 2 },
+  ]
+
+  it('prefers an already-started unfinished material', () => {
+    expect(suggestMaterialForBooking(
+      materials,
+      [{ materialId: 'anchor', started: true, done: false }],
+      [],
+    )).toBe('anchor')
+  })
+
+  it('otherwise uses foundation, anchor, practice ordering and skips used material ids', () => {
+    expect(suggestMaterialForBooking(materials, [], [])).toBe('foundation')
+    expect(suggestMaterialForBooking(materials, [], ['foundation'])).toBe('anchor')
+    expect(suggestMaterialForBooking(materials, [], ['foundation', 'anchor'])).toBe('practice')
+  })
+
+  it('skips completed materials', () => {
+    expect(suggestMaterialForBooking(
+      materials,
+      [{ materialId: 'foundation', started: true, done: true }],
+      [],
+    )).toBe('anchor')
   })
 })
 

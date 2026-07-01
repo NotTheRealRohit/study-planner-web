@@ -1,4 +1,4 @@
-import type { MaterialKind } from '../session/types';
+import type { MaterialKind, MaterialPosition } from '../session/types';
 
 export interface SyncState {
   status: 'idle' | 'syncing' | 'error' | 'offline';
@@ -72,7 +72,42 @@ export interface RoadmapCreatedPayload {
   weekdayHours: number
   weekendHours: number
   weeklyHours: number
-  slots: Slot[]
+  /** Ordered selected material IDs for no-slot roadmaps. */
+  materialIds?: string[]
+  /** Roadmap-scoped remaining-duration overrides from replan/shorten flows. */
+  materialDurationOverrides?: Record<string, number>
+  /** Legacy read-only slot payload. New roadmaps omit slots and emit SessionBooked events. */
+  slots?: Slot[]
+}
+
+export interface SessionBookedPayload {
+  roadmapCreatedAt: string
+  bookingId: string
+  date: string
+  estimatedDuration: number
+  materialId?: string
+}
+
+export interface BookingEditedPayload {
+  roadmapCreatedAt: string
+  bookingId: string
+  date?: string
+  estimatedDuration?: number
+  /** null detaches material so the user picks at session start. */
+  materialId?: string | null
+}
+
+export interface BookingClearedPayload {
+  roadmapCreatedAt: string
+  bookingId: string
+}
+
+export interface MaterialProgressMarkedPayload {
+  roadmapCreatedAt: string
+  materialId: string
+  markedAt: string
+  materialPosition: MaterialPosition
+  source: 'directory' | 'session-end'
 }
 
 export interface RoadmapMarkedCompletePayload {

@@ -23,6 +23,7 @@ export type {
   TimeOfDay,
   BayesianPosterior,
   PromptSession,
+  MaterialPosition,
 } from './types'
 
 export {
@@ -40,6 +41,23 @@ export {
 
 export { computeCalibration, getPromptDetail } from './calibration'
 export { computeProgress } from './progress'
+export { calibrationDenominator, isCalibrationSession } from './calibrationDenominator'
+export {
+  deriveBookingStatuses,
+  type BookingDerivedStatus,
+  type BookingLike,
+  type DerivedBooking,
+  type BookingStatusDerivation,
+} from './deriveBookingStatuses'
+export {
+  buildMaterialLedger,
+  type MaterialLedgerEntry,
+  type MaterialProgressMark,
+} from './materialLedger'
+export {
+  buildDailyActivity,
+  type DailyActivity,
+} from './dailyActivity'
 export {
   deriveSlotStatuses,
   type DerivedSlot,

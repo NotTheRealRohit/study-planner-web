@@ -82,7 +82,33 @@ function roadmapIdentity(event: Event): string {
   return typeof originalCreatedAt === 'string' ? originalCreatedAt : event.createdAt
 }
 
+function bookingIdsForRoadmap(events: Event[], roadmapCreatedAt: string): Set<string> {
+  const ids = new Set<string>()
+  for (const event of events) {
+    if (event.kind === 'SessionBooked' && event.payload.roadmapCreatedAt === roadmapCreatedAt) {
+      ids.add(event.payload.bookingId as string)
+    }
+    if (event.kind === 'BookingCleared' && event.payload.roadmapCreatedAt === roadmapCreatedAt) {
+      ids.delete(event.payload.bookingId as string)
+    }
+  }
+  return ids
+}
+
+function completedBookingCount(events: Event[], bookingIds: Set<string>): number {
+  const completed = new Set<string>()
+  for (const event of events) {
+    if (event.kind !== 'SessionLogged') continue
+    const bookingId = event.payload.bookingId
+    if (typeof bookingId !== 'string' || !bookingIds.has(bookingId)) continue
+    if (event.payload.resolution === 'interrupted') continue
+    completed.add(bookingId)
+  }
+  return completed.size
+}
+
 function completedSlotCount(events: Event[], roadmap: RoadmapPayload): number {
+  const slots = roadmap.slots ?? []
   const usedSessionIndexes = new Set<number>()
   const inWindow = (date: string | undefined): boolean =>
     date !== undefined && date >= roadmap.startDate && date <= roadmap.deadline
@@ -97,7 +123,7 @@ function completedSlotCount(events: Event[], roadmap: RoadmapPayload): number {
     .filter((session) => inWindow(session.date))
 
   let completed = 0
-  for (const slot of roadmap.slots) {
+  for (const slot of slots) {
     const match = sessions.find((session) =>
       !usedSessionIndexes.has(session.index) &&
       session.date === slot.date &&
@@ -151,8 +177,13 @@ export function deriveRoadmapLifecycle(events: Event[]): RoadmapLifecycleGroups 
     .map((snapshot) => {
       const payload = snapshot.payload
       const terminal = latestTerminalFor(snapshot.roadmapCreatedAt, terminals)
-      const totalSlots = payload.slots.length
-      const completedSlots = completedSlotCount(events, payload)
+      const bookingIds = payload.slots
+        ? null
+        : bookingIdsForRoadmap(events, snapshot.roadmapCreatedAt)
+      const totalSlots = payload.slots?.length ?? bookingIds?.size ?? 0
+      const completedSlots = payload.slots
+        ? completedSlotCount(events, payload)
+        : completedBookingCount(events, bookingIds ?? new Set())
       const percentComplete = totalSlots === 0
         ? 0
         : Math.round((completedSlots / totalSlots) * 100)

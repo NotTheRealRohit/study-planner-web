@@ -9,6 +9,7 @@ import { computeHierarchicalModel, inferTimeOfDay } from './bayesian'
 import { detectRegimeShifts } from './cusum'
 import { analyzeTrend } from './trend'
 import { BAYESIAN_PRIOR_MEAN } from './config'
+import { calibrationDenominator, isCalibrationSession } from './calibrationDenominator'
 
 export function computeCalibration(
   sessions: SessionEvent[],
@@ -54,14 +55,7 @@ export function getPromptDetail(
   sessions: SessionEvent[],
   cusumBreakpoints: number[],
 ): PromptDetail {
-  const activeSessions = sessions.filter(
-    (s) =>
-      s.source === 'active' &&
-      s.plannedMinutes != null &&
-      s.plannedMinutes > 0 &&
-      s.activeMinutes != null &&
-      s.activeMinutes > 0,
-  )
+  const activeSessions = sessions.filter((s) => isCalibrationSession(s))
 
   if (activeSessions.length === 0 || cusumBreakpoints.length === 0) {
     return {
@@ -87,7 +81,7 @@ export function getPromptDetail(
   const previousPace =
     beforeBreakpoint.length > 0
       ? beforeBreakpoint.reduce(
-          (s, sess) => s + sess.activeMinutes! / sess.plannedMinutes!,
+          (s, sess) => s + sess.activeMinutes! / calibrationDenominator(sess)!,
           0,
         ) / beforeBreakpoint.length
       : BAYESIAN_PRIOR_MEAN
@@ -95,7 +89,7 @@ export function getPromptDetail(
   const currentPace =
     afterBreakpoint.length > 0
       ? afterBreakpoint.reduce(
-          (s, sess) => s + sess.activeMinutes! / sess.plannedMinutes!,
+          (s, sess) => s + sess.activeMinutes! / calibrationDenominator(sess)!,
           0,
         ) / afterBreakpoint.length
       : previousPace
@@ -106,7 +100,7 @@ export function getPromptDetail(
       date: s.date,
       timeOfDay: inferTimeOfDay(s.startedAt),
       sessionTitle: '',
-      plannedMinutes: s.plannedMinutes!,
+      plannedMinutes: calibrationDenominator(s)!,
       activeMinutes: s.activeMinutes!,
     })),
     currentPace,

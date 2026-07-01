@@ -32,6 +32,12 @@ export type SessionId = string;
 
 export type MaterialKind = 'youtube' | 'article' | 'manual';
 
+export interface MaterialPosition {
+  kind: 'percent' | 'videos' | 'position';
+  value: number;
+  ofTotal?: number;
+}
+
 /** Pomodoro timer configuration snapshotted at session start */
 export interface PomodoroConfig {
   /** Duration of a work interval in minutes (default: 50) */
@@ -141,7 +147,15 @@ export interface SessionLoggedPayload {
   /** Number of full Pomodoro work intervals completed */
   pomodorosCompleted?: number;
   /** How the session ended — 'completed' (normal End tap) or 'trimmed' (walk-away trim) */
-  resolution?: 'completed' | 'trimmed';
+  resolution?: 'completed' | 'trimmed' | 'interrupted';
+  /** Exact booked-session identity when this session started from a booking. */
+  bookingId?: string;
+  /** The pre-session dial target; separate from the material-throughput denominator. */
+  plannedSessionMinutes?: number;
+  /** Last material position captured at session end. */
+  materialPosition?: MaterialPosition;
+  /** Estimated material minutes consumed; overrides plannedMinutes for calibration denominator. */
+  materialConsumedMinutes?: number;
 
   // --- Always-present fields (backward compat) ---
   /**
@@ -229,8 +243,16 @@ export interface ActiveSessionRecord {
   slotDate: string;
   /** Roadmap week (0-indexed) */
   weekIndex: number;
-  /** Planned duration in minutes */
+  /** Planned material chunk duration in minutes; legacy slot-derived field. */
   plannedMinutes: number;
+  /** Exact booked-session identity when this active session came from a booking. */
+  bookingId?: string;
+  /** The pre-session dial target; may differ from material-throughput denominator. */
+  plannedSessionMinutes?: number;
+  /** Estimated total material minutes, used to convert position deltas to consumed minutes. */
+  materialEstimatedMinutes?: number;
+  /** Material position at session start, if known. */
+  materialStartPosition?: MaterialPosition;
   /** ISO timestamp — when the session started */
   startedAt: string;
   /** Current session state */
@@ -293,9 +315,13 @@ export type RecoveryResolution = 'keep_going' | 'end_now';
 export interface SessionSlotData {
   materialId: string;
   sessionTitle: string;
+  bookingId?: string;
   slotDate: string;
   weekIndex: number;
   plannedMinutes: number;
+  plannedSessionMinutes?: number;
+  materialEstimatedMinutes?: number;
+  materialStartPosition?: MaterialPosition;
   materialUrl?: string;
   role?: 'anchor' | 'foundation' | 'practice';
   kind?: MaterialKind;

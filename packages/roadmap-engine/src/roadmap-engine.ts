@@ -62,6 +62,30 @@ export interface Slot {
   sessionTitle: string | null
 }
 
+export type BookingStatus = 'booked' | 'done' | 'missed' | 'unplanned'
+
+export interface Booking {
+  /** Deterministic within a roadmap, e.g. planned:0:2026-04-29. */
+  id: string
+  /** ISO date (YYYY-MM-DD). */
+  date: string
+  /** Estimated session duration in minutes. */
+  estimatedDuration: number
+  /** Soft suggestion or user attachment; blank means pick at start. */
+  materialId?: string
+  /** Engine emits booked; downstream derivations overwrite status from events. */
+  status: BookingStatus
+}
+
+export interface BookingLayoutInput {
+  startDate: string
+  deadline: string
+  selectedStudyDays: DayOfWeek[]
+  weekdayHours: number
+  weekendHours: number
+  materials: Material[]
+}
+
 export interface RoadmapWeek {
   weekIndex: number
   startDate: string
@@ -120,12 +144,82 @@ import { DEFAULT_ROADMAP_CONFIG, DAY_OFFSETS, WEEKDAY_DAYS, WEEKEND_DAYS, type R
 // Public entry point — generateRoadmap
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Slot packing is legacy-only during the material/session
+ * decoupling migration. New flows should use generateBookings.
+ */
 export function generateRoadmap(
   input: RoadmapInput,
   config?: Partial<RoadmapConfig>,
 ): RoadmapOutput {
   const cfg = { ...DEFAULT_ROADMAP_CONFIG, ...config }
   return generateRoadmapCore(input, cfg, new Map())
+}
+
+export function generateBookings(
+  input: BookingLayoutInput,
+  config?: Partial<RoadmapConfig>,
+): { bookings: Booking[]; warnings: Warning[]; capacityCheck: CapacityCheck } {
+  validateBookingInputs(input)
+  const cfg = { ...DEFAULT_ROADMAP_CONFIG, ...config }
+  const totalMaterialMinutes = input.materials.reduce((sum, material) => sum + material.totalMinutes, 0)
+  const totalCapacityMinutes = sumBookingCapacityToDeadline(input)
+  const capacityCheck = computeBookingCapacityCheck(totalCapacityMinutes, totalMaterialMinutes, cfg)
+  const warnings: Warning[] = capacityWarnings(capacityCheck)
+  const bookings: Booking[] = []
+  let accumulated = 0
+  let ordinal = 0
+
+  for (let date = input.startDate; date <= input.deadline && accumulated < totalMaterialMinutes; date = addDaysISO(date, 1)) {
+    const day = dayOfWeekForISO(date)
+    if (!input.selectedStudyDays.includes(day)) continue
+    const estimatedDuration = capacityForBookingDay(day, input)
+    if (estimatedDuration <= 0) continue
+    bookings.push({
+      id: `planned:${ordinal}:${date}`,
+      date,
+      estimatedDuration,
+      status: 'booked',
+    })
+    ordinal += 1
+    accumulated += estimatedDuration
+  }
+
+  return { bookings, warnings, capacityCheck }
+}
+
+export function suggestMaterialForBooking(
+  materials: Material[],
+  ledger: { materialId: string; done: boolean; started: boolean }[],
+  usedMaterialIds: string[],
+): string | undefined {
+  const stateByMaterial = new Map(ledger.map((entry) => [entry.materialId, entry]))
+  const sortedMaterials = [...materials].sort((a, b) => a.additionOrder - b.additionOrder)
+  const started = sortedMaterials.find((material) => {
+    const state = stateByMaterial.get(material.id)
+    return state?.started && !state.done
+  })
+  if (started) return started.id
+
+  const used = new Set(usedMaterialIds)
+  const roleOrder: MaterialRole[] = ['foundation', 'anchor', 'practice']
+  for (const role of roleOrder) {
+    const material = sortedMaterials.find((candidate) => {
+      const state = stateByMaterial.get(candidate.id)
+      return candidate.role === role && !state?.done && !used.has(candidate.id)
+    })
+    if (material) return material.id
+  }
+
+  for (const role of roleOrder) {
+    const material = sortedMaterials.find((candidate) => {
+      const state = stateByMaterial.get(candidate.id)
+      return candidate.role === role && !state?.done
+    })
+    if (material) return material.id
+  }
+
+  return undefined
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,6 +331,22 @@ function validateInputs(input: RoadmapInput): { ok: true } {
   return { ok: true }
 }
 
+function validateBookingInputs(input: BookingLayoutInput): { ok: true } {
+  if (input.materials.length === 0) {
+    throw new Error('at least one material required')
+  }
+  if (input.selectedStudyDays.length === 0) {
+    throw new Error('at least one study day must be selected')
+  }
+  if (input.weekdayHours < 0 || input.weekendHours < 0) {
+    throw new Error('hours must be non-negative')
+  }
+  if (input.deadline < input.startDate) {
+    throw new Error('deadline must be on or after startDate')
+  }
+  return { ok: true }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Stage 2: build slot grid
 // ─────────────────────────────────────────────────────────────────────────────
@@ -314,6 +424,69 @@ function computeCapacityCheck(
     totalMaterialMinutes: totalMaterial,
     status: 'fits',
   }
+}
+
+function computeBookingCapacityCheck(
+  totalCapacity: number,
+  totalMaterial: number,
+  cfg: RoadmapConfig,
+): CapacityCheck {
+  if (totalMaterial > totalCapacity) {
+    return {
+      totalCapacityMinutes: totalCapacity,
+      totalMaterialMinutes: totalMaterial,
+      status: 'over-capacity',
+    }
+  }
+  if (totalCapacity > totalMaterial * cfg.underCapacityBufferThreshold) {
+    return {
+      totalCapacityMinutes: totalCapacity,
+      totalMaterialMinutes: totalMaterial,
+      status: 'under-capacity-buffer',
+    }
+  }
+  return {
+    totalCapacityMinutes: totalCapacity,
+    totalMaterialMinutes: totalMaterial,
+    status: 'fits',
+  }
+}
+
+function capacityWarnings(capacityCheck: CapacityCheck): Warning[] {
+  if (capacityCheck.status === 'over-capacity') {
+    return [{
+      kind: 'over-capacity',
+      detail: {
+        overflowMinutes: capacityCheck.totalMaterialMinutes - capacityCheck.totalCapacityMinutes,
+      },
+    }]
+  }
+  if (capacityCheck.status === 'under-capacity-buffer') {
+    return [{
+      kind: 'under-capacity-buffer',
+      detail: {
+        bufferMinutes: capacityCheck.totalCapacityMinutes - capacityCheck.totalMaterialMinutes,
+        suggestedWeeks: capacityCheck.suggestedWeeks,
+      },
+    }]
+  }
+  return []
+}
+
+function sumBookingCapacityToDeadline(input: BookingLayoutInput): number {
+  let total = 0
+  for (let date = input.startDate; date <= input.deadline; date = addDaysISO(date, 1)) {
+    const day = dayOfWeekForISO(date)
+    if (input.selectedStudyDays.includes(day)) {
+      total += capacityForBookingDay(day, input)
+    }
+  }
+  return total
+}
+
+function capacityForBookingDay(day: DayOfWeek, input: BookingLayoutInput): number {
+  const hours = isWeekend(day) ? input.weekendHours : input.weekdayHours
+  return Math.round(hours * 60)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -677,6 +850,12 @@ function addDaysISO(iso: string, days: number): string {
   return `${yy}-${mm}-${dd}`
 }
 
+function dayOfWeekForISO(iso: string): DayOfWeek {
+  const [y, m, d] = iso.split('-').map(Number)
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay()
+  return (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const)[day]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // inferRole — title-regex inference with injected config
 // ─────────────────────────────────────────────────────────────────────────────
@@ -710,6 +889,10 @@ export function inferRole(
 // Post-commit operations — addMaterial, removeMaterial, regenerate
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * @deprecated Slot mutation is legacy-only during the material/session
+ * decoupling migration. New flows should emit booking events.
+ */
 export function addMaterialToRoadmap(
   roadmap: RoadmapOutput,
   newMaterial: Material,
@@ -778,6 +961,10 @@ export function addMaterialToRoadmap(
   return rebuildRoadmapOutput(flatSlots, warnings, cfg)
 }
 
+/**
+ * @deprecated Slot mutation is legacy-only during the material/session
+ * decoupling migration. New flows should emit booking events.
+ */
 export function removeMaterialFromRoadmap(
   roadmap: RoadmapOutput,
   materialId: string,
@@ -805,6 +992,11 @@ export function removeMaterialFromRoadmap(
   return rebuildRoadmapOutput(flatSlots, roadmap.warnings, cfg)
 }
 
+/**
+ * @deprecated Slot regeneration is legacy-only during the material/session
+ * decoupling migration. New flows should project finish from booking/material
+ * events instead of regenerating packed slots.
+ */
 export function regenerateRoadmap(
   input: RoadmapInput,
   pins: PinSet,

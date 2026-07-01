@@ -34,6 +34,7 @@ function toUnplannedSession(session: SessionEvent): UnplannedSession {
   }
 }
 
+/** @deprecated Use deriveBookingStatuses for material/session-decoupled roadmaps. */
 export function deriveSlotStatuses(
   roadmap: RoadmapInput,
   sessions: SessionEvent[],

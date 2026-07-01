@@ -222,7 +222,7 @@ describe('mapToRegenerateRequest', () => {
       deadline: '2026-05-31',
       slots: [
         {
-          ...roadmapPayload().slots[0],
+          ...roadmapPayload().slots![0],
           date: '2026-05-04',
           candidateMaterialIds: ['old-mat'],
         },
