@@ -1,14 +1,13 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T11:31_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T11:37_
 
 ## Now
-Phases 1 and 2 are implemented, locally verified, and recorded in `PLAN.md`, `VERIFICATION.md`, and `.work/STATUS.md`. Awaiting reviewer sign-off.
+Phases 1 and 2 are implemented, locally verified, committed as `327ca45`, and recorded in `PLAN.md`, `VERIFICATION.md`, and `.work/STATUS.md`. Awaiting reviewer sign-off.
 
 ## Alignment
-Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists as `8c65b07 docs: prepare material-session decoupling implementation`. Implementation intentionally leaves Phases 1/2 awaiting reviewer verification rather than self-marking them verified.
+Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists as `8c65b07 docs: prepare material-session decoupling implementation`; Phase 1/2 implementation is `327ca45 feat(planner): add booking foundations`. Implementation intentionally leaves Phases 1/2 awaiting reviewer verification rather than self-marking them verified.
 
 ## Open
-- Commit boundary still pending. If committing is required, stage only Phase 1/2 code + plan/log/scratchpad/status changes and leave pre-existing `.work/.../archive/SCRATCHPAD.md` untracked.
 - Reviewer should check the deviations recorded in `VERIFICATION.md`: retained deprecated slot tests; `BookingLike` structural type in progress package.
 
 ## Blockers
@@ -29,6 +28,7 @@ Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists a
 - [x] Implement Phase 2 derivations, calibration denominator helper, and app mapping adapters.
 - [x] Run Phase 2 focused verification.
 - [x] Update `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad with final state.
+- [x] Commit Phase 1/2 implementation as `327ca45`.
 
 ## In-flight edits
 - Implemented booking API/tests in `packages/roadmap-engine/src/roadmap-engine.ts`, `index.ts`, and `roadmap-engine.test.ts`.
@@ -36,6 +36,7 @@ Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists a
 - Added progress derivations/tests: `deriveBookingStatuses`, `materialLedger`, `dailyActivity`, and `calibrationDenominator`.
 - Updated app mapper/lifecycle/progress bridge for optional-slot roadmaps and booking events.
 - Updated `PLAN.md` phase statuses and `VERIFICATION.md` implementer reports for Phases 1–2; updated `.work/STATUS.md`.
+- Recorded implementation commit `327ca45` in active task docs.
 - Restored active `SCRATCHPAD.md`; archived copy remains untouched.
 
 ## Decisions in force
@@ -49,3 +50,4 @@ Aligned with `.work/STATUS.md` and `PLAN.md`. Planning baseline already exists a
 ## Resolved (recent)
 - Active scratchpad deletion at session start resolved by recreating the task-local `SCRATCHPAD.md`; archived copy left untouched.
 - Phase 1 app typecheck failure from optional `slots` resolved by Phase 2 no-slot bridge and minimal legacy compatibility guards.
+- Implementation commit boundary resolved as `327ca45`.

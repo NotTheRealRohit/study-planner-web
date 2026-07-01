@@ -38,7 +38,7 @@ Cross-cutting invariants (must hold at every phase):
 
 **Implementer report (2026-07-01):**
 - Files changed: `packages/roadmap-engine/src/roadmap-engine.ts`, `packages/roadmap-engine/src/index.ts`, `packages/roadmap-engine/src/roadmap-engine.test.ts`, `apps/app/src/sync/types.ts`, `apps/app/src/session/types.ts`, plus minimal optional-slot guards in app callers required for typecheck.
-- Commit SHA: uncommitted working tree. Planning baseline was already committed as `8c65b07`; this session did not create a new commit.
+- Commit SHA: `327ca45` (`feat(planner): add booking foundations`). Planning baseline was already committed as `8c65b07`.
 - What changed: added deterministic `Booking`/`BookingLayoutInput`/`generateBookings`, `suggestMaterialForBooking`, deprecated legacy slot APIs, booking/session/material-progress event payload types, optional `materialIds`/`materialDurationOverrides`, optional legacy `slots`, and session booking/material-position fields.
 - Deviations: retained legacy slot packer tests instead of deleting them because current app callers still import deprecated slot APIs. No new booking path depends on the packer.
 - Self-check: `pnpm --filter @study-tracker/roadmap-engine test` passed (`36` tests); `pnpm --filter app typecheck` passed; `git diff --check` passed.
@@ -65,7 +65,7 @@ Cross-cutting invariants (must hold at every phase):
 
 **Implementer report (2026-07-01):**
 - Files changed: `packages/progress/src/{deriveBookingStatuses,materialLedger,dailyActivity,calibrationDenominator,types,index,deriveSlotStatuses,bayesian,calibration,cusum,trend}.ts`, matching progress tests, `apps/app/src/progress/mapEvents.ts`, `apps/app/src/progress/mapEvents.test.ts`, `apps/app/src/roadmap/{roadmapLifecycle,roadmapProgress}.ts`, plus minimal legacy optional-slot guards/tests in `RoadmapCalendar`, `Step4Confirm`, and `mapToRegenerateRequest`.
-- Commit SHA: uncommitted working tree.
+- Commit SHA: `327ca45` (`feat(planner): add booking foundations`).
 - What changed: added booking status derivation, material ledger, daily activity, calibration denominator helper, new SessionEvent fields, booking event folding, legacy-slot-to-booking adapter, material scoping by `materialIds`, no-slot active-roadmap bridge, no-slot lifecycle/progress summaries, and capacity weekly-target helper.
 - Deviations: `deriveBookingStatuses` uses a local structural `BookingLike` instead of importing `@study-tracker/roadmap-engine` because `@study-tracker/progress` does not declare that package as a dependency and app typecheck caught the boundary. This preserves structural compatibility without adding a package dependency.
 - Self-check: `pnpm --filter @study-tracker/progress test` passed (`90` tests); `pnpm --filter app test -- mapEvents` passed (`52` app test files / `472` tests under the filter run); `pnpm --filter app typecheck` passed; `git diff --check` passed.
