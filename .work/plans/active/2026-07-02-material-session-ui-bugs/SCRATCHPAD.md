@@ -14,8 +14,7 @@ All plan-scoped Phase 1 and Phase 2 verification checks passed.
 No event model, intelligence math, routing basename, or Python code is in scope.
 
 ## Open
-- Commit recording detail: final commit SHA is not known until after commit creation.
-  `VERIFICATION.md` currently records this as pending session commit.
+- none
 
 ## Blockers
 - none
@@ -43,14 +42,14 @@ No event model, intelligence math, routing basename, or Python code is in scope.
 - [x] Perform focused Playwright geometry check with real CSS.
 - [x] Fill Phase 1 and Phase 2 implementer reports.
 - [x] Update `.work/STATUS.md` through work-journal.
-- [ ] Commit scoped Phase 1 and Phase 2 files.
+- [x] Commit scoped Phase 1 and Phase 2 files.
 
 ## In-flight edits
 - `apps/app/src/pages/Roadmaps.tsx`: duplicate `Edit & add` link removed and verified.
 - `apps/app/src/pages/Roadmaps.test.tsx`: duplicate-link assertion removed and suite verified.
 - `apps/app/src/roadmap/roadmap.css`: `.bk-overlay` centered, `.bk-sheet` made rounded and scroll-guarded, `.bk-grip` hidden and visually checked.
 - `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`: Phase 1 and Phase 2 status and notes updated.
-- `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`: Phase 1 and Phase 2 reports filled, reviewer findings pending.
+- `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`: Phase 1 and Phase 2 reports filled with implementation commit `0268f20`, reviewer findings pending.
 - `.work/STATUS.md`: active row updated through work-journal.
 
 ## Decisions in force
@@ -65,3 +64,4 @@ No event model, intelligence math, routing basename, or Python code is in scope.
 - Phase prereqs confirmed: both duplicate links were present, and `.bk-overlay` used `align-items: flex-end`.
 - Phase 1 verification passed: duplicate link removed, focused test command passed, app typecheck passed.
 - Phase 2 verification passed: CSS guards present, focused browser geometry check passed, app typecheck passed.
+- Scoped implementation commit created: `0268f20`.

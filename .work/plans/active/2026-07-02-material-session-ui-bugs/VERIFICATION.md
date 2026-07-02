@@ -31,7 +31,7 @@ Cross-cutting invariants (must hold at every phase):
   - `pnpm --filter @study-tracker/app test -- Roadmaps` passed, with 58 app test files and 509 tests green.
   - `pnpm --filter @study-tracker/app typecheck` passed.
 - Deviations: none for code or tests.
-- Commit SHA: pending session commit.
+- Commit SHA: `0268f20`.
 
 **Reviewer findings:** _(pending)_
 
@@ -62,7 +62,7 @@ Cross-cutting invariants (must hold at every phase):
   - `pnpm --filter @study-tracker/app typecheck` passed.
 - Deviations: visual check used a focused Playwright fixture with real CSS and representative booking-sheet DOM instead of a mutating authenticated app flow.
   This avoided touching a real account while verifying the shared `.bk-*` geometry used by all four sheets.
-- Commit SHA: pending session commit.
+- Commit SHA: `0268f20`.
 
 **Reviewer findings:** _(pending)_
 

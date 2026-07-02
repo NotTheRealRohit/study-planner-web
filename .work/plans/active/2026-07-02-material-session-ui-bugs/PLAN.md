@@ -204,7 +204,7 @@ Data facts to rely on (verified in code, do not re-derive):
 
 ### Phase 1: Remove the duplicate "Edit & add" roadmap-hero button (BUG-3)
 
-**Status:** ✅ Complete - implemented 2026-07-02, reviewer pending
+**Status:** ✅ Complete - `0268f20`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files, ~6 lines
 
@@ -259,7 +259,7 @@ Re-add the removed `<Link>` and the test assertion.
 
 ### Phase 2: Center the booking sheets on all viewports (BUG-1)
 
-**Status:** ✅ Complete - implemented 2026-07-02, reviewer pending
+**Status:** ✅ Complete - `0268f20`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file, ~6 lines CSS
 
