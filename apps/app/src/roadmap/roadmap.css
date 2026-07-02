@@ -775,7 +775,7 @@
   inset: 0;
   z-index: var(--z-modal);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   padding: var(--space-4);
   background: rgba(42, 31, 24, 0.4);
@@ -784,18 +784,16 @@
 .bk-sheet {
   width: 100%;
   max-width: 460px;
+  max-height: calc(100dvh - var(--space-6));
+  overflow-y: auto;
   padding: var(--space-5) var(--space-5) var(--space-6);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-radius: var(--radius-lg);
   background: var(--surface-card);
   box-shadow: var(--shadow-modal);
 }
 
 .bk-grip {
-  width: 36px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border-default);
-  margin: 0 auto var(--space-4);
+  display: none;
 }
 
 .bk-head {

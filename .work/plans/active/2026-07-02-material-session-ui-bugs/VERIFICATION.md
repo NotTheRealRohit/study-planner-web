@@ -14,30 +14,55 @@ Cross-cutting invariants (must hold at every phase):
 
 ---
 
-## Phase 1 — Remove duplicate "Edit & add" button (BUG-3) · Status: ☐ Not started
+## Phase 1 - Remove duplicate "Edit & add" button (BUG-3) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `apps/app/src/pages/Roadmaps.tsx` renders exactly one primary hero link, `Open plan` → `/roadmap`; the `Edit & add` `<Link>` is removed; `Close plan` control unchanged (D-01).
-- [ ] `Roadmaps.test.tsx` no longer asserts an `Edit & add` link; `Open plan` href assertion retained; suite green.
-- [ ] `grep "Edit &amp; add" apps/app/src/pages/Roadmaps.tsx` returns nothing.
-- [ ] `pnpm --filter @study-tracker/app typecheck` + `test -- Roadmaps` green.
+- [x] `apps/app/src/pages/Roadmaps.tsx` renders exactly one primary hero link, `Open plan` → `/roadmap`; the `Edit & add` `<Link>` is removed; `Close plan` control unchanged (D-01).
+- [x] `Roadmaps.test.tsx` no longer asserts an `Edit & add` link; `Open plan` href assertion retained; suite green.
+- [x] `grep "Edit &amp; add" apps/app/src/pages/Roadmaps.tsx` returns nothing.
+- [x] `pnpm --filter @study-tracker/app typecheck` + `test -- Roadmaps` green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-02
+- Files changed: `apps/app/src/pages/Roadmaps.tsx`, `apps/app/src/pages/Roadmaps.test.tsx`.
+- Removed the duplicate `Edit & add` link only.
+- Kept `Open plan` as `<Link to="/roadmap">` and kept `Close plan` unchanged.
+- Verification:
+  - `grep -n "Edit &amp; add" apps/app/src/pages/Roadmaps.tsx` returned no rows.
+  - `pnpm --filter @study-tracker/app test -- Roadmaps` passed, with 58 app test files and 509 tests green.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+- Deviations: none for code or tests.
+- Commit SHA: pending session commit.
 
 **Reviewer findings:** _(pending)_
 
 ---
 
-## Phase 2 — Center booking sheets (BUG-1) · Status: ☐ Not started
+## Phase 2 - Center booking sheets (BUG-1) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `.bk-overlay` uses `align-items: center` (was `flex-end`) (D-02).
-- [ ] `.bk-sheet` uses `border-radius: var(--radius-lg)` and adds `max-height: calc(100dvh - var(--space-6))` + `overflow-y: auto`.
-- [ ] `.bk-grip` is hidden because the centered card is no longer a draggable bottom sheet.
-- [ ] All four sheets (BookingEditor/AddSession/MaterialPicker/MaterialProgress) render centered on desktop AND ≤560px, and a taller-than-viewport sheet scrolls rather than clipping (visual check).
-- [ ] `pnpm --filter @study-tracker/app typecheck` green.
+- [x] `.bk-overlay` uses `align-items: center` (was `flex-end`) (D-02).
+- [x] `.bk-sheet` uses `border-radius: var(--radius-lg)` and adds `max-height: calc(100dvh - var(--space-6))` + `overflow-y: auto`.
+- [x] `.bk-grip` is hidden because the centered card is no longer a draggable bottom sheet.
+- [x] All four sheets (BookingEditor/AddSession/MaterialPicker/MaterialProgress) render centered on desktop AND ≤560px, and a taller-than-viewport sheet scrolls rather than clipping (visual check).
+- [x] `pnpm --filter @study-tracker/app typecheck` green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-02
+- Files changed: `apps/app/src/roadmap/roadmap.css`.
+- Updated `.bk-overlay` from bottom alignment to centered alignment.
+- Added `.bk-sheet` max-height and `overflow-y: auto` to prevent clipping on short viewports.
+- Changed `.bk-sheet` to `border-radius: var(--radius-lg)`.
+- Hid `.bk-grip` because the sheet no longer behaves like a bottom drawer.
+- Visual verification:
+  - Desktop short sheet: 1280x800 viewport, top 300px, bottom 300px, height 201px, radius 16px.
+  - Mobile short sheet: 390x844 viewport, top 322px, bottom 322px, height 201px, radius 16px.
+  - Mobile tall sheet with representative `.bk-rows`: 390x480 viewport, top 16px, bottom 16px, height 448px, `overflow-y: auto`, `scrollHeight` 1135px, `clientHeight` 448px, radius 16px.
+- Verification:
+  - `grep -n "max-height: calc(100dvh" apps/app/src/roadmap/roadmap.css` found the `.bk-sheet` guard.
+  - `grep -n "\.bk-grip" -A4 apps/app/src/roadmap/roadmap.css` confirmed `display: none`.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+- Deviations: visual check used a focused Playwright fixture with real CSS and representative booking-sheet DOM instead of a mutating authenticated app flow.
+  This avoided touching a real account while verifying the shared `.bk-*` geometry used by all four sheets.
+- Commit SHA: pending session commit.
 
 **Reviewer findings:** _(pending)_
 

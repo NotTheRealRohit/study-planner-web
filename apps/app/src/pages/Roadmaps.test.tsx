@@ -131,7 +131,6 @@ describe('Roadmaps dashboard', () => {
     expect(screen.getByTestId('roadmaps-active-hero')).toBeInTheDocument()
     expect(screen.getByText('Distributed systems')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open plan' })).toHaveAttribute('href', '/roadmap')
-    expect(screen.getByRole('link', { name: 'Edit & add' })).toHaveAttribute('href', '/roadmap')
     expect(screen.getByRole('button', { name: 'Close plan' })).toBeInTheDocument()
     expect(screen.getByText('1')).toBeInTheDocument()
     expect(screen.getAllByText('50%')).not.toHaveLength(0)

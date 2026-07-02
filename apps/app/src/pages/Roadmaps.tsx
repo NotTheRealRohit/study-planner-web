@@ -172,9 +172,6 @@ export function Roadmaps() {
               <Link className="btn btn-accent" to="/roadmap">
                 Open plan
               </Link>
-              <Link className="btn btn-secondary" to="/roadmap">
-                Edit &amp; add
-              </Link>
               <button
                 className="btn btn-ghost"
                 type="button"

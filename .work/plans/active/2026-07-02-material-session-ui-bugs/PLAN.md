@@ -204,7 +204,7 @@ Data facts to rely on (verified in code, do not re-derive):
 
 ### Phase 1: Remove the duplicate "Edit & add" roadmap-hero button (BUG-3)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - implemented 2026-07-02, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files, ~6 lines
 
@@ -251,13 +251,15 @@ pnpm --filter @study-tracker/app typecheck && pnpm --filter @study-tracker/app t
 Re-add the removed `<Link>` and the test assertion.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Removed the duplicate `Edit & add` link from `apps/app/src/pages/Roadmaps.tsx`.
+- Removed the matching `Roadmaps.test.tsx` assertion while keeping the `Open plan` href assertion.
+- Verification passed: `grep -n "Edit &amp; add" apps/app/src/pages/Roadmaps.tsx` returned no rows, `pnpm --filter @study-tracker/app test -- Roadmaps` passed, and `pnpm --filter @study-tracker/app typecheck` passed.
 
 ---
 
 ### Phase 2: Center the booking sheets on all viewports (BUG-1)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - implemented 2026-07-02, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file, ~6 lines CSS
 
@@ -321,7 +323,12 @@ pnpm --filter @study-tracker/app typecheck
 Restore the three original rule bodies.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Updated `.bk-overlay`, `.bk-sheet`, and `.bk-grip` exactly as planned in `apps/app/src/roadmap/roadmap.css`.
+- Visual check used the real design-token and roadmap CSS with representative `.bk-overlay > .bk-sheet` DOM.
+- Desktop short sheet measured top 300px, bottom 300px, height 201px in an 800px viewport.
+- Mobile short sheet measured top 322px, bottom 322px, height 201px in an 844px viewport.
+- Tall mobile representative sheet measured top 16px, bottom 16px, height 448px in a 480px viewport, with `scrollHeight` 1135px and `clientHeight` 448px.
+- Verification passed: CSS greps confirmed the centered overlay, scroll guard, and hidden grip; `pnpm --filter @study-tracker/app typecheck` passed.
 
 ---
 
