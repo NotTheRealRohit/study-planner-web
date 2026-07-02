@@ -182,7 +182,7 @@ Cross-cutting invariants (must hold at every phase):
     The implemented helper targets roughly six intervals, preserves low-range 30-minute labels, keeps explicit unique ticks, and includes the exact max label.
   - Visual verification used the existing unauthenticated `/study/chart-test` BurnUpChart surface instead of an authenticated Week flow because the real Week route depends on authenticated EventStore state.
     Week's low-data rendering gate remains covered by unit tests.
-- Commit SHA: pending.
+- Commit SHA: `256616b`.
 
 **Reviewer findings:** _(pending)_
 

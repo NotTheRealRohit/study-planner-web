@@ -5,7 +5,7 @@ _Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T21:33_
 ## Now
 Phase 5 is implemented and awaiting review.
 The plan has no Phase 6, so the requested Phase 6 was handled as a pre-review final-gate probe.
-Current work is `.work` finalization and a scoped Phase 5 commit.
+Current work for this session is complete.
 
 ## Alignment
 Still aligned with the plan.
@@ -24,7 +24,6 @@ No event model, intelligence math, routing basename, or Python code is in scope.
 Unrelated dirty rule/doc files and `_perm_test.txt` are present before this session and must not be touched or staged.
 
 ## Open
-- Reviewer still needs to pass Phases 1-4.
 - Reviewer still needs to pass Phases 1-5.
 - Authenticated Week real-data visual confirmation remains for reviewer or a capable E2E pass.
 
@@ -55,16 +54,14 @@ Unrelated dirty rule/doc files and `_perm_test.txt` are present before this sess
 - [x] Run Phase 5 verification commands.
 - [x] Fill Phase 5 implementer report.
 - [x] Run final gate checks as the Phase-6-like step requested by Rohit.
-- [ ] Update `.work/STATUS.md` through work-journal.
-- [ ] Commit scoped Phase 5 code and `.work` updates.
+- [x] Update `.work/STATUS.md` through work-journal.
+- [x] Commit scoped Phase 5 code and `.work` updates.
+- [x] Commit scoped docs follow-up with the recorded Phase 5 SHA.
 
 ## In-flight edits
-- `packages/progress/src/types.ts`: `BurnUpData` now carries optional `startDate` and `deadline`.
-- `packages/progress/src/progress.ts`: burn-up planned baseline now uses capacity-shaped booking semantics when capacity fields exist, with slot fallback.
-- `packages/progress/test/progress.test.ts`: capacity baseline, fallback, and deficit tests added.
-- `apps/app/src/components/BurnUpChart.tsx`: exported helpers, UTC date-domain guard, deterministic ticks, bounded y-domain, monotone GP curves, and empty state added.
-- `apps/app/src/components/BurnUpChart.test.tsx`: helper and empty-state tests added.
-- `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`, `VERIFICATION.md`, `SCRATCHPAD.md`, and `.work/STATUS.md`: Phase 5 and final-gate tracking.
+- none.
+  Phase 5 implementation is committed in `256616b`.
+  The `.work` SHA recording is committed in the current docs follow-up.
 
 ## Decisions in force
 - D-05: keep burn-up rendering client-side.
@@ -86,3 +83,5 @@ Unrelated dirty rule/doc files and `_perm_test.txt` are present before this sess
 - Phase 5 prereq verification passed before edits.
 - Phase 5 focused verification passed after implementation.
 - Final-gate probe passed after the tick-density visual fix.
+- Scoped Phase 5 implementation commit created: `256616b`.
+- Scoped `.work` docs follow-up committed after recording `256616b`.

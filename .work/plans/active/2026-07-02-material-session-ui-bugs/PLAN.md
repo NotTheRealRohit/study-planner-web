@@ -541,7 +541,7 @@ Revert the CSS additions + the `isStudyDay` wiring + the Step3Preview chip recol
 
 ### Phase 5: Fix the burn-up chart — planned baseline + axes/domain/curve (BUG-5)
 
-**Status:** ✅ Complete - pending
+**Status:** ✅ Complete - `256616b`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~4 files, ~130 lines
 
