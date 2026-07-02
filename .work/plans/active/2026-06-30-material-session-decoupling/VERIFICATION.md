@@ -294,6 +294,7 @@ No correctness defects found in the code itself — `sessionsCount === completed
 - F3 fixed in `apps/app/src/roadmap/replan/commitReplan.ts`: `weeks` is recomputed from `entry.payload.startDate` to the new deadline instead of hard-coded `0`.
 - Regression tests added/updated: async capacity hydration, capacity lever finish movement, override preservation, override read-path mapping, no-slot progress totals, and replanned weeks.
 - Verification: `pnpm --filter app test -- Replan mapEvents roadmapProgress commitReplan` passed (`58` files / `509` tests); `pnpm --filter app typecheck` passed; `pnpm lint` passed with `0` errors and `4` pre-existing warnings in YouTube adapter/API-loader tests; `git diff --check` passed.
+- Commit SHA: `6d4cc89` (`fix(replan): close phase 7 review gaps`).
 - Status: rework implemented locally; awaiting Cowork reviewer re-check. Not self-marking Phase 7 verified.
 
 ---
