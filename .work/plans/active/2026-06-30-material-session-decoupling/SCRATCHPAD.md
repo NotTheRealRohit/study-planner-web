@@ -1,14 +1,14 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-01T20:35_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T08:22_
 
 ## Now
-Phase 7 (replan levers) implemented and committed at `31feaa2`. Awaiting Cowork review. All 7 phases are now implemented — Phase 7 is the only one not yet Cowork-verified.
+Phase 7 review returned `Changes requested`; F1-F3 rework is implemented locally and verified. Awaiting Cowork reviewer re-check. No commit made in this session.
 
 ## Alignment
-Aligned. Phase 7 built per plan + mock. Three intentional deviations documented in VERIFICATION.md Phase 7 implementer report (analytic-only re-projection, single hoursPerDay stepper, clear-all+regen commit strategy).
+Aligned with PLAN.md Phase 7 / D-09 / D22 and the review. Slot-regeneration remains retired; `RoadmapReplanned` remains a capacity/deadline/material snapshot plus booking events, with no slots or `/v1/roadmap/regenerate` call.
 
 ## Open
-- Cowork review of Phase 7.
+- Cowork reviewer re-check of Phase 7 rework.
 
 ## Blockers
 - — none
@@ -16,32 +16,32 @@ Aligned. Phase 7 built per plan + mock. Three intentional deviations documented 
 ## Deferrals
 - `replanRoadmap.ts` / `mapToRegenerateRequest.ts` kept but no longer called from Replan.tsx (retired from live path).
 - `/v1/roadmap/regenerate` removed from replan path per D-09.
-- E2E specs authored (not run) per project constraint.
+- E2E specs are not the first verification target for this rework; focus on app unit tests + typecheck unless the changed surface needs browser confirmation.
 
 ## Checklist
-- [x] Add new CSS classes to roadmap.css
-- [x] Rewrite commitReplan.ts + test
-- [x] Rewrite Replan.tsx with levers + live outcome
-- [x] New Replan.test.tsx (8 tests) + updated pages/Replan.test.tsx (2 tests)
-- [x] Author E2E Playwright specs (2 new replan specs)
-- [x] pnpm --filter app typecheck clean
-- [x] pnpm --filter app test green (58 files / 504 tests)
-- [x] pnpm lint clean (0 errors)
-- [x] PLAN.md Phase 7 status updated
-- [x] VERIFICATION.md Phase 7 implementer report filled
-- [x] STATUS.md updated
-- [x] git commit `31feaa2`
+- [x] Trace current Replan.tsx, commitReplan.ts, mapEvents/material ledger, and related tests.
+- [x] Fix lever state initialization from async `replanData` without clobbering user edits.
+- [x] Make live projection capacity-aware and shorten/drop-aware.
+- [x] Consume `materialDurationOverrides` on read for roadmap ETA/directory/remaining.
+- [x] Compute `weeks` from replan start-to-deadline span in `commitReplan`.
+- [x] Add/update unit tests for F1-F3.
+- [x] Run focused tests, typecheck, lint, and diff-check.
+- [x] Append VERIFICATION.md rework report and update STATUS.md/PLAN.md.
 
 ## In-flight edits
-— none; all committed.
+Uncommitted local edits: `apps/app/src/pages/Replan.tsx`, `apps/app/src/progress/mapEvents.ts`, `apps/app/src/roadmap/roadmapProgress.ts`, `apps/app/src/roadmap/replan/commitReplan.ts`, related tests, and `.work` docs (`PLAN.md`, `VERIFICATION.md`, `STATUS.md`, `SCRATCHPAD.md`).
 
 ## Decisions in force
 - Commit order: RoadmapReplanned → BookingCleared × N → SessionBooked × M
-- Live re-projection: analytic-only (empty gpCurve) — fast, no calibration needed
-- Single hoursPerDay stepper applies to both weekday/weekend
+- Live re-projection may stay analytic/fast, but must be capacity-aware and visibly respond to hours/day, study days, shorten, and drop.
+- Single hoursPerDay stepper applies to both weekday/weekend unless code inspection shows the mock/plan requires split controls.
 - Replan.test.tsx mocks commitReplan; commitReplan.test.ts covers the full emit sequence
+- Verification passed: `pnpm --filter app test -- Replan mapEvents roadmapProgress commitReplan` (58 files / 509), `pnpm --filter app typecheck`, `pnpm lint` (0 errors, 4 pre-existing warnings), `git diff --check`.
 
 ## Resolved (recent)
 - Phase 5/6 deviations rectified + E2E run green; both ✅ Verified.
 - D6 pace-first recommendation implemented and verified (Phase 6 resolution).
-- Phase 7 implemented at 31feaa2; awaiting review.
+- Phase 7 initial implementation committed at `31feaa2`; review found F1-F3 requiring rework.
+- F1 fixed: async capacity hydration + capacity-aware finish preview.
+- F2 fixed: `materialDurationOverrides` consumed/preserved on read/apply.
+- F3 fixed: replanned `weeks` recomputed from start→deadline span.

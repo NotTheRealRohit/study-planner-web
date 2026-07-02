@@ -10,7 +10,7 @@ import { Replan } from '../../pages/Replan'
 // ---------------------------------------------------------------------------
 
 const mockState = vi.hoisted(() => ({
-  events: [] as Event[],
+  events: [] as Event[] | undefined,
   logEvent: vi.fn(),
   navigate: vi.fn(),
   commitReplan: vi.fn(),
@@ -88,6 +88,14 @@ function baseEvents(): Event[] {
   ]
 }
 
+function renderReplanTree(search = '') {
+  return (
+    <MemoryRouter initialEntries={[`/replan${search}`]}>
+      <Replan />
+    </MemoryRouter>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -102,11 +110,7 @@ describe('Replan', () => {
   })
 
   function renderReplan(search = '') {
-    return render(
-      <MemoryRouter initialEntries={[`/replan${search}`]}>
-        <Replan />
-      </MemoryRouter>,
-    )
+    return render(renderReplanTree(search))
   }
 
   it('renders the levers layout — no SchedulePreview', () => {
@@ -129,6 +133,47 @@ describe('Replan', () => {
     renderReplan('?intent=extend')
     const plusOneWeek = screen.getByRole('button', { name: '+1 week' })
     expect(plusOneWeek).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('hydrates capacity levers when roadmap data loads after the first render', async () => {
+    mockState.events = undefined
+    const view = renderReplan()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading replan')
+
+    mockState.events = baseEvents().map((evt) =>
+      evt.kind === 'RoadmapCreated'
+        ? event(
+            'RoadmapCreated',
+            roadmapPayload({
+              selectedStudyDays: ['Tue', 'Thu'],
+              weekdayHours: 2,
+              weekendHours: 2,
+              weeklyHours: 4,
+            }),
+            ROADMAP_CREATED_AT,
+          )
+        : evt,
+    )
+    view.rerender(renderReplanTree())
+
+    await waitFor(() =>
+      expect(screen.getByTestId('hours-per-day-value')).toHaveTextContent('2h'),
+    )
+    expect(screen.getByRole('button', { name: 'Tue' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Thu' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Mon' })).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('capacity lever changes the live projected finish', async () => {
+    renderReplan()
+    await screen.findByText('Algo Book')
+
+    const finish = screen.getByLabelText('Projected finish')
+    const before = finish.textContent
+
+    fireEvent.click(screen.getByRole('button', { name: 'Increase hours per day' }))
+
+    await waitFor(() => expect(finish.textContent).not.toBe(before))
   })
 
   it('Keep current navigates without committing', () => {
@@ -187,6 +232,31 @@ describe('Replan', () => {
 
     const opts = mockState.commitReplan.mock.calls[0][0]
     expect(opts.materialDurationOverrides).toBeDefined()
+    expect((opts.materialDurationOverrides as Record<string, number>)['mat-1']).toBe(75)
+  })
+
+  it('preserves existing materialDurationOverrides when applying without touching materials', async () => {
+    mockState.events = [
+      ...baseEvents(),
+      event(
+        'RoadmapReplanned',
+        {
+          ...roadmapPayload(),
+          roadmapCreatedAt: ROADMAP_CREATED_AT,
+          materialDurationOverrides: { 'mat-1': 75 },
+          slots: undefined,
+        },
+        '2026-07-02T10:00:00.000Z',
+      ),
+    ]
+
+    renderReplan()
+    await screen.findByText('Algo Book')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply changes' }))
+    await waitFor(() => expect(mockState.commitReplan).toHaveBeenCalled())
+
+    const opts = mockState.commitReplan.mock.calls[0][0]
     expect((opts.materialDurationOverrides as Record<string, number>)['mat-1']).toBe(75)
   })
 })

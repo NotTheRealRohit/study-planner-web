@@ -396,7 +396,7 @@ Revert new files + mapEvents changes; `deriveSlotStatuses` still present so call
 
 ### Phase 3: Onboarding page 3 → capacity summary + expandable calendar + grouped materials
 
-**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
+**Status:** 🟡 Rework implemented locally; awaiting reviewer re-check (2026-07-02)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~4 files. Visual contract: [`mocks/proposed/onboarding-3.html`](./mocks/proposed/onboarding-3.html) (D13/D13a/D14/D14a).
 

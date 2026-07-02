@@ -147,6 +147,15 @@ function roadmapIdentity(event: Event): string {
   return typeof originalCreatedAt === 'string' ? originalCreatedAt : event.createdAt
 }
 
+function effectiveEstimatedDuration(
+  material: MaterialAddedPayload,
+  roadmapEntry: RoadmapLifecycleEntry,
+): number {
+  const override = roadmapEntry.payload.materialDurationOverrides?.[material.materialId]
+  if (typeof override !== 'number') return material.estimatedDuration
+  return Math.max(0, Math.min(material.estimatedDuration, override))
+}
+
 function foldBookingEvents(events: Event[], roadmapCreatedAt: string, baseBookings: Booking[]): Booking[] {
   const byId = new Map(baseBookings.map((booking) => [booking.id, { ...booking }]))
   for (const event of events) {
@@ -245,7 +254,12 @@ export function mapMaterialsForRoadmap(
   }
   return materialIds.flatMap((materialId) => {
     const material = byId.get(materialId)
-    return material ? [material] : []
+    return material
+      ? [{
+          ...material,
+          estimatedDuration: effectiveEstimatedDuration(material, roadmapEntry),
+        }]
+      : []
   })
 }
 

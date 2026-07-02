@@ -134,4 +134,52 @@ describe('summarizeRoadmapProgress', () => {
       percentComplete: 50,
     })
   })
+
+  it('uses materialDurationOverrides for no-slots material totals and remaining minutes', () => {
+    const createdAt = '2026-06-01T00:00:00.000Z'
+    const payload = noSlotsRoadmapPayload({
+      materialDurationOverrides: { 'mat-1': 50 },
+    })
+    const events = [
+      event('RoadmapCreated', payload, createdAt),
+      event(
+        'MaterialAdded',
+        {
+          materialId: 'mat-1',
+          title: 'Concepts',
+          estimatedDuration: 100,
+          kind: 'manual',
+          role: 'foundation',
+        },
+        '2026-06-01T00:01:00.000Z',
+      ),
+      event(
+        'MaterialAdded',
+        {
+          materialId: 'mat-2',
+          title: 'Practice',
+          estimatedDuration: 80,
+          kind: 'manual',
+          role: 'practice',
+        },
+        '2026-06-01T00:02:00.000Z',
+      ),
+      event(
+        'SessionBooked',
+        {
+          roadmapCreatedAt: createdAt,
+          bookingId: 'booking-1',
+          date: '2026-06-03',
+          estimatedDuration: 60,
+          materialId: 'mat-1',
+        },
+        '2026-06-01T00:10:00.000Z',
+      ),
+    ]
+
+    expect(summarizeRoadmapProgress(activeEntry(createdAt, payload), events)).toMatchObject({
+      totalPlannedMinutes: 130,
+      toGoMinutes: 130,
+    })
+  })
 })

@@ -322,4 +322,28 @@ describe('mapEvents roadmap resolution', () => {
 
     expect(mapMaterialsForRoadmap(events, active!).map((material) => material.materialId)).toEqual(['mat-2'])
   })
+
+  it('applies active roadmap materialDurationOverrides when mapping materials and progress inputs', () => {
+    const createdAt = '2026-06-01T00:00:00.000Z'
+    const events = [
+      event('MaterialAdded', { materialId: 'mat-1', title: 'Current', estimatedDuration: 120, kind: 'manual', role: 'anchor' }, '2026-06-01T00:00:00.000Z'),
+      event('RoadmapCreated', roadmapPayload({ slots: undefined, materialIds: ['mat-1'] }), createdAt),
+      event(
+        'RoadmapReplanned',
+        {
+          ...roadmapPayload({ slots: undefined, materialIds: ['mat-1'] }),
+          roadmapCreatedAt: createdAt,
+          materialDurationOverrides: { 'mat-1': 75 },
+        },
+        '2026-06-10T00:00:00.000Z',
+      ),
+    ]
+    const active = deriveRoadmapLifecycle(events).active[0]
+
+    expect(mapMaterialsForRoadmap(events, active!)[0].estimatedDuration).toBe(75)
+    expect(findActiveRoadmap(events)).toMatchObject({
+      materialTotalMinutes: 75,
+      materialRemainingMinutes: 75,
+    })
+  })
 })

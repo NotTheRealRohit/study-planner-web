@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { addDays, format, parseISO } from 'date-fns'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   buildMaterialLedger,
+  calibrationDenominator,
+  isCalibrationSession,
   projectFinish,
+  type SessionEvent,
 } from '@study-tracker/progress'
 import type { DayOfWeek } from '@study-tracker/roadmap-engine'
 import { useEventStore } from '../events/useEventStore'
@@ -39,6 +42,15 @@ function addWeeks(iso: string, weeks: number): string {
   return format(addDays(parseISO(iso), weeks * 7), 'yyyy-MM-dd')
 }
 
+function addDaysISO(iso: string, days: number): string {
+  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd')
+}
+
+function dayOfWeekForISO(iso: string): DayOfWeek {
+  const index = parseISO(iso).getDay()
+  return (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const)[index]
+}
+
 function fmtMin(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
@@ -63,6 +75,7 @@ interface MaterialRow {
   role: 'anchor' | 'foundation' | 'practice'
   kind: MaterialKind
   fullRemainingMinutes: number
+  hadDurationOverride: boolean
 }
 
 // Live re-projection: analytic-only (empty gpCurve, fast, no calibration needed)
@@ -84,6 +97,44 @@ function computeFinish(
     gpCurve: [],
     totalPlanned: consumedActualMin + remainingActualMin,
   }).finishDate
+}
+
+function demonstratedThroughputFactor(sessions: SessionEvent[]): number {
+  const ratios: number[] = []
+  for (const session of sessions) {
+    if (!isCalibrationSession(session)) continue
+    const denominator = calibrationDenominator(session)
+    if (!denominator || session.activeMinutes == null) continue
+    ratios.push(session.activeMinutes / denominator)
+  }
+  if (ratios.length === 0) return 1
+  return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length
+}
+
+function computeCapacityAwareFinish(args: {
+  remainingEstimatedMin: number
+  sessions: SessionEvent[]
+  today: string
+  hoursPerDay: number
+  selectedDays: DayOfWeek[]
+}): string | null {
+  if (args.remainingEstimatedMin <= 0) return args.today
+  if (args.hoursPerDay <= 0 || args.selectedDays.length === 0) return null
+
+  const daySet = new Set(args.selectedDays)
+  const requiredActiveMinutes =
+    args.remainingEstimatedMin * Math.max(0.1, demonstratedThroughputFactor(args.sessions))
+  const dailyCapacity = args.hoursPerDay * 60
+  let accumulated = 0
+
+  for (let offset = 0; offset <= 3650; offset += 1) {
+    const date = addDaysISO(args.today, offset)
+    if (!daySet.has(dayOfWeekForISO(date))) continue
+    accumulated += dailyCapacity
+    if (accumulated >= requiredActiveMinutes) return date
+  }
+
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +186,7 @@ export function Replan() {
       title: m.title,
       role: m.role,
       kind: m.kind,
+      hadDurationOverride: activeEntry.payload.materialDurationOverrides?.[m.materialId] !== undefined,
       fullRemainingMinutes: Math.max(
         15,
         ledgerMap.get(m.materialId)?.remainingEstimatedMinutes ?? m.estimatedDuration,
@@ -165,8 +217,20 @@ export function Replan() {
   const [selectedDays, setSelectedDays] = useState<DayOfWeek[]>(
     () => replanData?.currentStudyDays ?? ['Mon'],
   )
+  const [capacityInitializedFor, setCapacityInitializedFor] = useState<string | null>(null)
   // materialId → target remaining minutes; 0 = dropped; absent = use full remaining
   const [materialOverrides, setMaterialOverrides] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    if (!replanData) return
+    const roadmapId = replanData.activeEntry.roadmapCreatedAt
+    if (capacityInitializedFor === roadmapId) return
+
+    setHoursPerDay(replanData.currentHoursPerDay)
+    setSelectedDays(replanData.currentStudyDays.length > 0 ? replanData.currentStudyDays : ['Mon'])
+    setMaterialOverrides({})
+    setCapacityInitializedFor(roadmapId)
+  }, [capacityInitializedFor, replanData])
 
   const currentDeadline = replanData?.currentDeadline ?? today
   const newDeadline = addWeeks(currentDeadline, extendWeeks)
@@ -199,15 +263,14 @@ export function Replan() {
   // Live outcome: adjusted remaining + new deadline
   const newFinish = useMemo(() => {
     if (!replanData) return null
-    return computeFinish(
-      replanData.consumedActualMin,
-      adjustedRemaining,
-      replanData.sessionCount,
-      replanData.startDate,
+    return computeCapacityAwareFinish({
+      remainingEstimatedMin: adjustedRemaining,
+      sessions: mapSessions(loadedEvents),
       today,
-      newDeadline,
-    )
-  }, [replanData, adjustedRemaining, today, newDeadline])
+      hoursPerDay,
+      selectedDays,
+    })
+  }, [replanData, adjustedRemaining, loadedEvents, today, hoursPerDay, selectedDays])
 
   const currentDelta = currentFinish
     ? Math.round(
@@ -245,8 +308,10 @@ export function Replan() {
       )
       const overrides: Record<string, number> = {}
       for (const m of nonDropped) {
-        const v = materialOverrides[m.materialId]
-        if (v !== undefined && v !== m.fullRemainingMinutes) overrides[m.materialId] = v
+        const targetRemaining = materialOverrides[m.materialId] ?? m.fullRemainingMinutes
+        if (m.hadDurationOverride || targetRemaining !== m.fullRemainingMinutes) {
+          overrides[m.materialId] = targetRemaining
+        }
       }
 
       await commitReplan({
@@ -367,7 +432,7 @@ export function Replan() {
                     aria-label="Decrease hours per day"
                     onClick={() => setHoursPerDay((h) => Math.max(0.5, Math.round((h - 0.5) * 10) / 10))}
                   >−</button>
-                  <span className="val">{hoursPerDay}h</span>
+                  <span className="val" data-testid="hours-per-day-value">{hoursPerDay}h</span>
                   <button
                     type="button"
                     aria-label="Increase hours per day"
@@ -465,7 +530,7 @@ export function Replan() {
           <div className="mono-caps" style={{ marginBottom: 4 }}>
             <span className="provisional">estimate</span> · new finish
           </div>
-          <div className="rp-big" aria-live="polite">
+          <div className="rp-big" aria-label="Projected finish" aria-live="polite">
             {newFinish ? fmtDate(newFinish) : '—'}
           </div>
           {newFinish && newDelta !== null && (

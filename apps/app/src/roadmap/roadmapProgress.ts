@@ -60,7 +60,11 @@ function materialLedgerForEntry(entry: RoadmapLifecycleEntry, events: Event[]) {
     .map((payload) => ({
       id: payload.materialId as string,
       title: (payload.title as string | undefined) ?? payload.materialId as string,
-      estimatedMinutes: (payload.estimatedDuration as number | undefined) ?? 0,
+      estimatedMinutes: effectiveEstimatedMinutesForEntry(
+        entry,
+        payload.materialId as string,
+        (payload.estimatedDuration as number | undefined) ?? 0,
+      ),
     }))
   const sessions = events
     .filter((event) => event.kind === 'SessionLogged')
@@ -77,6 +81,16 @@ function materialLedgerForEntry(entry: RoadmapLifecycleEntry, events: Event[]) {
     }))
 
   return buildMaterialLedger(materials, sessions, marks)
+}
+
+function effectiveEstimatedMinutesForEntry(
+  entry: RoadmapLifecycleEntry,
+  materialId: string,
+  estimatedMinutes: number,
+): number {
+  const override = entry.payload.materialDurationOverrides?.[materialId]
+  if (typeof override !== 'number') return estimatedMinutes
+  return Math.max(0, Math.min(estimatedMinutes, override))
 }
 
 interface BookingSummary {

@@ -40,6 +40,16 @@ function computeWeeklyHours(
   return total
 }
 
+function dayDiff(start: string, end: string): number {
+  const startMs = new Date(`${start}T00:00:00.000Z`).getTime()
+  const endMs = new Date(`${end}T00:00:00.000Z`).getTime()
+  return Math.round((endMs - startMs) / 86_400_000)
+}
+
+function roadmapWeeks(startDate: string, deadline: string): number {
+  return Math.max(1, Math.ceil(Math.max(0, dayDiff(startDate, deadline)) / 7))
+}
+
 export async function commitReplan(options: CommitReplanOptions): Promise<void> {
   const {
     events, roadmapCreatedAt, logEvent, today,
@@ -72,7 +82,7 @@ export async function commitReplan(options: CommitReplanOptions): Promise<void> 
     materialIds,
     materialDurationOverrides: overrides,
     slots: undefined,
-    weeks: 0,
+    weeks: roadmapWeeks(entry.payload.startDate, deadline),
     option: 'edit',
   }
 

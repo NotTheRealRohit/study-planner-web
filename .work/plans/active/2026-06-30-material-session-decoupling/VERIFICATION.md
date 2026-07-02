@@ -258,12 +258,12 @@ No correctness defects found in the code itself — `sessionsCount === completed
 
 ---
 
-## Phase 7 — Replan window · Status: 🟡 Implemented locally; awaiting review
+## Phase 7 — Replan window · Status: 🟡 Rework implemented locally; awaiting reviewer re-check
 
 **Acceptance criteria** (contract `mocks/proposed/replan.html` / D-09/D22)
 - [x] `Replan.tsx` no longer renders `SchedulePreview` or calls `replanRoadmap`/`mapToRegenerateRequest` (slot-regen retired).
 - [x] Levers = extend-deadline presets · hours/day stepper + study-day chips · per-material **shorten stepper + × drop** · "Keep current" = accept later finish; layout = split levers + sticky outcome (matches mock).
-- [x] Live projected finish via `projectFinish` (P6) updates as levers change (**provisional**).
+- [x] Live projected finish updates as levers change (**provisional**): current-pace baseline still uses `projectFinish`; capacity/material levers use a capacity-aware analytic projection.
 - [x] Commit emits `RoadmapReplanned` with new **capacity+deadline+`materialIds`+`materialDurationOverrides`** (no slots) + `BookingCleared` (old future bookings) + `SessionBooked` (new bookings from `generateBookings`); dropped materials removed from `materialIds`; "Keep current" emits nothing.
 - [x] No `/v1/roadmap/regenerate` call in the replan path.
 - [x] `pnpm --filter app typecheck` + `pnpm --filter app test -- Replan` green; Playwright authored (not run).
@@ -279,8 +279,22 @@ No correctness defects found in the code itself — `sessionsCount === completed
   4. **`Replan.test.tsx` mocks `commitReplan`** and verifies the correct arguments are passed (rather than letting the real `commitReplan` run and checking emitted events). This avoids the complex calendar-date dependency on `generateBookings` for what are interaction-state tests. `commitReplan.test.ts` separately covers the full emit sequence.
 - Self-check: `pnpm --filter app typecheck` passed; `pnpm --filter app test` passed (58 files / 504 tests, all green); `pnpm lint` passed (0 errors, 4 pre-existing warnings); `grep -n "SchedulePreview\|mapToRegenerateRequest" apps/app/src/pages/Replan.tsx` returned nothing; `grep -n "projectFinish\|RoadmapReplanned" apps/app/src/pages/Replan.tsx apps/app/src/roadmap/replan/commitReplan.ts` shows both present; Playwright listing confirmed 2 new replan specs discoverable.
 
-**Reviewer findings:** _( … )_
-**Resolution:** _( … )_
+**Reviewer findings (2026-07-02, Cowork senior review — read against `31feaa2`):** **Status: 🔁 Changes requested**
+- [x] Slot regeneration is retired: no `SchedulePreview`, `replanRoadmap`, `mapToRegenerateRequest`, or `/v1/roadmap/regenerate` in the live replan path.
+- [x] `commitReplan` emits `RoadmapReplanned` + future `BookingCleared` + regenerated `SessionBooked`; dropped materials are removed from `materialIds`; "Keep current" emits nothing.
+- [ ] **F1 blocking:** capacity lever was mis-initialized because `useLiveQuery` is async (`replanData` is null on first render), and there was no resync effect. Applying without touching could shrink the plan to the fallback 1h/Mon. Capacity was also inert: live finish did not receive hours/day or study-day inputs.
+- [ ] **F2 blocking:** `materialDurationOverrides` was emitted but not consumed on read. Roadmap ETA, directory totals, and remaining minutes could revert to original `MaterialAdded.estimatedDuration` after a shorten replan.
+- [ ] **F3 minor:** `commitReplan` wrote `weeks: 0`, making the calendar header show `N materials · 0 weeks`.
+- [~] **F4 note:** preview remains analytic-only, so the temporary replan preview can differ from the roadmap page's GP ETA card. This is a known preview-basis tradeoff, not a slot-regen regression.
+
+**Resolution (rework 2026-07-02):**
+- F1 fixed in `apps/app/src/pages/Replan.tsx`: capacity levers hydrate from async `replanData` once per active roadmap without clobbering edits, and live finish now uses levered capacity (`hoursPerDay`, `selectedDays`) plus demonstrated throughput (`activeMinutes / (materialConsumedMinutes ?? plannedMinutes)`) to project a capacity-aware finish.
+- F2 fixed in `apps/app/src/progress/mapEvents.ts` and `apps/app/src/roadmap/roadmapProgress.ts`: roadmap-scoped material mappings and no-slot progress summaries apply `materialDurationOverrides`, so shortened materials reduce effective material totals/remaining on read.
+- F2 preservation fixed in `Replan.tsx`: an existing active `materialDurationOverrides` entry is carried forward on apply even when the user does not touch that material again.
+- F3 fixed in `apps/app/src/roadmap/replan/commitReplan.ts`: `weeks` is recomputed from `entry.payload.startDate` to the new deadline instead of hard-coded `0`.
+- Regression tests added/updated: async capacity hydration, capacity lever finish movement, override preservation, override read-path mapping, no-slot progress totals, and replanned weeks.
+- Verification: `pnpm --filter app test -- Replan mapEvents roadmapProgress commitReplan` passed (`58` files / `509` tests); `pnpm --filter app typecheck` passed; `pnpm lint` passed with `0` errors and `4` pre-existing warnings in YouTube adapter/API-loader tests; `git diff --check` passed.
+- Status: rework implemented locally; awaiting Cowork reviewer re-check. Not self-marking Phase 7 verified.
 
 ---
 

@@ -70,6 +70,7 @@ describe('commitReplan', () => {
     expect(payload.selectedStudyDays).toEqual(['Mon', 'Wed', 'Fri'])
     expect(payload.materialIds).toEqual(['mat-1', 'mat-2'])
     expect(payload.slots).toBeUndefined()
+    expect(payload.weeks).toBe(6)
   })
 
   it('clears all future bookings before emitting new ones', async () => {
