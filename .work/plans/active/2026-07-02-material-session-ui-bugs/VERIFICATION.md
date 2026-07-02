@@ -68,36 +68,62 @@ Cross-cutting invariants (must hold at every phase):
 
 ---
 
-## Phase 3 — Mobile add-session entry point (BUG-2) · Status: ☐ Not started
+## Phase 3 — Mobile add-session entry point (BUG-2) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `CalendarCell` `canOpenDay` no longer requires `bubbles.length > 0`, so empty in-month days are tappable at ≤560px (D-03).
-- [ ] Empty compact-day buttons use a neutral aria-label such as `Open <date> day options`; they do not claim empty days already have sessions.
-- [ ] `DaySheet` gains `onAddSession?`/`canAddSession?`, renders an empty-state line when no bubbles, and a `+ Add session` button that calls `onAddSession(day.date)`; hidden when `!canAddSession` (readOnly).
-- [ ] `RoadmapCalendar` passes `onAddSession` (closes DaySheet, opens AddSessionSheet with that date) + `canAddSession={!readOnly}`; the existing `handleCreateBooking` still emits `SessionBooked`.
-- [ ] `RoadmapCalendar.test.tsx` has a configurable `useMatchMedia` mock and proves the compact add path (open empty day → Add → AddSessionSheet → create) plus readOnly hides Add. Playwright authored (not run) with viewport width below 560px.
-- [ ] `pnpm --filter @study-tracker/app typecheck` + `test -- RoadmapCalendar DaySheet` green.
+- [x] `CalendarCell` `canOpenDay` no longer requires `bubbles.length > 0`, so empty in-month days are tappable at ≤560px (D-03).
+- [x] Empty compact-day buttons use a neutral aria-label such as `Open <date> day options`; they do not claim empty days already have sessions.
+- [x] `DaySheet` gains `onAddSession?`/`canAddSession?`, renders an empty-state line when no bubbles, and a `+ Add session` button that calls `onAddSession(day.date)`; hidden when `!canAddSession` (readOnly).
+- [x] `RoadmapCalendar` passes `onAddSession` (closes DaySheet, opens AddSessionSheet with that date) + `canAddSession={!readOnly}`; the existing `handleCreateBooking` still emits `SessionBooked`.
+- [x] `RoadmapCalendar.test.tsx` has a configurable `useMatchMedia` mock and proves the compact add path (open empty day → Add → AddSessionSheet → create) plus readOnly hides Add. Playwright authored (not run) with viewport width below 560px.
+- [x] `pnpm --filter @study-tracker/app typecheck` + `test -- RoadmapCalendar DaySheet` green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-02
+- Files changed: `apps/app/src/roadmap/CalendarCell.tsx`, `apps/app/src/roadmap/DaySheet.tsx`, `apps/app/src/roadmap/RoadmapCalendar.tsx`, `apps/app/src/roadmap/roadmap.css`, `apps/app/src/roadmap/RoadmapCalendar.test.tsx`, `e2e/material-session-decoupling.spec.ts`.
+- Implemented the compact empty-day `DaySheet` path and reused the existing `AddSessionSheet` and `SessionBooked` writer.
+- Added the read-only compact day-sheet assertion and the compact add-session unit flow.
+- Authored the compact empty-day Playwright case in `e2e/material-session-decoupling.spec.ts`; it was not run per plan.
+- Verification:
+  - `grep -n "onAddSession" apps/app/src/roadmap/DaySheet.tsx apps/app/src/roadmap/RoadmapCalendar.tsx` found the new props and wiring.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - `pnpm --filter @study-tracker/app test -- CalendarCell RoadmapCalendar Step3Preview calendarModel` passed with 58 files and 515 tests.
+- Deviations: the focused test command was broader than the phase minimum because Phase 4 was implemented in the same user-requested batch.
+- Commit SHA: `3c8d869`.
 
 **Reviewer findings:** _(pending)_
 
 ---
 
-## Phase 4 — Study-day indicator + onboarding preview legibility (BUG-4) · Status: ☐ Not started
+## Phase 4 — Study-day indicator + onboarding preview legibility (BUG-4) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria** (visual contract `mocks/proposed/study-day-indicator.html`)
-- [ ] Shared `.roadmap-day-studyday` moss-8% tint added; today/current-week overrides keep their fills on overlap (D-04).
-- [ ] CSS order/specificity makes today keep `--cal-today-fill` even when the same cell is also a current-week study day.
-- [ ] Study-day tint applied to in-month cells in **both** `RoadmapCalendar` (via `day.isInMonth && isStudyDay(date, roadmap.selectedStudyDays)`) and `Step3Preview` (via `day.isInMonth && isStudyDay(date, state.selectedStudyDays)`); outside-month filler cells are not tinted.
-- [ ] Study-day weekday headers emphasized; a "Study day" legend entry added to both legends.
-- [ ] `isStudyDay` uses the repo's UTC ISO-date weekday convention and is unit-tested with known dates (correct `DayOfWeek` for known dates).
-- [ ] Onboarding session bubble recolored `roadmap-chip-done` → `roadmap-chip-booked` with `title` + `aria-label`.
-- [ ] Onboarding booked-session legend swatch no longer implies completed green/done semantics after the bubble moves to booked-outline styling.
-- [ ] Hover-lift (`.roadmap-day-in-month:hover`) scoped OFF inside `.onboarding-mini-calendar`; cursor default there.
-- [ ] Matches the approved mock; `pnpm --filter @study-tracker/app typecheck` + `test -- CalendarCell RoadmapCalendar Step3Preview calendarModel` green.
+- [x] Shared `.roadmap-day-studyday` moss-8% tint added; today/current-week overrides keep their fills on overlap (D-04).
+- [x] CSS order/specificity makes today keep `--cal-today-fill` even when the same cell is also a current-week study day.
+- [x] Study-day tint applied to in-month cells in **both** `RoadmapCalendar` (via `day.isInMonth && isStudyDay(date, roadmap.selectedStudyDays)`) and `Step3Preview` (via `day.isInMonth && isStudyDay(date, state.selectedStudyDays)`); outside-month filler cells are not tinted.
+- [x] Study-day weekday headers emphasized; a "Study day" legend entry added to both legends.
+- [x] `isStudyDay` uses the repo's UTC ISO-date weekday convention and is unit-tested with known dates (correct `DayOfWeek` for known dates).
+- [x] Onboarding session bubble recolored `roadmap-chip-done` → `roadmap-chip-booked` with `title` + `aria-label`.
+- [x] Onboarding booked-session legend swatch no longer implies completed green/done semantics after the bubble moves to booked-outline styling.
+- [x] Hover-lift (`.roadmap-day-in-month:hover`) scoped OFF inside `.onboarding-mini-calendar`; cursor default there.
+- [x] Matches the approved mock; `pnpm --filter @study-tracker/app typecheck` + `test -- CalendarCell RoadmapCalendar Step3Preview calendarModel` green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-02
+- Files changed: `apps/app/src/roadmap/calendarModel.ts`, `apps/app/src/roadmap/calendarModel.test.ts`, `apps/app/src/roadmap/CalendarCell.tsx`, `apps/app/src/roadmap/RoadmapCalendar.tsx`, `apps/app/src/roadmap/RoadmapCalendar.test.tsx`, `apps/app/src/roadmap/roadmap.css`, `apps/app/src/onboarding/steps/Step3Preview.tsx`, `apps/app/src/onboarding/steps/Step3Preview.test.tsx`, `apps/app/src/onboarding/onboarding.css`, `e2e/material-session-decoupling.spec.ts`.
+- Added shared UTC ISO-date weekday helpers and tests for `2026-07-06` -> `Mon`, `2026-07-07` -> `Tue`, and `2026-07-12` -> `Sun`.
+- Restored `selectedStudyDays`, `weekdayHours`, and `weekendHours` in `RoadmapCalendar`'s local `roadmapInputFromPayload` adapter because the plan assumed `roadmap.selectedStudyDays` was already available.
+- Applied the moss study-day tint to in-month cells only on both calendar surfaces.
+- Added study-day header emphasis and legend entries.
+- Recolored onboarding preview bookings to booked-outline styling with `title` and `aria-label`.
+- Updated onboarding booked and study-day swatches so future bookings no longer read as completed green.
+- Scoped the hover-lift off inside `.onboarding-mini-calendar`.
+- Authored the onboarding preview Playwright case in `e2e/material-session-decoupling.spec.ts`; it was not run per plan.
+- Verification:
+  - `grep -n "roadmap-day-studyday" apps/app/src/roadmap/roadmap.css apps/app/src/roadmap/CalendarCell.tsx apps/app/src/onboarding/steps/Step3Preview.tsx` found the shared class in CSS and both render paths.
+  - `grep -n "roadmap-chip-booked" apps/app/src/onboarding/steps/Step3Preview.tsx` found the preview chip recolor.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - `pnpm --filter @study-tracker/app test -- CalendarCell RoadmapCalendar Step3Preview calendarModel` passed with 58 files and 515 tests.
+- Deviations: restored the local `RoadmapCalendar` adapter fields that the plan expected to already be present.
+- Commit SHA: `3c8d869`.
 
 **Reviewer findings:** _(pending)_
 

@@ -334,7 +334,7 @@ Restore the three original rule bodies.
 
 ### Phase 3: Add-session entry point on the <560px calendar (BUG-2)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - `3c8d869`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~3 files, ~40 lines
 
@@ -428,13 +428,20 @@ pnpm --filter @study-tracker/app typecheck && pnpm --filter @study-tracker/app t
 Revert the four edits; the mobile empty-day button returns to disabled.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Implemented compact empty-day entry by changing `CalendarCell` to open every in-month compact cell and use neutral `day options` labels for empty days.
+- Extended `DaySheet` with `canAddSession` and `onAddSession`, an empty-state line, and a `+ Add session` action.
+- Wired `RoadmapCalendar` so the day sheet closes before opening the existing `AddSessionSheet` for the selected date.
+- Added sheet spacing styles for the empty state and add action.
+- Updated `RoadmapCalendar.test.tsx` with a configurable compact viewport mock, compact add-session coverage, and read-only hidden-add coverage.
+- Authored the compact empty-day Playwright case in `e2e/material-session-decoupling.spec.ts`; it was not run per plan.
+- Verification passed: `grep -n "onAddSession" apps/app/src/roadmap/DaySheet.tsx apps/app/src/roadmap/RoadmapCalendar.tsx`, `pnpm --filter @study-tracker/app typecheck`, and `pnpm --filter @study-tracker/app test -- CalendarCell RoadmapCalendar Step3Preview calendarModel`.
+- Commit SHA: `3c8d869`.
 
 ---
 
 ### Phase 4: Study-day indicator across all calendars + onboarding preview legibility (BUG-4)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - `3c8d869`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~5 files, ~80 lines. **Visual contract:** [`mocks/proposed/study-day-indicator.html`](./mocks/proposed/study-day-indicator.html).
 
@@ -517,7 +524,18 @@ pnpm --filter @study-tracker/app typecheck && pnpm --filter @study-tracker/app t
 Revert the CSS additions + the `isStudyDay` wiring + the Step3Preview chip recolor.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Added shared UTC weekday helpers in `calendarModel.ts` and unit coverage for known ISO dates.
+- Restored `selectedStudyDays`, `weekdayHours`, and `weekendHours` in `RoadmapCalendar`'s local `roadmapInputFromPayload` adapter because the plan assumed `roadmap.selectedStudyDays` was available and the payload/type already carried it.
+- Added `roadmap-day-studyday` to in-month roadmap and onboarding preview cells only.
+- Added study-day weekday header emphasis and Study day legend entries in both calendars.
+- Added moss-8% tint CSS with today/current-week override ordering matching the approved mock.
+- Recolored onboarding preview bookings from `roadmap-chip-done` to `roadmap-chip-booked` with `title` and `aria-label`.
+- Updated onboarding booked and study-day swatches so future bookings no longer read as completed green.
+- Scoped hover-lift off inside `.onboarding-mini-calendar` and set the preview calendar cursor to default.
+- Updated `RoadmapCalendar.test.tsx`, `calendarModel.test.ts`, and `Step3Preview.test.tsx`.
+- Authored the onboarding preview Playwright case in `e2e/material-session-decoupling.spec.ts`; it was not run per plan.
+- Verification passed: `grep -n "roadmap-day-studyday" ...`, `grep -n "roadmap-chip-booked" apps/app/src/onboarding/steps/Step3Preview.tsx`, `pnpm --filter @study-tracker/app typecheck`, and `pnpm --filter @study-tracker/app test -- CalendarCell RoadmapCalendar Step3Preview calendarModel`.
+- Commit SHA: `3c8d869`.
 
 ---
 
