@@ -4,7 +4,8 @@ _Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T20:39_
 
 ## Now
 Phase 1 and Phase 2 are implemented and awaiting reviewer pass.
-The current work is final hygiene: commit the scoped files and report the result.
+Implementation commit `0268f20` and journal update commit `5c5ba44` are complete.
+Next action is reviewer pass on Phases 1-2, then Phase 3.
 
 ## Alignment
 Still aligned with the plan.
@@ -45,12 +46,8 @@ No event model, intelligence math, routing basename, or Python code is in scope.
 - [x] Commit scoped Phase 1 and Phase 2 files.
 
 ## In-flight edits
-- `apps/app/src/pages/Roadmaps.tsx`: duplicate `Edit & add` link removed and verified.
-- `apps/app/src/pages/Roadmaps.test.tsx`: duplicate-link assertion removed and suite verified.
-- `apps/app/src/roadmap/roadmap.css`: `.bk-overlay` centered, `.bk-sheet` made rounded and scroll-guarded, `.bk-grip` hidden and visually checked.
-- `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`: Phase 1 and Phase 2 status and notes updated.
-- `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`: Phase 1 and Phase 2 reports filled with implementation commit `0268f20`, reviewer findings pending.
-- `.work/STATUS.md`: active row updated through work-journal.
+- none.
+  Phase 1 and Phase 2 code changes are committed in `0268f20`; `.work` SHA correction is committed in `5c5ba44`.
 
 ## Decisions in force
 - D-01: keep one `Open plan` action in the Roadmaps hero.
