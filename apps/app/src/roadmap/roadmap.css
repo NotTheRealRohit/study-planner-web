@@ -401,6 +401,11 @@
   text-transform: uppercase;
 }
 
+.roadmap-weekday.roadmap-weekday-studyday {
+  color: var(--moss);
+  font-weight: 600;
+}
+
 .roadmap-week-row + .roadmap-week-row {
   border-top: var(--border-width-hair) solid var(--border-subtle);
 }
@@ -442,7 +447,20 @@
   background: var(--cal-week-band);
 }
 
+.roadmap-day-studyday {
+  background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
+}
+
+.roadmap-day-current-week.roadmap-day-studyday {
+  background: color-mix(in srgb, var(--moss) 8%, var(--cal-week-band));
+}
+
 .roadmap-day-today {
+  background: var(--cal-today-fill);
+}
+
+.roadmap-day-today.roadmap-day-studyday,
+.roadmap-day-today.roadmap-day-current-week.roadmap-day-studyday {
   background: var(--cal-today-fill);
 }
 
@@ -587,6 +605,11 @@
   color: var(--text-secondary);
   background: var(--surface-card);
   border: 1.4px solid var(--border-strong);
+}
+
+.roadmap-legend-swatch.roadmap-studyday-swatch {
+  background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--moss) 32%, var(--surface-card));
 }
 
 .roadmap-booking-blank {
@@ -1238,6 +1261,16 @@
   margin-top: var(--space-4);
 }
 
+.roadmap-day-sheet-empty {
+  margin: var(--space-4) 0 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.roadmap-day-sheet-add {
+  margin-top: var(--space-3);
+}
+
 .roadmap-day-sheet-row {
   width: 100%;
   display: grid;
@@ -1720,6 +1753,16 @@
     z-index: var(--z-raised);
     box-shadow: var(--shadow-md);
   }
+
+  .onboarding-mini-calendar .roadmap-day-in-month:hover {
+    transform: none;
+    z-index: auto;
+    box-shadow: none;
+  }
+}
+
+.onboarding-mini-calendar .roadmap-day {
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -12,6 +12,7 @@ interface CalendarCellProps {
   onDayClick?: (day: BoundCalendarDay) => void
   onAddSessionClick?: (date: string) => void
   canAddSession?: boolean
+  isStudyDay?: boolean
 }
 
 function StatusIcon({ name }: { name: StatusIconName }) {
@@ -66,18 +67,20 @@ export function CalendarCell({
   onDayClick = () => undefined,
   onAddSessionClick = () => undefined,
   canAddSession = false,
+  isStudyDay = false,
 }: CalendarCellProps) {
   const isCompact = useMatchMedia('(max-width: 560px)')
   const visibleBubbles = day.bubbles.slice(0, 3)
   const hiddenCount = Math.max(0, day.bubbles.length - visibleBubbles.length)
   const dotBubbles = day.bubbles.slice(0, 4)
-  const canOpenDay = isCompact && day.isInMonth && day.bubbles.length > 0
+  const canOpenDay = isCompact && day.isInMonth
   const showAddSession = canAddSession && day.isInMonth && day.bubbles.length === 0
   const classes = [
     'roadmap-day',
     day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
     isCurrentWeek && 'roadmap-day-current-week',
     isToday && 'roadmap-day-today',
+    isStudyDay && 'roadmap-day-studyday',
     isDeadline && 'roadmap-day-deadline',
     isCompact && 'roadmap-day-compact',
     canOpenDay && 'roadmap-day-tappable',
@@ -108,7 +111,7 @@ export function CalendarCell({
           className="roadmap-mobile-day-button"
           disabled={!canOpenDay}
           onClick={() => onDayClick(day)}
-          aria-label={`Open ${day.date} sessions`}
+          aria-label={day.bubbles.length > 0 ? `Open ${day.date} sessions` : `Open ${day.date} day options`}
         >
           <span className="roadmap-mobile-dot-stack" aria-hidden="true">
             {dotBubbles.map((bubble) => {

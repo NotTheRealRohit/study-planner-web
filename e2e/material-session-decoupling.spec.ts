@@ -263,6 +263,21 @@ test.describe('Material/session decoupling', () => {
     await expect(page.getByText('Rest day')).not.toBeVisible();
   });
 
+  test('Onboarding 3 preview shows study-day tint and booked-style session chip', async ({ page }) => {
+    const email = testEmail('decoupled-onboarding-studyday');
+    const password = 'TestPassword123!';
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await seedOnboardingDraft(page);
+
+    await page.goto(`${APP_URL}/study/onboarding/3?new=1`);
+    await page.getByText('Projected finish').click();
+
+    await expect(page.locator('.onboarding-mini-calendar .roadmap-day-studyday').first()).toBeVisible();
+    await expect(page.locator('.onboarding-mini-calendar .roadmap-chip-booked').first()).toBeVisible();
+    await expect(page.getByText('study day')).toBeVisible();
+  });
+
   test('Home starts at pre-session, then interrupt logs partial progress', async ({ page }) => {
     const email = testEmail('decoupled-session');
     const password = 'TestPassword123!';
@@ -392,6 +407,34 @@ test.describe('Material/session decoupling', () => {
       event.payload.source === 'directory',
     )).toBeTruthy();
     expect(events.some((event) => event.kind === 'SessionLogged')).toBeFalsy();
+  });
+
+  test('Roadmap compact calendar can add a booking from an empty day sheet', async ({ page }) => {
+    const email = testEmail('decoupled-roadmap-compact-add');
+    const password = 'TestPassword123!';
+    await createTestUser(email, password);
+    await signIn(page, email, password);
+    await seedEvents(page, roadmapBookingEvents());
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto(`${APP_URL}/study/roadmap`);
+    await page
+      .locator('.roadmap-day-in-month .roadmap-mobile-day-button[aria-label*="day options"]')
+      .first()
+      .click();
+    await expect(page.getByRole('dialog', { name: 'Roadmap day sheet' })).toBeVisible();
+    await page.getByRole('button', { name: '+ Add session' }).click();
+
+    const addDialog = page.getByRole('dialog', { name: 'Add session' });
+    await expect(addDialog).toBeVisible();
+    await addDialog.getByRole('button', { name: 'Add session' }).click();
+
+    const events = await readStoredEvents(page);
+    expect(events.some((event) =>
+      event.kind === 'SessionBooked' &&
+      event.payload.bookingId !== 'booking-editable' &&
+      typeof event.payload.date === 'string',
+    )).toBeTruthy();
   });
 
   test('Replan levers UI: extend deadline → emit RoadmapReplanned with no slots + BookingCleared + SessionBooked', async ({ page }) => {

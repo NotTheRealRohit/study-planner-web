@@ -5,6 +5,8 @@ import {
   buildMonthGrid,
   calendarMonthBounds,
   clampMonth,
+  dayOfWeekForISODate,
+  isStudyDay,
   shiftMonth,
 } from './calendarModel'
 
@@ -149,5 +151,17 @@ describe('calendarModel', () => {
     expect(shiftMonth('2026-03', -1, bounds)).toBe('2026-03')
     expect(shiftMonth('2026-03', 1, bounds)).toBe('2026-04')
     expect(shiftMonth('2026-05', 1, bounds)).toBe('2026-05')
+  })
+
+  it('maps ISO dates to UTC study-day names', () => {
+    expect(dayOfWeekForISODate('2026-07-06')).toBe('Mon')
+    expect(dayOfWeekForISODate('2026-07-07')).toBe('Tue')
+    expect(dayOfWeekForISODate('2026-07-12')).toBe('Sun')
+  })
+
+  it('matches selected study days without local-time drift', () => {
+    expect(isStudyDay('2026-07-06', ['Mon', 'Wed'])).toBe(true)
+    expect(isStudyDay('2026-07-07', ['Mon', 'Wed'])).toBe(false)
+    expect(isStudyDay('2026-07-12', undefined)).toBe(false)
   })
 })

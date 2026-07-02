@@ -25,6 +25,7 @@ import {
   buildMonthGrid,
   calendarMonthBounds,
   clampMonth,
+  isStudyDay,
   monthKeyForDate,
   monthKeyToDate,
   shiftMonth,
@@ -89,6 +90,9 @@ function roadmapInputFromPayload(payload: RoadmapCreatedPayload): RoadmapInput {
     deadline: payload.deadline,
     weeks: payload.weeks,
     weeklyHours: payload.weeklyHours,
+    selectedStudyDays: payload.selectedStudyDays,
+    weekdayHours: payload.weekdayHours,
+    weekendHours: payload.weekendHours,
     slots: slots.map((slot) => ({
       date: slot.date,
       dayOfWeek: slot.dayOfWeek,
@@ -283,6 +287,7 @@ export function RoadmapCalendar({
   const purpose = roadmapPayload?.purpose
   const title = purpose ? purpose : 'Active roadmap'
   const dateRange = formatDateRange(roadmap.startDate, roadmap.deadline)
+  const studyDays = roadmap.selectedStudyDays ?? []
   const handleMonthChange = (
     nextMonth: string,
     direction: 'prev' | 'next' | 'today',
@@ -469,6 +474,10 @@ export function RoadmapCalendar({
           onChange={handleMonthChange}
         />
         <div className="roadmap-legend" aria-label="Roadmap status legend">
+          <span className="roadmap-legend-item">
+            <span className="roadmap-legend-swatch roadmap-studyday-swatch" aria-hidden="true" />
+            Study day
+          </span>
           {LEGEND_ITEMS.map((item) => (
             <span key={item.status} className="roadmap-legend-item">
               <span
@@ -492,7 +501,11 @@ export function RoadmapCalendar({
       >
         <div className="roadmap-weekdays" role="row">
           {WEEKDAY_LABELS.map((label) => (
-            <div key={label} className="roadmap-weekday" role="columnheader">
+            <div
+              key={label}
+              className={`roadmap-weekday${studyDays.includes(label) ? ' roadmap-weekday-studyday' : ''}`}
+              role="columnheader"
+            >
               {label}
             </div>
           ))}
@@ -515,6 +528,7 @@ export function RoadmapCalendar({
                     isToday={day.date === today}
                     isDeadline={day.date === roadmap.deadline && day.isInMonth}
                     isCurrentWeek={isCurrentWeek}
+                    isStudyDay={day.isInMonth && isStudyDay(day.date, studyDays)}
                     onBubbleClick={handleCalendarBubbleSelect}
                     onOverflowClick={handleOverflowSelect}
                     onDayClick={handleMobileDaySelect}
@@ -626,6 +640,11 @@ export function RoadmapCalendar({
         day={selectedSheetDay}
         onClose={() => setSelectedSheetDay(null)}
         onSelectBubble={handleDayBubbleSelect}
+        canAddSession={!readOnly}
+        onAddSession={(date) => {
+          setSelectedSheetDay(null)
+          setAddSessionDate(date)
+        }}
       />
       <SessionDetailModal
         bubble={selectedBubble}

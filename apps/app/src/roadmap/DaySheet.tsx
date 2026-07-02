@@ -7,6 +7,8 @@ interface DaySheetProps {
   day: BoundCalendarDay | null
   onClose: () => void
   onSelectBubble: (bubble: CalendarBubble) => void
+  onAddSession?: (date: string) => void
+  canAddSession?: boolean
 }
 
 function formatDate(date: string): string {
@@ -21,7 +23,13 @@ function formatMinutes(minutes: number): string {
   return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
 }
 
-export function DaySheet({ day, onClose, onSelectBubble }: DaySheetProps) {
+export function DaySheet({
+  day,
+  onClose,
+  onSelectBubble,
+  onAddSession,
+  canAddSession = false,
+}: DaySheetProps) {
   if (!day) return null
 
   return (
@@ -70,6 +78,18 @@ export function DaySheet({ day, onClose, onSelectBubble }: DaySheetProps) {
           )
         })}
       </div>
+      {day.bubbles.length === 0 && (
+        <p className="roadmap-day-sheet-empty">No sessions booked for this day.</p>
+      )}
+      {canAddSession && onAddSession && (
+        <button
+          type="button"
+          className="btn btn-accent btn-block roadmap-day-sheet-add"
+          onClick={() => onAddSession(day.date)}
+        >
+          + Add session
+        </button>
+      )}
     </section>
   )
 }

@@ -67,6 +67,17 @@ export interface BoundMonthGrid {
   weeks: BoundCalendarDay[][]
 }
 
+const STUDY_DAY_BY_INDEX = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+export function dayOfWeekForISODate(dateISO: string): string {
+  return STUDY_DAY_BY_INDEX[new Date(`${dateISO}T00:00:00.000Z`).getUTCDay()]
+}
+
+export function isStudyDay(dateISO: string, studyDays: readonly string[] | undefined): boolean {
+  if (!studyDays?.length) return false
+  return studyDays.includes(dayOfWeekForISODate(dateISO))
+}
+
 function toDate(monthDate: string | Date): Date {
   return typeof monthDate === 'string' ? parseISO(monthDate) : monthDate
 }

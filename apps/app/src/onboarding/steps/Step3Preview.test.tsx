@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, vi, beforeAll, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { Step3Preview } from './Step3Preview'
@@ -104,7 +104,12 @@ describe('Step3Preview', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     testDb = await createTestEventStore()
-    await testDb.table('onboardingDraft').clear()
+    await Promise.all([
+      testDb.table('events').clear(),
+      testDb.table('sync_queue').clear(),
+      testDb.table('sync_meta').clear(),
+      testDb.table('onboardingDraft').clear(),
+    ])
 
     logEventMock = vi.fn().mockResolvedValue(1)
     getAllMock = vi.fn().mockResolvedValue([])
@@ -124,6 +129,10 @@ describe('Step3Preview', () => {
 
     const { generateBookings } = await import('@study-tracker/roadmap-engine')
     vi.mocked(generateBookings).mockReturnValue(mockBookingResult())
+  })
+
+  afterEach(() => {
+    testDb.close()
   })
 
   function renderPreview(initialEntry = '/onboarding/3/preview') {
@@ -173,6 +182,29 @@ describe('Step3Preview', () => {
 
     expect(finishToggle).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getAllByText('Session').length).toBeGreaterThan(0)
+  })
+
+  it('uses booked preview styling and study-day indicators in the calendar', async () => {
+    await seedOnboardingState(testDb)
+
+    const { container } = renderPreview()
+
+    await waitFor(() => {
+      expect(screen.getByText('Calendar')).toBeInTheDocument()
+    })
+
+    const finishToggle = screen.getByText('Projected finish').closest('[role="button"]')
+    expect(finishToggle).not.toBeNull()
+    fireEvent.click(finishToggle!)
+
+    const bookedChip = container.querySelector('[aria-label^="Booked study session"]')
+    expect(bookedChip).not.toBeNull()
+    expect(bookedChip).toHaveClass('roadmap-chip-booked')
+    expect(bookedChip).not.toHaveClass('roadmap-chip-done')
+    expect(bookedChip?.getAttribute('title')).toContain('Booked study session')
+    expect(container.querySelector('.onboarding-mini-calendar .roadmap-day-studyday')).not.toBeNull()
+    expect(screen.getByText('study day')).toBeInTheDocument()
+    expect(screen.getByText('booked session')).toBeInTheDocument()
   })
 
   it('committing emits materials, no-slot roadmap, generated bookings, then onboarding completion in order', async () => {

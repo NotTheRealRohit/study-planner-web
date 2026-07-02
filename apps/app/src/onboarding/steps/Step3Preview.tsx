@@ -21,12 +21,13 @@ import {
   buildMonthGrid,
   calendarMonthBounds,
   clampMonth,
+  isStudyDay,
   monthKeyForDate,
   shiftMonth,
 } from '../../roadmap/calendarModel'
 import { useOnboardingNavigate } from '../useOnboardingNavigate'
 
-const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0]
@@ -317,7 +318,13 @@ export function Step3Preview() {
         <div className="roadmap-calendar-shell onboarding-mini-calendar" aria-label={`${calendar.monthLabel} booked sessions`}>
           <div className="roadmap-weekdays" role="row">
             {WEEKDAY_LABELS.map((label) => (
-              <div key={label} className="roadmap-weekday" role="columnheader">{label}</div>
+              <div
+                key={label}
+                className={`roadmap-weekday${state.selectedStudyDays.includes(label) ? ' roadmap-weekday-studyday' : ''}`}
+                role="columnheader"
+              >
+                {label}
+              </div>
             ))}
           </div>
           <div role="grid">
@@ -326,6 +333,7 @@ export function Step3Preview() {
                 {week.map((day) => {
                   const dayBookings = bookingsForDate.get(day.date) ?? []
                   const isDeadline = day.date === state.deadline && day.isInMonth
+                  const studyDay = day.isInMonth && isStudyDay(day.date, state.selectedStudyDays)
                   return (
                     <div
                       key={day.date}
@@ -333,6 +341,7 @@ export function Step3Preview() {
                         'roadmap-day',
                         day.isInMonth ? 'roadmap-day-in-month' : 'roadmap-day-outside',
                         day.date === startDate && 'roadmap-day-today',
+                        studyDay && 'roadmap-day-studyday',
                         isDeadline && 'roadmap-day-deadline',
                       ].filter(Boolean).join(' ')}
                       role="gridcell"
@@ -345,20 +354,25 @@ export function Step3Preview() {
                         </span>
                       </div>
                       <div className="roadmap-bubble-stack">
-                        {dayBookings.map((booking) => (
-                          <div
-                            key={booking.id}
-                            className="roadmap-bubble roadmap-chip-done"
-                            data-status="booked"
-                          >
-                            <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
-                              <circle cx="12" cy="12" r="8" />
-                              <path d="M12 8v5l3 2" />
-                            </svg>
-                            <span className="roadmap-bubble-label">Session</span>
-                            <span className="roadmap-bubble-minutes">{formatMinutes(booking.estimatedDuration)}</span>
-                          </div>
-                        ))}
+                        {dayBookings.map((booking) => {
+                          const bookedLabel = `Booked study session · ${formatMinutes(booking.estimatedDuration)} · ${format(parseISO(booking.date), 'EEE, MMM d')}`
+                          return (
+                            <div
+                              key={booking.id}
+                              className="roadmap-bubble roadmap-chip-booked"
+                              data-status="booked"
+                              title={bookedLabel}
+                              aria-label={bookedLabel}
+                            >
+                              <svg className="icon icon-sm" viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="8" />
+                                <path d="M12 8v5l3 2" />
+                              </svg>
+                              <span className="roadmap-bubble-label">Session</span>
+                              <span className="roadmap-bubble-minutes">{formatMinutes(booking.estimatedDuration)}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )
@@ -368,6 +382,7 @@ export function Step3Preview() {
           </div>
         </div>
         <div className="cal-legend">
+          <span><span className="cal-swatch studyday" />study day</span>
           <span><span className="cal-swatch booked" />booked session</span>
           <span><span className="cal-swatch today" />today</span>
           <span><span className="cal-swatch deadline" />deadline</span>

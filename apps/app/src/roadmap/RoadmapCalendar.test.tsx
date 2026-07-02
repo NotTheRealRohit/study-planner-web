@@ -10,6 +10,8 @@ const mockState = vi.hoisted(() => ({
   logEvent: vi.fn(),
 }))
 
+const mockViewport = vi.hoisted(() => ({ isCompact: false }))
+
 vi.mock('../events/useEventStore', () => ({
   useEventStore: () => ({
     getAll: vi.fn().mockResolvedValue(mockState.events),
@@ -34,7 +36,7 @@ vi.mock('../progress', () => ({
 }))
 
 vi.mock('../lib/useMatchMedia', () => ({
-  useMatchMedia: () => false,
+  useMatchMedia: () => mockViewport.isCompact,
 }))
 
 function roadmapPayload(overrides: Partial<RoadmapCreatedPayload> = {}): RoadmapCreatedPayload {
@@ -132,6 +134,7 @@ describe('RoadmapCalendar booking interactions', () => {
     mockState.events = baseEvents()
     mockState.logEvent.mockReset()
     mockState.logEvent.mockResolvedValue(1)
+    mockViewport.isCompact = false
   })
 
   it('renders booking statuses instead of slot statuses', () => {
@@ -198,6 +201,58 @@ describe('RoadmapCalendar booking interactions', () => {
         materialId: 'mat-2',
       }))
     })
+  })
+
+  it('adds a session from a compact empty day sheet', async () => {
+    mockViewport.isCompact = true
+    const { container } = renderCalendar()
+
+    const emptyDay = container.querySelector('[data-date="2099-06-01"]')
+    expect(emptyDay).not.toBeNull()
+    fireEvent.click(within(emptyDay as HTMLElement).getByRole('button', { name: 'Open 2099-06-01 day options' }))
+
+    expect(screen.getByRole('dialog', { name: 'Roadmap day sheet' })).toBeInTheDocument()
+    expect(screen.getByText('No sessions booked for this day.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Add session' }))
+
+    expect(screen.queryByRole('dialog', { name: 'Roadmap day sheet' })).not.toBeInTheDocument()
+    const addDialog = screen.getByRole('dialog', { name: 'Add session' })
+    expect(within(addDialog).getByText('Mon, Jun 1')).toBeInTheDocument()
+
+    fireEvent.click(within(addDialog).getByRole('button', { name: 'Add session' }))
+
+    await waitFor(() => {
+      expect(mockState.logEvent).toHaveBeenCalledWith('SessionBooked', expect.objectContaining({
+        roadmapCreatedAt: '2026-05-01T09:00:00.000Z',
+        date: '2099-06-01',
+        estimatedDuration: 60,
+      }))
+    })
+  })
+
+  it('hides compact day-sheet add action in read-only mode', () => {
+    mockViewport.isCompact = true
+    const { container } = renderHistoricalCalendar()
+
+    const emptyDay = container.querySelector('[data-date="2099-06-01"]')
+    expect(emptyDay).not.toBeNull()
+    fireEvent.click(within(emptyDay as HTMLElement).getByRole('button', { name: 'Open 2099-06-01 day options' }))
+
+    expect(screen.getByRole('dialog', { name: 'Roadmap day sheet' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '+ Add session' })).not.toBeInTheDocument()
+  })
+
+  it('marks in-month study days and legend without tinting outside-month fillers', () => {
+    const { container } = renderCalendar()
+
+    expect(screen.getByText('Study day')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Mon' })).toHaveClass('roadmap-weekday-studyday')
+    expect(screen.getByRole('columnheader', { name: 'Tue' })).not.toHaveClass('roadmap-weekday-studyday')
+
+    expect(container.querySelector('[data-date="2099-06-01"]')).toHaveClass('roadmap-day-studyday')
+    expect(container.querySelector('[data-date="2099-06-02"]')).not.toHaveClass('roadmap-day-studyday')
+    expect(container.querySelector('[data-date="2099-07-01"]')).not.toHaveClass('roadmap-day-studyday')
   })
 
   it('marks material progress without emitting SessionLogged', async () => {
