@@ -20,8 +20,8 @@ export default defineConfig({
       timeout: 120000,
     },
     {
-      command: 'pnpm --filter @study-tracker/app dev',
-      url: 'http://localhost:5173',
+      command: 'pnpm dev:full',
+      url: 'http://localhost:5173/study/sign-in',
       reuseExistingServer: !process.env.CI,
       timeout: 120000,
     },

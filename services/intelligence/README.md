@@ -46,7 +46,21 @@ SUPABASE_JWT_SECRET=<project JWT secret> \
 Health check:
 
 ```bash
-curl -s http://localhost:8000/health
+curl -s http://127.0.0.1:8000/health
+```
+
+For full-stack browser testing, start the Vite app with the intelligence service:
+
+```bash
+pnpm dev:full
+```
+
+This binds the intelligence service to `127.0.0.1:8000` and starts the app at
+`http://localhost:5173/study/`. If the app does not start, first check that port
+`8000` is not already occupied by another local dev server:
+
+```bash
+lsof -nP -iTCP:8000 -sTCP:LISTEN
 ```
 
 ## Run with Docker Compose
@@ -59,7 +73,7 @@ SUPABASE_JWT_SECRET=<project JWT secret> \
   docker compose up --build -d
 ```
 
-The service listens on `http://localhost:8000`. Stop it with:
+The service listens on `http://127.0.0.1:8000`. Stop it with:
 
 ```bash
 docker compose down
@@ -95,13 +109,13 @@ AUTH_HEADER="Authorization: Bearer <supabase access token>"
 Health:
 
 ```bash
-curl -s http://localhost:8000/health
+curl -s http://127.0.0.1:8000/health
 ```
 
 Calibration:
 
 ```bash
-curl -s -X POST http://localhost:8000/v1/calibration \
+curl -s -X POST http://127.0.0.1:8000/v1/calibration \
   -H 'Content-Type: application/json' \
   -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/compute-calibration-empty.input.json
@@ -110,7 +124,7 @@ curl -s -X POST http://localhost:8000/v1/calibration \
 Calibration prompt detail:
 
 ```bash
-curl -s -X POST http://localhost:8000/v1/calibration/prompt-detail \
+curl -s -X POST http://127.0.0.1:8000/v1/calibration/prompt-detail \
   -H 'Content-Type: application/json' \
   -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/get-prompt-detail-empty.input.json
@@ -119,7 +133,7 @@ curl -s -X POST http://localhost:8000/v1/calibration/prompt-detail \
 Progress:
 
 ```bash
-curl -s -X POST http://localhost:8000/v1/progress \
+curl -s -X POST http://127.0.0.1:8000/v1/progress \
   -H 'Content-Type: application/json' \
   -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/progress/compute-progress-full-snapshot.input.json
@@ -128,7 +142,7 @@ curl -s -X POST http://localhost:8000/v1/progress \
 Roadmap generation:
 
 ```bash
-curl -s -X POST http://localhost:8000/v1/roadmap/generate \
+curl -s -X POST http://127.0.0.1:8000/v1/roadmap/generate \
   -H 'Content-Type: application/json' \
   -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/roadmap/generate-roadmap-ddia-600-min.input.json
@@ -137,7 +151,7 @@ curl -s -X POST http://localhost:8000/v1/roadmap/generate \
 Roadmap regeneration:
 
 ```bash
-curl -s -X POST http://localhost:8000/v1/roadmap/regenerate \
+curl -s -X POST http://127.0.0.1:8000/v1/roadmap/regenerate \
   -H 'Content-Type: application/json' \
   -H "$AUTH_HEADER" \
   -d @tests/fixtures/pillar-a/roadmap/regenerate-preserves-pins.input.json

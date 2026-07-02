@@ -11,7 +11,7 @@
     "build:marketing": "pnpm --filter @study-tracker/marketing build",
     "build:app": "pnpm --filter @study-tracker/app build",
     "dev:intelligence": "node scripts/dev-intelligence.mjs",
-    "dev:full": "concurrently -k -n intel,app -c magenta,blue \"pnpm dev:intelligence\" \"wait-on http-get://localhost:8000/health && pnpm dev:app\"",
+    "dev:full": "./full-app start full",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm -r run typecheck"

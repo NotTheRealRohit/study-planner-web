@@ -9,6 +9,7 @@ dist/
 .svelte-kit/
 .vercel/
 .output/
+.dev/
 test-results/
 .claude/settings.local.json
 # code-memory: agent-only index, do not commit
