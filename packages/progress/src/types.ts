@@ -153,6 +153,8 @@ export interface BurnUpData {
   actual: CumulativePoint[]
   gpCurve: GPPoint[]
   today: string
+  startDate?: string
+  deadline?: string
   deficit: number
   dayNumber: number
   totalDays: number

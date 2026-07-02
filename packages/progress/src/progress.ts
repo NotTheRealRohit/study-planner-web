@@ -44,6 +44,40 @@ function buildPlannedCumulative(slots: RoadmapSlot[]): CumulativePoint[] {
   })
 }
 
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+
+function hasCapacityFields(roadmap: RoadmapInput): roadmap is RoadmapInput & {
+  selectedStudyDays: string[]
+  weekdayHours: number
+  weekendHours: number
+} {
+  return Array.isArray(roadmap.selectedStudyDays) &&
+    roadmap.selectedStudyDays.length > 0 &&
+    typeof roadmap.weekdayHours === 'number' &&
+    typeof roadmap.weekendHours === 'number'
+}
+
+function capacityForStudyDay(day: string, roadmap: { weekdayHours: number; weekendHours: number }): number {
+  const hours = day === 'Sat' || day === 'Sun' ? roadmap.weekendHours : roadmap.weekdayHours
+  return Math.round(Math.max(0, hours) * 60)
+}
+
+function buildPlannedCumulativeFromCapacity(roadmap: RoadmapInput): CumulativePoint[] {
+  if (!hasCapacityFields(roadmap)) return buildPlannedCumulative(roadmap.slots)
+
+  let cumulative = 0
+  const planned: CumulativePoint[] = []
+  for (let date = roadmap.startDate; date <= roadmap.deadline; date = addDaysISO(date, 1)) {
+    const day = DAY_NAMES[new Date(`${date}T00:00:00.000Z`).getUTCDay()]
+    if (!roadmap.selectedStudyDays.includes(day)) continue
+
+    cumulative += capacityForStudyDay(day, roadmap)
+    planned.push({ date, minutes: cumulative })
+  }
+
+  return planned.length > 0 ? planned : buildPlannedCumulative(roadmap.slots)
+}
+
 function buildActualCumulative(sessions: SessionEvent[]): CumulativePoint[] {
   const dailyActual = new Map<string, number>()
   for (const session of sessions) {
@@ -142,7 +176,7 @@ function computeWeeklyStats(
 
 function dayNameForISO(date: string): string {
   const day = new Date(`${date}T00:00:00.000Z`).getUTCDay()
-  return (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const)[day]
+  return DAY_NAMES[day]
 }
 
 function addDaysISO(date: string, days: number): string {
@@ -213,7 +247,7 @@ export function computeProgress(
   )
 
   // Burn-up
-  const plannedCumulative = buildPlannedCumulative(roadmap.slots)
+  const plannedCumulative = buildPlannedCumulativeFromCapacity(roadmap)
   const actualCumulative = buildActualCumulative(sessions)
 
   const gpCurve = fitBurnUpGP(
@@ -255,6 +289,8 @@ export function computeProgress(
     actual: actualCumulative,
     gpCurve,
     today,
+    startDate: roadmap.startDate,
+    deadline: roadmap.deadline,
     deficit: lastActual - lastPlanned,
     dayNumber,
     totalDays,

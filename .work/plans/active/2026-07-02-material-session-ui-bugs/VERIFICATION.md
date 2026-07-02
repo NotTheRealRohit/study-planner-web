@@ -129,28 +129,74 @@ Cross-cutting invariants (must hold at every phase):
 
 ---
 
-## Phase 5 — Burn-up chart fix (BUG-5) · Status: ☐ Not started
+## Phase 5 — Burn-up chart fix (BUG-5) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `progress.ts` builds `burnUp.planned` from **booking-capacity semantics** over `startDate..deadline`, not `roadmap.slots`: each selected Mon-Fri adds `weekdayHours * 60`, each selected Sat-Sun adds `weekendHours * 60`; `deficit` recomputed off it; missing capacity fields or empty `selectedStudyDays` fall back without crashing (D-05).
-- [ ] `BurnUpData` carries optional `startDate`/`deadline` domain hints populated by `computeProgress`; app mocks are not forced to update unless needed.
-- [ ] `BurnUpChart.minutesToLabel` shows h+m (`45m`, `1h 30m`, `2h`), and explicit tick values prevent duplicate y-axis labels.
-- [ ] `BurnUpChart` exports pure helpers for x-domain, y-domain, tick values, labels, and empty-state detection; helper tests cover the degenerate-domain and bounded-GP-upper cases.
-- [ ] Degenerate/empty data renders "Log a session to see your burn-up" before `ParentSize`, so the component test does not depend on responsive SVG layout.
-- [ ] X-domain spans at least `[startDate, deadline]` or the derived `today/dayNumber/totalDays` fallback so x-ticks are distinct dates.
-- [ ] GP band/mean use `curveMonotoneX` (no overshoot); y-domain is based on planned/actual/GP mean with only bounded GP-upper headroom.
-- [ ] Week's existing low-data gate is preserved unless explicitly widened; any Week visual Playwright check seeds at least three actual data points.
-- [ ] `progress.test.ts` covers the booking-capacity planned baseline + fallback; `BurnUpChart.test.tsx` covers labels/ticks/domain/y-domain/empty state; `pnpm --filter @study-tracker/progress test` + app typecheck green.
+- [x] `progress.ts` builds `burnUp.planned` from **booking-capacity semantics** over `startDate..deadline`, not `roadmap.slots`: each selected Mon-Fri adds `weekdayHours * 60`, each selected Sat-Sun adds `weekendHours * 60`; `deficit` recomputed off it; missing capacity fields or empty `selectedStudyDays` fall back without crashing (D-05).
+- [x] `BurnUpData` carries optional `startDate`/`deadline` domain hints populated by `computeProgress`; app mocks are not forced to update unless needed.
+- [x] `BurnUpChart.minutesToLabel` shows h+m (`45m`, `1h 30m`, `2h`), and explicit tick values prevent duplicate y-axis labels.
+- [x] `BurnUpChart` exports pure helpers for x-domain, y-domain, tick values, labels, and empty-state detection; helper tests cover the degenerate-domain and bounded-GP-upper cases.
+- [x] Degenerate/empty data renders "Log a session to see your burn-up" before `ParentSize`, so the component test does not depend on responsive SVG layout.
+- [x] X-domain spans at least `[startDate, deadline]` or the derived `today/dayNumber/totalDays` fallback so x-ticks are distinct dates.
+- [x] GP band/mean use `curveMonotoneX` (no overshoot); y-domain is based on planned/actual/GP mean with only bounded GP-upper headroom.
+- [x] Week's existing low-data gate is preserved unless explicitly widened; any Week visual Playwright check seeds at least three actual data points.
+- [x] `progress.test.ts` covers the booking-capacity planned baseline + fallback; `BurnUpChart.test.tsx` covers labels/ticks/domain/y-domain/empty state; `pnpm --filter @study-tracker/progress test` + app typecheck green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-02
+- Started Phase 5 after prereq verification passed.
+- Prereq verification:
+  - `grep -n "buildPlannedCumulative\|burnUp\b\|deficit" packages/progress/src/progress.ts` found the expected legacy slot-based burn-up path.
+  - `grep -n "minutesToLabel\|curveBasis\|allMinutes\|allDates" apps/app/src/components/BurnUpChart.tsx` found the expected old formatter, domain, y-domain, and curve usage.
+  - `pnpm --filter @study-tracker/progress test` passed with 13 files and 95 tests.
+- Phase 6 note: `PLAN.md` defines Phases 1-5 only, followed by a final gate.
+  Treat the user's requested Phase 6 as the final gate after Phase 5 unless Rohit supplies a separate Phase 6 plan.
+- Files changed: `packages/progress/src/types.ts`, `packages/progress/src/progress.ts`, `packages/progress/test/progress.test.ts`, `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`.
+- Implemented the D-05 capacity-shaped planned burn-up baseline with slot fallback for legacy/incomplete inputs.
+- Populated optional `burnUp.startDate` and `burnUp.deadline` from `computeProgress`.
+- Added tests for booking-capacity planned points, slot fallback, and deficit against the capacity baseline.
+- Exported BurnUpChart helpers for minute labels, tick values, x-domain, y-domain, and empty-state detection.
+- Added helper/component tests for h+m labels, sparse and degenerate date domains, bounded GP-upper headroom, high-range tick readability, and pre-`ParentSize` empty state.
+- Switched GP band and mean from `curveBasis` to `curveMonotoneX`.
+- Preserved the Week page's existing low-data gate.
+- Visual verification:
+  - `./full-app status full` showed `intelligence` and `app` healthy.
+  - `curl -i http://127.0.0.1:8000/health` returned 200.
+  - `curl -i http://localhost:5173/study/sign-in` returned 200.
+  - Browser probe of `/study/chart-test` rendered a nonblank 798x280 SVG with five paths.
+  - Initial visual pass found the plan's sample tick helper made the 58h y-axis too dense.
+  - Final browser probe showed visible y labels were sparse and unique: `0m`, `10h`, `20h`, `30h`, `40h`, `50h`, `58h`.
+  - Screenshot saved during verification: `/private/tmp/study-planner-burnup-chart.png`.
+- Verification:
+  - `grep -n "buildPlannedCumulativeFromCapacity\|startDate" packages/progress/src/progress.ts packages/progress/src/types.ts` found the new capacity helper and domain hints.
+  - `grep -n "curveMonotoneX\|buildMinuteTickValues" apps/app/src/components/BurnUpChart.tsx` found the monotone curves and tick helper.
+  - `pnpm --filter @study-tracker/progress test` passed with 13 files and 98 tests.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - `pnpm --filter @study-tracker/app test -- BurnUpChart Week` passed with 59 files and 522 tests before the high-range tick test, then `pnpm --filter @study-tracker/app test -- BurnUpChart` passed with 59 files and 523 tests after the tick-density fix.
+- Final-gate probe treated as the requested Phase 6:
+  - `pnpm lint` exited 0 with four pre-existing app warnings in `YouTubePlayerAdapter.test.ts` and `loadYouTubeApi.ts`.
+  - `pnpm typecheck` passed.
+  - `pnpm --filter @study-tracker/app test` passed with 59 files and 523 tests.
+  - `pnpm --filter @study-tracker/progress test` passed with 13 files and 98 tests.
+- Deviations:
+  - Adjusted the plan's sample `buildMinuteTickValues` step selection after visual review because the literal helper produced a dense 2h y-axis on a 58h chart.
+    The implemented helper targets roughly six intervals, preserves low-range 30-minute labels, keeps explicit unique ticks, and includes the exact max label.
+  - Visual verification used the existing unauthenticated `/study/chart-test` BurnUpChart surface instead of an authenticated Week flow because the real Week route depends on authenticated EventStore state.
+    Week's low-data rendering gate remains covered by unit tests.
+- Commit SHA: pending.
 
 **Reviewer findings:** _(pending)_
 
 ---
 
 ## Final gate (after all phases ✅ Verified)
-- [ ] `pnpm lint && pnpm typecheck` clean across touched packages.
-- [ ] `pnpm --filter @study-tracker/app test` + `pnpm --filter @study-tracker/progress test` green.
-- [ ] Visual confirmation of BUG-1/BUG-2/BUG-4 on desktop + ≤560px; BUG-5 burn-up renders sensibly with real data.
-- [ ] E2E authored for BUG-2/BUG-4 (run on a capable machine before calling the whole plan done).
-- [ ] OQ-01 (4d back-exit) still open, tracked.
+- [~] `pnpm lint && pnpm typecheck` clean across touched packages.
+  Pre-review probe passed both commands on 2026-07-02.
+  `pnpm lint` exits 0 with four pre-existing `any` warnings in YouTube session files.
+- [x] `pnpm --filter @study-tracker/app test` + `pnpm --filter @study-tracker/progress test` green.
+- [~] Visual confirmation of BUG-1/BUG-2/BUG-4 on desktop + ≤560px; BUG-5 burn-up renders sensibly with real data.
+  BUG-1/BUG-2/BUG-4 visual evidence is recorded in earlier phase reports.
+  BUG-5 was visually confirmed on `/study/chart-test` with a nonblank chart, sparse unique y-axis labels, monotone GP line/band, and readable planned/actual lines.
+  Authenticated Week real-data visual confirmation remains for reviewer or capable E2E pass.
+- [~] E2E authored for BUG-2/BUG-4 (run on a capable machine before calling the whole plan done).
+  Authored in earlier phases and intentionally not run per plan.
+- [x] OQ-01 (4d back-exit) still open, tracked.

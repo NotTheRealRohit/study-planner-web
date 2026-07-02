@@ -167,6 +167,68 @@ describe('computeProgress', () => {
     expect(result.burnUp.deficit).toBeLessThan(0)
   })
 
+  it('uses booking-capacity semantics for the burn-up planned baseline', () => {
+    const roadmap: RoadmapInput = {
+      ...makeRoadmap([makeSlot('2026-07-06', 15)]),
+      startDate: '2026-07-06',
+      deadline: '2026-07-12',
+      selectedStudyDays: ['Mon', 'Wed', 'Sat'],
+      weekdayHours: 2,
+      weekendHours: 3,
+    }
+
+    const result = computeProgress([], roadmap, defaultCalibration(), '2026-07-12')
+
+    expect(result.burnUp.planned).toEqual([
+      { date: '2026-07-06', minutes: 120 },
+      { date: '2026-07-08', minutes: 240 },
+      { date: '2026-07-11', minutes: 420 },
+    ])
+    expect(result.burnUp.startDate).toBe('2026-07-06')
+    expect(result.burnUp.deadline).toBe('2026-07-12')
+  })
+
+  it('falls back to slot-based burn-up planning when capacity fields are missing', () => {
+    const roadmap: RoadmapInput = {
+      ...makeRoadmap([
+        makeSlot('2026-07-06', 30),
+        makeSlot('2026-07-08', 45),
+      ]),
+      selectedStudyDays: [],
+    }
+
+    const result = computeProgress([], roadmap, defaultCalibration(), '2026-07-08')
+
+    expect(result.burnUp.planned).toEqual([
+      { date: '2026-07-06', minutes: 30 },
+      { date: '2026-07-08', minutes: 75 },
+    ])
+  })
+
+  it('computes burn-up deficit from the capacity-based planned baseline', () => {
+    const roadmap: RoadmapInput = {
+      ...makeRoadmap([makeSlot('2026-07-06', 15)]),
+      startDate: '2026-07-06',
+      deadline: '2026-07-12',
+      selectedStudyDays: ['Mon', 'Wed', 'Sat'],
+      weekdayHours: 2,
+      weekendHours: 3,
+    }
+    const sessions = [
+      makeSession({ date: '2026-07-06', duration: 120, sessionId: 's-1' }),
+      makeSession({ date: '2026-07-08', duration: 60, sessionId: 's-2' }),
+    ]
+
+    const result = computeProgress(
+      sessions,
+      roadmap,
+      defaultCalibration(),
+      '2026-07-08',
+    )
+
+    expect(result.burnUp.deficit).toBe(-60)
+  })
+
   it('includes GP curve in burn-up', () => {
     const slots = Array.from({ length: 14 }, (_, i) =>
       makeSlot(`2026-01-${String(i + 1).padStart(2, '0')}`, 60),

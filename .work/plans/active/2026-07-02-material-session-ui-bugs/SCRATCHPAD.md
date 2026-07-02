@@ -1,72 +1,88 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T21:18_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T21:33_
 
 ## Now
-Phase 3 and Phase 4 are implemented in code commit `3c8d869` and documented for reviewer pass.
-Current work is complete for this handoff.
-Next action is reviewer pass on Phases 1-4, then Phase 5.
+Phase 5 is implemented and awaiting review.
+The plan has no Phase 6, so the requested Phase 6 was handled as a pre-review final-gate probe.
+Current work is `.work` finalization and a scoped Phase 5 commit.
 
 ## Alignment
 Still aligned with the plan.
-The planning bundle is already committed in `754efa9`, satisfying the plan's Step 0 baseline.
-Phase 3 prereq greps matched current source.
-Phase 4 prereq greps found the expected CSS and onboarding chip state, and confirmed `selectedStudyDays` in `Step3Preview`.
-`RoadmapCalendar.tsx` currently omits `selectedStudyDays` from its local `roadmapInputFromPayload` adapter even though `RoadmapCreatedPayload` and `RoadmapInput` both carry the field.
-Restoring that adapter field is treated as the planned `roadmap.selectedStudyDays` availability, not a design change.
+Phases 1-4 are implemented and awaiting reviewer pass.
+Rohit explicitly asked to start Phases 5 and 6, so this session proceeds into Phase 5 despite the previous scratchpad's reviewer-pass next action.
+`PLAN.md` has only Phases 1-5 plus a final gate.
+The requested Phase 6 is interpreted as the final gate after Phase 5 unless a separate Phase 6 plan appears.
+Phase 5 prereq greps matched the expected legacy burn-up implementation.
+`pnpm --filter @study-tracker/progress test` passed before Phase 5 edits.
+The Phase 5 red tests failed for the intended reasons, then passed after the implementation.
+Focused verification passed: progress test suite, app typecheck, and `BurnUpChart Week` app tests.
+The pre-review final gate passed: lint exits 0 with pre-existing warnings, full typecheck passed, app tests passed, and progress tests passed.
+Browser visual inspection found and fixed an overly dense y-axis tick design from the plan's sample helper.
+The final browser probe of `/study/chart-test` showed sparse unique visible y labels and a nonblank 798x280 chart.
 No event model, intelligence math, routing basename, or Python code is in scope.
+Unrelated dirty rule/doc files and `_perm_test.txt` are present before this session and must not be touched or staged.
 
 ## Open
 - Reviewer still needs to pass Phases 1-4.
+- Reviewer still needs to pass Phases 1-5.
+- Authenticated Week real-data visual confirmation remains for reviewer or a capable E2E pass.
 
 ## Blockers
 - none
 
 ## Deferrals
 - BUG-4d: back-to-`/roadmaps` exit for re-entrant onboarding remains deferred.
-  Trigger: picking up Phase 4 or any re-entrant onboarding work.
+  Trigger: picking up re-entrant onboarding UX work.
 - Cleaner `.modal-overlay` and `.modal-card` consolidation remains deferred.
   Trigger: a follow-up modal consistency pass after the targeted `.bk-*` fix.
 - Full Phase-5-port responsive-rule sweep remains deferred.
-  Trigger: broader roadmap CSS audit, not Phase 1 or Phase 2.
+  Trigger: broader roadmap CSS audit, not this targeted burn-up fix.
 
 ## Checklist
 - [x] Read `.work/README.md` and `.work/STATUS.md`.
 - [x] Read `PLAN.md`, `VERIFICATION.md`, and this scratchpad.
-- [x] Read applicable local rules: `css-workspace-packages`, `form-design-spacing`, `roadmap-engine`, `playwright-config`, and `playwright-full-app-lifecycle`.
+- [x] Read applicable local rules: `css-workspace-packages`, `form-design-spacing`, `roadmap-engine`, `playwright-config`, `playwright-full-app-lifecycle`, and `dexie-test-setup`.
 - [x] Consult code memory and global memory for the material-session workflow.
-- [x] Run Phase 3 prereq greps.
-- [x] Run Phase 4 prereq greps and inspect the `RoadmapCalendar` adapter drift.
-- [x] Mark Phase 3 and Phase 4 in progress in `VERIFICATION.md`.
-- [x] Implement Phase 3 mobile empty-day DaySheet add flow.
-- [x] Implement Phase 4 study-day tint, legends, weekday headers, and onboarding booked chip.
-- [x] Add or update unit tests for Phase 3 and Phase 4.
-- [x] Author required Playwright cases without running E2E.
-- [x] Run plan-required Vitest/typecheck commands.
-- [x] Fill Phase 3 and Phase 4 implementer reports.
-- [x] Update `.work/STATUS.md` through work-journal.
-- [x] Commit `.work` journal updates.
+- [x] Confirm the plan has no Phase 6 section.
+- [x] Run Phase 5 prereq greps.
+- [x] Run Phase 5 baseline `pnpm --filter @study-tracker/progress test`.
+- [x] Mark Phase 5 in progress in `PLAN.md` and `VERIFICATION.md`.
+- [x] Add progress-package tests for capacity-based planned baseline, fallback, and deficit.
+- [x] Implement capacity-based planned baseline and burn-up domain hints.
+- [x] Add app chart helper tests and empty-state coverage.
+- [x] Implement BurnUpChart helper exports, deterministic ticks, guarded domains, y-domain bounding, monotone GP curves, and empty state.
+- [x] Run Phase 5 verification commands.
+- [x] Fill Phase 5 implementer report.
+- [x] Run final gate checks as the Phase-6-like step requested by Rohit.
+- [ ] Update `.work/STATUS.md` through work-journal.
+- [ ] Commit scoped Phase 5 code and `.work` updates.
 
 ## In-flight edits
-- none.
-  Code/test/E2E changes are committed in `3c8d869`.
-  `.work` journal updates are committed in the current docs commit.
+- `packages/progress/src/types.ts`: `BurnUpData` now carries optional `startDate` and `deadline`.
+- `packages/progress/src/progress.ts`: burn-up planned baseline now uses capacity-shaped booking semantics when capacity fields exist, with slot fallback.
+- `packages/progress/test/progress.test.ts`: capacity baseline, fallback, and deficit tests added.
+- `apps/app/src/components/BurnUpChart.tsx`: exported helpers, UTC date-domain guard, deterministic ticks, bounded y-domain, monotone GP curves, and empty state added.
+- `apps/app/src/components/BurnUpChart.test.tsx`: helper and empty-state tests added.
+- `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`, `VERIFICATION.md`, `SCRATCHPAD.md`, and `.work/STATUS.md`: Phase 5 and final-gate tracking.
 
 ## Decisions in force
-- D-03: compact calendar empty in-month days open `DaySheet`, and `DaySheet` owns the mobile add-session action.
-- D-04: study-day tint applies to all calendars, but only in-month cells get tinted.
-- D-04: onboarding preview uses booked styling, tooltips, a study-day legend, and no read-only hover lift.
-- Reuse existing Marginalia tokens and local CSS conventions.
-- Do not implement Phase 5 in this pass.
-- Do not touch `_perm_test.txt`; it is unrelated dirty work.
+- D-05: keep burn-up rendering client-side.
+- D-05: planned burn-up baseline mirrors booking capacity by selected study day, using full weekday/weekend hours per selected day.
+- D-05: do not use legacy slot-grid splitting for the fixed product burn-up chart.
+- `BurnUpData.startDate` and `BurnUpData.deadline` remain optional.
+- Week's low-data gate stays in place.
+- E2E specs may be authored but not run.
+- Reuse existing Marginalia palette and chart restraint; spend the UI change on clarity, not a new visual identity.
+- Design deviation in force: high-range tick values target roughly six readable intervals rather than the plan's literal 2h step for large domains.
+- Do not touch unrelated dirty rule/doc files or `_perm_test.txt`.
 
 ## Resolved (recent)
 - Planning handoff state superseded by implementation state for Phase 1 and Phase 2.
-- Phase prereqs confirmed: both duplicate links were present, and `.bk-overlay` used `align-items: flex-end`.
-- Phase 1 verification passed: duplicate link removed, focused test command passed, app typecheck passed.
-- Phase 2 verification passed: CSS guards present, focused browser geometry check passed, app typecheck passed.
-- Scoped implementation commit created: `0268f20`.
-- Phase 3 prereqs confirmed: compact cell gating, view-only DaySheet, and existing AddSessionSheet state are present.
-- Phase 4 adapter drift resolved as an implementation note: payload/type support exists, but `RoadmapCalendar` currently drops the fields locally.
-- Phase 3 verification passed: `onAddSession` greps, app typecheck, and focused app test command.
-- Phase 4 verification passed: `roadmap-day-studyday` greps, `roadmap-chip-booked` grep, app typecheck, and focused app test command.
+- Phase 1 verification passed and commit `0268f20` exists.
+- Phase 2 verification passed and commit `0268f20` exists.
+- Phase 3 verification passed and commit `3c8d869` exists.
+- Phase 4 verification passed and commit `3c8d869` exists.
+- Phase 5 prereq verification passed before edits.
+- Phase 5 focused verification passed after implementation.
+- Final-gate probe passed after the tick-density visual fix.

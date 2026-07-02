@@ -4,8 +4,8 @@ import { AreaClosed, LinePath, Line } from '@visx/shape';
 import { AxisBottom, AxisLeft } from '@visx/axis';
 import { Group } from '@visx/group';
 import { ParentSize } from '@visx/responsive';
-import { curveStepAfter, curveBasis, curveMonotoneX } from '@visx/curve';
-import { format, parseISO } from 'date-fns';
+import { curveStepAfter, curveMonotoneX } from '@visx/curve';
+import { format } from 'date-fns';
 
 import type { BurnUpData } from '@study-tracker/progress';
 
@@ -31,9 +31,77 @@ const C = {
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
-function minutesToLabel(m: number): string {
-  const h = Math.floor(m / 60);
-  return `${h}h`;
+export function minutesToLabel(minutes: number): string {
+  const safe = Math.max(0, Math.round(minutes));
+  const h = Math.floor(safe / 60);
+  const min = safe % 60;
+  if (h === 0) return `${min}m`;
+  return min === 0 ? `${h}h` : `${h}h ${min}m`;
+}
+
+export function buildMinuteTickValues(maxMinutes: number): number[] {
+  const max = Math.max(60, Math.ceil(maxMinutes / 30) * 30);
+  const targetGap = max / 6;
+  const step = [30, 60, 120, 180, 240, 360, 480, 600, 720].find((value) => value >= targetGap) ?? 720;
+  const ticks: number[] = [];
+  for (let value = 0; value <= max; value += step) ticks.push(value);
+  if (ticks[ticks.length - 1] !== max) ticks.push(max);
+  return [...new Set(ticks)];
+}
+
+function addDays(date: Date, days: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function parseISODateUTC(dateISO: string): Date {
+  return new Date(`${dateISO}T00:00:00.000Z`);
+}
+
+function startOfUTCDate(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+export function buildBurnUpDateDomain(
+  hints: Pick<BurnUpData, 'startDate' | 'deadline' | 'today' | 'dayNumber' | 'totalDays'>,
+  candidateDates: Date[],
+): [Date, Date] {
+  const today = parseISODateUTC(hints.today);
+  const derivedStart = addDays(today, -Math.max(0, hints.dayNumber));
+  const derivedEnd = addDays(derivedStart, Math.max(1, hints.totalDays));
+  const domainStart = hints.startDate ? parseISODateUTC(hints.startDate) : derivedStart;
+  const domainEnd = hints.deadline ? parseISODateUTC(hints.deadline) : derivedEnd;
+  const dates = [domainStart, domainEnd, ...candidateDates].map(startOfUTCDate);
+  const min = Math.min(...dates.map((date) => date.getTime()));
+  const max = Math.max(...dates.map((date) => date.getTime()));
+
+  if (min === max) {
+    return [new Date(min), addDays(new Date(max), 1)];
+  }
+
+  return [new Date(min), new Date(max)];
+}
+
+export function hasMeaningfulBurnUpData(
+  planned: BurnUpData['planned'],
+  actual: BurnUpData['actual'],
+): boolean {
+  const hasMeaningfulPlan = planned.length > 1 || planned.some((point) => point.minutes > 0);
+  return actual.length > 0 || hasMeaningfulPlan;
+}
+
+export function buildBurnUpYDomainMax(series: {
+  planned: number[];
+  actual: number[];
+  gpMean: number[];
+  gpUpper: number[];
+}): number {
+  const primaryMax = Math.max(0, ...series.planned, ...series.actual, ...series.gpMean);
+  const gpUpperMax = Math.max(0, ...series.gpUpper);
+  const boundedGpUpper = primaryMax > 0 ? Math.min(gpUpperMax, primaryMax * 1.25) : gpUpperMax;
+  const rawMax = Math.max(60, primaryMax, boundedGpUpper);
+  return Math.ceil((rawMax * 1.08) / 30) * 30;
 }
 
 function deficitLabel(deficit: number): { text: string; color: string } {
@@ -66,32 +134,37 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
   const { planned, actual, gpCurve, today } = data;
 
   /* ---- Derived data ---- */
-  const todayDate = parseISO(today);
+  const todayDate = parseISODateUTC(today);
   const isBehind = data.deficit < 0;
   const accentColor = isBehind ? C.rust : C.moss;
 
   const plannedParsed = useMemo(
-    () => planned.map((d) => ({ date: parseISO(d.date), minutes: d.minutes })),
+    () => planned.map((d) => ({ date: parseISODateUTC(d.date), minutes: d.minutes })),
     [planned],
   );
   const actualParsed = useMemo(
-    () => actual.map((d) => ({ date: parseISO(d.date), minutes: d.minutes })),
+    () => actual.map((d) => ({ date: parseISODateUTC(d.date), minutes: d.minutes })),
     [actual],
   );
   const gpParsed = useMemo(
-    () => gpCurve.map((d) => ({ date: parseISO(d.date), mean: d.mean, lower: d.lower, upper: d.upper })),
+    () => gpCurve.map((d) => ({ date: parseISODateUTC(d.date), mean: d.mean, lower: d.lower, upper: d.upper })),
     [gpCurve],
   );
 
   /* ---- Scales ---- */
   const allDates = [
     ...plannedParsed.map((d) => d.date),
+    ...actualParsed.map((d) => d.date),
     ...gpParsed.map((d) => d.date),
   ];
-  const allMinutes = [
-    ...plannedParsed.map((d) => d.minutes),
-    ...gpParsed.map((d) => d.upper),
-  ];
+  const dateDomain = buildBurnUpDateDomain(data, allDates);
+  const yDomainMax = buildBurnUpYDomainMax({
+    planned: plannedParsed.map((d) => d.minutes),
+    actual: actualParsed.map((d) => d.minutes),
+    gpMean: gpParsed.map((d) => d.mean),
+    gpUpper: gpParsed.map((d) => d.upper),
+  });
+  const minuteTickValues = buildMinuteTickValues(yDomainMax);
 
   const xMax = width - MARGIN.left - MARGIN.right;
   const yMax = height - MARGIN.top - MARGIN.bottom;
@@ -99,23 +172,20 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
   const xScale = useMemo(
     () =>
       scaleTime<number>({
-        domain: [
-          new Date(Math.min(...allDates.map((d) => d.getTime()))),
-          new Date(Math.max(...allDates.map((d) => d.getTime()))),
-        ],
+        domain: dateDomain,
         range: [0, xMax],
       }),
-    [xMax, planned, gpCurve],
+    [xMax, dateDomain],
   );
 
   const yScale = useMemo(
     () =>
       scaleLinear<number>({
-        domain: [0, Math.max(...allMinutes) * 1.08],
+        domain: [0, yDomainMax],
         range: [yMax, 0],
         nice: true,
       }),
-    [yMax, planned, gpCurve],
+    [yMax, yDomainMax],
   );
 
   const todayX = xScale(todayDate);
@@ -182,7 +252,7 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
           yScale={yScale}
           fill={accentColor}
           opacity={0.12}
-          curve={curveBasis}
+          curve={curveMonotoneX}
         />
 
         {/* ---- Planned line (dashed staircase) ---- */}
@@ -204,7 +274,7 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
           stroke={accentColor}
           strokeWidth={1.5}
           strokeDasharray="3 3"
-          curve={curveBasis}
+          curve={curveMonotoneX}
         />
 
         {/* ---- Actual line ---- */}
@@ -273,7 +343,7 @@ function BurnUpChartInner({ data, width, height }: InnerProps) {
         />
         <AxisLeft
           scale={yScale}
-          numTicks={5}
+          tickValues={minuteTickValues}
           tickFormat={(v) => minutesToLabel(v as number)}
           stroke={C.ruleSoft}
           tickStroke={C.ruleSoft}
@@ -366,6 +436,7 @@ function Legend({ isBehind }: { isBehind: boolean }) {
 export function BurnUpChart({ data }: { data: BurnUpData }) {
   const isBehind = data.deficit < 0;
   const { text: defText, color: defColor } = deficitLabel(data.deficit);
+  const hasData = hasMeaningfulBurnUpData(data.planned, data.actual);
 
   return (
     <div
@@ -377,6 +448,38 @@ export function BurnUpChart({ data }: { data: BurnUpData }) {
         overflow: 'hidden',
       }}
     >
+      {!hasData ? (
+        <div
+          style={{
+            padding: '24px 20px',
+          }}
+        >
+          <span
+            style={{
+              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+              fontSize: 10,
+              color: 'var(--text-tertiary, #8B7B6B)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 500,
+            }}
+          >
+            Hours studied vs plan
+          </span>
+          <p
+            style={{
+              margin: '12px 0 0',
+              fontFamily: "var(--font-body, 'Inter Tight', sans-serif)",
+              fontSize: 15,
+              lineHeight: 1.5,
+              color: 'var(--text-secondary, #5C4D40)',
+            }}
+          >
+            Log a session to see your burn-up
+          </p>
+        </div>
+      ) : (
+        <>
       {/* ---- Header ---- */}
       <div
         style={{
@@ -452,6 +555,8 @@ export function BurnUpChart({ data }: { data: BurnUpData }) {
         {/* Legend */}
         <Legend isBehind={isBehind} />
       </div>
+        </>
+      )}
     </div>
   );
 }
