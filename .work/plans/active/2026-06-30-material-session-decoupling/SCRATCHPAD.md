@@ -1,14 +1,17 @@
 # Scratchpad - 2026-06-30-material-session-decoupling
-_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T08:25_
+_Plan: .work/plans/active/2026-06-30-material-session-decoupling/PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-02T09:00_
 
 ## Now
-Phase 7 review returned `Changes requested`; F1-F3 rework is implemented, verified, and committed at `6d4cc89`. Awaiting Cowork reviewer re-check.
+Phase 7 rework (`6d4cc89`) reviewed and re-checked by Cowork — **✅ Verified**. All 7 phases of the material-session-decoupling plan are now `✅ Verified`. Also fixed doc drift: `PLAN.md` phase-status lines for Phases 2/3/4/7 had fallen out of sync with `VERIFICATION.md` (Phase 3's line was mistakenly overwritten by the `6d4cc89` commit's status edit meant for Phase 7); all corrected this session.
 
 ## Alignment
 Aligned with PLAN.md Phase 7 / D-09 / D22 and the review. Slot-regeneration remains retired; `RoadmapReplanned` remains a capacity/deadline/material snapshot plus booking events, with no slots or `/v1/roadmap/regenerate` call.
 
 ## Open
-- Cowork reviewer re-check of Phase 7 rework.
+- Native side: commit this reviewer's doc updates (VERIFICATION.md, PLAN.md, STATUS.md, this file) per Step 0/Rule 3 — Cowork cannot commit.
+- Run the full `pnpm` test suite + the 2 new Phase 7 Playwright specs on a machine with registry access (this Cowork sandbox has no network route to npm registries and a pre-existing `@rollup/rollup-linux-arm64-gnu` gap, so `vitest`/`pnpm` could not be run here — reviewer corroborated via direct per-package `tsc`/`eslint` instead).
+- Non-blocking follow-up (optional): file an issue for the shorten-ceiling ratchet — a material shortened in one replan can't be lengthened back toward its original estimate in a later replan session via the UI.
+- OQ-04 (real N=1 data validation) remains open, tracked separately.
 
 ## Blockers
 - — none
@@ -46,3 +49,4 @@ Aligned with PLAN.md Phase 7 / D-09 / D22 and the review. Slot-regeneration rema
 - F1 fixed: async capacity hydration + capacity-aware finish preview.
 - F2 fixed: `materialDurationOverrides` consumed/preserved on read/apply.
 - F3 fixed: replanned `weeks` recomputed from start→deadline span.
+- **Phase 7 rework re-checked and ✅ Verified 2026-07-02** (`6d4cc89`) — F1/F2/F3 confirmed fixed by diff + manual logic trace; typecheck/lint independently reproduced; test execution not reproducible in this sandbox (pre-existing rollup arm64 gap, disclosed rather than assumed). PLAN.md status-line drift (Phases 2/3/4/7) corrected. **All 7 phases now ✅ Verified.**

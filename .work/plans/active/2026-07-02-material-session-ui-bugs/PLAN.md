@@ -349,6 +349,10 @@ grep -n "setAddSessionDate\|<DaySheet" apps/app/src/roadmap/RoadmapCalendar.tsx
    const canOpenDay = isCompact && day.isInMonth
    ```
    (Drops `&& day.bubbles.length > 0`. The dot-stack renders empty for 0 bubbles, which is fine — the tap now opens the DaySheet where Add lives.)
+   Also update the compact button's `aria-label` so empty days do not claim they already have sessions:
+   ```tsx
+   aria-label={day.bubbles.length > 0 ? `Open ${day.date} sessions` : `Open ${day.date} day options`}
+   ```
 2. **`DaySheet.tsx`:** add props and an add-session action + empty state.
    ```tsx
    interface DaySheetProps {
@@ -403,6 +407,8 @@ grep -n "setAddSessionDate\|<DaySheet" apps/app/src/roadmap/RoadmapCalendar.tsx
   Render a historical/read-only calendar with `mockViewport.isCompact = true`, open a day, and assert `+ Add session` is absent.
   Follow `.agents/rules/dexie-test-setup.agents.md` if any test starts using a real Dexie store.
 - Author (do not run) a Playwright case in `e2e/material-session-decoupling.spec.ts`: at ≤560px, open an empty day → Add session → booking appears.
+  The test must set a viewport below 560px, for example `page.setViewportSize({ width: 390, height: 844 })`, before visiting `/study/roadmap`.
+  This is required because the existing desktop booking E2E coverage never exercises the compact `DaySheet` path.
 - Run: `pnpm --filter @study-tracker/app test -- RoadmapCalendar DaySheet`
 
 #### Verification (DONE)
@@ -442,27 +448,32 @@ grep -n "roadmap-chip-done" apps/app/src/onboarding/steps/Step3Preview.tsx
 1. **`roadmap.css` — add the shared indicator** (implements D-04). Place near the other `.roadmap-day-*` rules:
    ```css
    .roadmap-day-studyday { background: color-mix(in srgb, var(--moss) 8%, var(--surface-card)); }
-   .roadmap-day-today.roadmap-day-studyday { background: var(--cal-today-fill); }
    .roadmap-day-current-week.roadmap-day-studyday { background: color-mix(in srgb, var(--moss) 8%, var(--cal-week-band)); }
+   .roadmap-day-today.roadmap-day-studyday,
+   .roadmap-day-today.roadmap-day-current-week.roadmap-day-studyday {
+     background: var(--cal-today-fill);
+   }
    .roadmap-weekday.roadmap-weekday-studyday { color: var(--moss); font-weight: 600; }
    .roadmap-legend-swatch.roadmap-studyday-swatch {
      background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
      border: 1px solid color-mix(in srgb, var(--moss) 32%, var(--surface-card));
    }
    ```
+   The order and combined today selector matter: if a date is both today and in the current week, today keeps `--cal-today-fill`.
    And **scope the hover-lift off the onboarding mini-calendar** (read-only):
    ```css
    .onboarding-mini-calendar .roadmap-day-in-month:hover { transform: none; box-shadow: none; z-index: auto; }
    .onboarding-mini-calendar .roadmap-day { cursor: default; }
    ```
 2. **Add the shared weekday helper in `apps/app/src/roadmap/calendarModel.ts`:** keep it beside the existing month-grid helpers so both `RoadmapCalendar` and `Step3Preview` import one source of truth.
-   Use `parseISO(dateISO).getDay()` to match the file's existing local-date parsing style.
-   Do not use `new Date(`${dateISO}T00:00:00`)`; that would introduce a second date convention.
+   Use the repo's UTC ISO-date weekday convention, matching `sessionPlanning.ts`, `mapEvents.ts`, and `packages/progress/src/progress.ts`.
+   Do **not** use `parseISO(dateISO).getDay()` here, because that introduces a local-time weekday convention for study-day matching.
+   Do **not** use `new Date(`${dateISO}T00:00:00`)`; that also depends on local timezone.
    ```ts
    const STUDY_DAY_BY_INDEX = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
 
    export function dayOfWeekForISODate(dateISO: string): string {
-     return STUDY_DAY_BY_INDEX[parseISO(dateISO).getDay()]
+     return STUDY_DAY_BY_INDEX[new Date(`${dateISO}T00:00:00.000Z`).getUTCDay()]
    }
 
    export function isStudyDay(dateISO: string, studyDays: readonly string[] | undefined): boolean {
@@ -471,15 +482,20 @@ grep -n "roadmap-chip-done" apps/app/src/onboarding/steps/Step3Preview.tsx
    }
    ```
    Add `calendarModel.test.ts` coverage for known dates, including `2026-07-06` → `Mon`, `2026-07-07` → `Tue`, and `2026-07-12` → `Sun`.
-3. **`CalendarCell.tsx`:** accept `isStudyDay?: boolean` and add `'roadmap-day-studyday'` to the class list when true. `RoadmapCalendar.tsx`: pass `isStudyDay={isStudyDay(day.date, roadmap.selectedStudyDays)}` when rendering each `<CalendarCell>`; add the study-day weekday-header class to the header cells whose weekday is a study day; add a **"Study day"** legend entry (static span with `roadmap-legend-swatch roadmap-studyday-swatch`) alongside the status legend.
-4. **`Step3Preview.tsx` + `onboarding.css`:** (a) add `roadmap-day-studyday` to each mini-calendar in-month cell where `isStudyDay(day.date, state.selectedStudyDays)`; (b) recolor the session bubble from `roadmap-chip-done` → `roadmap-chip-booked` and add `title` + `aria-label` (e.g. ``Booked study session · ${formatMinutes(booking.estimatedDuration)} · ${format(parseISO(booking.date),'EEE, MMM d')}``); (c) add a "study day" entry to `.cal-legend`; (d) add `.cal-swatch.studyday` in `apps/app/src/onboarding/onboarding.css` with the same moss tint as `.roadmap-studyday-swatch`; (e) the mini-calendar already has `onboarding-mini-calendar` so the Step-1 hover override applies.
+3. **`CalendarCell.tsx`:** accept `isStudyDay?: boolean` and add `'roadmap-day-studyday'` to the class list when true.
+   `RoadmapCalendar.tsx`: pass `isStudyDay={day.isInMonth && isStudyDay(day.date, roadmap.selectedStudyDays)}` when rendering each `<CalendarCell>`.
+   Do not tint outside-month filler cells.
+   Add the study-day weekday-header class to the header cells whose weekday is a study day.
+   Add a **"Study day"** legend entry (static span with `roadmap-legend-swatch roadmap-studyday-swatch`) alongside the status legend.
+4. **`Step3Preview.tsx` + `onboarding.css`:** (a) add `roadmap-day-studyday` to each mini-calendar in-month cell where `day.isInMonth && isStudyDay(day.date, state.selectedStudyDays)`; (b) recolor the session bubble from `roadmap-chip-done` → `roadmap-chip-booked` and add `title` + `aria-label` (e.g. ``Booked study session · ${formatMinutes(booking.estimatedDuration)} · ${format(parseISO(booking.date),'EEE, MMM d')}``); (c) add a "study day" entry to `.cal-legend`; (d) add `.cal-swatch.studyday` in `apps/app/src/onboarding/onboarding.css` with the same moss tint as `.roadmap-studyday-swatch`; (e) update `.cal-swatch.booked` so the legend no longer presents a moss/green booked session swatch after the booked bubble moves to the outline style; (f) the mini-calendar already has `onboarding-mini-calendar` so the Step-1 hover override applies.
    Keep the buffer caption; the tint replaces the "why the 7th" prose.
 5. Honour rules: `.agents/rules/css-workspace-packages.agents.md`, `.agents/rules/form-design-spacing.agents.md`. Match the approved mock.
 
 #### Tests
 - `CalendarCell.test.tsx` / `RoadmapCalendar.test.tsx`: a study-day in-month cell gets `roadmap-day-studyday`; a non-study day does not; legend shows "Study day".
+  Also assert an outside-month filler cell is not tinted even when its weekday is selected.
 - New `calendarModel`/util test for `isStudyDay` (weekday mapping correctness — the load-bearing bit).
-- `Step3Preview.test.tsx`: session bubble uses `roadmap-chip-booked` (not `-done`) and has a `title`; study-day cells tinted.
+- `Step3Preview.test.tsx`: session bubble uses `roadmap-chip-booked` (not `-done`) and has a `title`; study-day cells tinted; the legend still includes booked session and now includes study day.
 - Author (not run) Playwright: `/onboarding/3?new=1` shows tinted study-day columns and a booked-style session chip.
 - Run: `pnpm --filter @study-tracker/app test -- CalendarCell RoadmapCalendar Step3Preview calendarModel`
 
@@ -594,20 +610,44 @@ pnpm --filter @study-tracker/progress test   # baseline green
    ```
    Use `tickValues={buildMinuteTickValues(yDomainMax)}` on `AxisLeft` instead of relying only on `numTicks={5}`.
 4. **`BurnUpChart.tsx` — degenerate/empty domain guard** (~lines 87–120): include planned, actual, GP, and explicit roadmap-domain dates in the x-domain calculation.
+   Export the pure helper so jsdom unit tests do not depend on SVG layout:
+   ```ts
+   export function buildBurnUpDateDomain(
+     hints: Pick<BurnUpData, 'startDate' | 'deadline' | 'today' | 'dayNumber' | 'totalDays'>,
+     candidateDates: Date[],
+   ): [Date, Date]
+   ```
    Build `domainStart` and `domainEnd` from `data.startDate` / `data.deadline` when present.
    If either is missing, derive a fallback from `today`, `dayNumber`, and `totalDays`.
    The x-domain must always include `[domainStart, domainEnd]`, even when planned or GP arrays are sparse.
-   Render an empty state only when there is no actual data and no meaningful planned series:
+   Export and use a second pure helper for the empty-state decision:
    ```tsx
-   const hasMeaningfulPlan = plannedParsed.length > 1 || plannedParsed.some((point) => point.minutes > 0)
-   const hasData = actualParsed.length > 0 || hasMeaningfulPlan
-   if (!hasData) return <EmptyBurnUp />   // "Log a session to see your burn-up"
+   export function hasMeaningfulBurnUpData(
+     planned: BurnUpData['planned'],
+     actual: BurnUpData['actual'],
+   ): boolean {
+     const hasMeaningfulPlan = planned.length > 1 || planned.some((point) => point.minutes > 0)
+     return actual.length > 0 || hasMeaningfulPlan
+   }
    ```
+   In the public `BurnUpChart` component, return the empty state before rendering `ParentSize` when `hasMeaningfulBurnUpData(data.planned, data.actual)` is false.
+   The empty state copy is: "Log a session to see your burn-up".
 5. **`BurnUpChart.tsx` — curves + y-domain:** change the GP band and mean `curve={curveBasis}` → `curve={curveMonotoneX}`.
    Base the primary y-domain on `max(planned, actual, gp.mean)`.
    Include GP upper only as bounded headroom, for example `Math.min(maxGpUpper, primaryMax * 1.25)`, so a wide confidence band cannot flatten the actual and planned lines.
    Apply normal headroom after that bounded max.
-6. `Week.tsx` needs no behavioral change because it consumes `progress.burnUp`.
+   Export this as a pure helper too, for example:
+   ```ts
+   export function buildBurnUpYDomainMax(series: {
+     planned: number[]
+     actual: number[]
+     gpMean: number[]
+     gpUpper: number[]
+   }): number
+   ```
+6. `Week.tsx` needs no behavioral change because it consumes `progress.burnUp` and already gates chart rendering until there are at least three actual points.
+   Do not remove that gate in this phase unless Rohit explicitly widens scope.
+   The chart's own empty-state tests should render `BurnUpChart` directly, not through `Week`.
    Update any test fixture that fails typechecking only if you made `startDate` / `deadline` required by mistake; they should remain optional.
    Confirm the "N ahead/behind" footer now reflects the corrected `deficit`.
 
@@ -619,8 +659,11 @@ pnpm --filter @study-tracker/progress test   # baseline green
 - Add `apps/app/src/components/BurnUpChart.test.tsx` for exported helpers and empty state.
   Cover `minutesToLabel`: `45`→`45m`, `90`→`1h 30m`, `120`→`2h`.
   Cover `buildMinuteTickValues` returns unique labels for a low range where the old formatter collapsed.
+  Cover `buildBurnUpDateDomain` with sparse/empty chart data and explicit `startDate` / `deadline`.
+  Cover `buildBurnUpYDomainMax` so an inflated GP upper cannot flatten the chart beyond the bounded headroom.
   Cover empty-data renders "Log a session to see your burn-up".
 - Author (not run) a visual Playwright check of the Week burn-up if practical.
+  If it goes through `/study/week`, seed at least three actual data points so the existing Week gate renders `BurnUpChart`.
 - Run: `pnpm --filter @study-tracker/progress test && pnpm --filter @study-tracker/app test -- BurnUpChart Week`
 
 #### Verification (DONE)

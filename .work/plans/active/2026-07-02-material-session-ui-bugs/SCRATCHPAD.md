@@ -1,6 +1,6 @@
 # Scratchpad — material-session-ui-bugs
 
-_Plan: PLAN.md (5 phases, one per bug) · Log: VERIFICATION.md (acceptance criteria pre-filled) · Updated: 2026-07-02T15:06_
+_Plan: PLAN.md (5 phases, one per bug) · Log: VERIFICATION.md (acceptance criteria pre-filled) · Updated: 2026-07-02T19:59_
 
 Post-ship UI bug triage and plan-clarity review for the **material ↔ session decoupling** implementation
 (`.work/plans/active/2026-06-30-material-session-decoupling/`, all 7 phases marked ✅ Verified 2026-07-02).
@@ -8,9 +8,8 @@ This session finds and documents defects surfaced by Rohit against the running a
 diagnose + document only. Fixes are handed to the coding agents (Codex/Sonnet), not applied here.
 
 ## Now
-Plan clarity review complete.
-Applied the plan amendments Rohit requested after the review.
-Main amendments now in `PLAN.md`: Phase 2 requires hiding the bottom-sheet grip, Phase 3 makes the compact-mode test mock configurable, Phase 4 pins helper placement/date semantics and onboarding swatch CSS, and Phase 5 uses concrete booking-capacity semantics with testable chart-domain/tick helpers.
+Second-round plan amendments applied to `PLAN.md` and `VERIFICATION.md`.
+Final document diff/self-check completed; ready for implementation handoff.
 
 ## Alignment
 On track with Rohit's review request.
@@ -252,7 +251,7 @@ Scope is plan hardening only: identify amendments needed so all five bugs can be
     If server-side parity is wanted later, mirror the *data shaping* in `/v1/progress` (OQ-01) but keep rendering client-side.
 
 ## Open
-- Interaction note (Rohit): ask clarifying questions in chat only for now. Do not use the multiple-choice question tool.
+- none
 
 ## Blockers
 — none
@@ -273,16 +272,25 @@ Scope is plan hardening only: identify amendments needed so all five bugs can be
 - [x] Produce amendment list with resolved findings and any true unresolved questions.
 - [x] Apply approved amendments to `PLAN.md`.
 - [x] Tighten `VERIFICATION.md` acceptance criteria to match amended plan.
+- [x] Round 2: verify first-round amendments are present in `PLAN.md` / `VERIFICATION.md`.
+- [x] Round 2: inspect live source for the phase-sensitive assumptions.
+- [x] Round 2: identify any remaining plan amendments needed.
+- [x] Round 2: present amendment list to Rohit without applying plan edits unless asked.
+- [x] Round 2: apply approved amendments to `PLAN.md`.
+- [x] Round 2: align `VERIFICATION.md` acceptance criteria.
+- [x] Round 2: final diff/self-check before handoff.
 
 ## In-flight edits
-- Updated this scratchpad for the plan-clarity review session.
-- Edited `PLAN.md` and `VERIFICATION.md`.
+- Updated this scratchpad for the second-round plan-clarity review session.
+- Edited `PLAN.md` and `VERIFICATION.md` with the approved second-round amendments.
 - No app source or CSS fixes applied.
 
 ## Decisions in force
 - Reviewer validates the plan before implementation. Do not implement the bug fixes in this session unless Rohit explicitly changes scope.
 - Apply the prior workflow bar: hollow or ambiguous plan steps must be tightened into executable contracts before coding starts.
 - `VERIFICATION.md` is the acceptance record; if it is stricter than `PLAN.md`, the plan should be amended to match it.
+- Existing app source is ground truth.
+  The second-round review found no need to ask Rohit for a product decision.
 
 ## Resolved (recent)
 - Phase 1 source/test assumptions match current `Roadmaps.tsx` and `Roadmaps.test.tsx`.
@@ -290,3 +298,8 @@ Scope is plan hardening only: identify amendments needed so all five bugs can be
 - Phase 3 source assumptions match current compact-day and DaySheet code; plan now makes the `useMatchMedia` test mock configurable.
 - Phase 4 source assumptions match current preview/calendar code; plan now pins `isStudyDay` into `calendarModel.ts` with date-fns parsing and optional string-array input.
 - Phase 5 is now implementation-ready: package progress uses live booking-capacity semantics, keeps the slot-grid helper only as fallback, and gives concrete chart helper/domain tests.
+- Round 2: Phase 1 and Phase 2 source assumptions still match current code.
+- Round 2: Phase 3 source assumptions still match current compact calendar and DaySheet code.
+- Round 2: Applied Phase 3 viewport/aria-label clarifications.
+- Round 2: Applied Phase 4 UTC weekday, in-month gating, today precedence, and booked-legend clarifications.
+- Round 2: Applied Phase 5 exported helper, empty-state-before-ParentSize, and Week low-data gate clarifications.

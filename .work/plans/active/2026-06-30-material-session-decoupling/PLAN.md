@@ -307,7 +307,7 @@ Revert the engine + types changes. No data migration (events are additive; legac
 
 ### Phase 2: Foundation — booking-status derivations + read-time legacy adapter
 
-**Status:** 🟡 In progress — redo tests implemented locally; awaiting reviewer sign-off
+**Status:** ✅ Complete — verified 2026-07-01 (see VERIFICATION Phase 2; status line was stale, corrected 2026-07-02)
 **Depends on:** Phase 1
 **Estimated scope:** ~5 files (3 new in `packages/progress`, `progress/index.ts`, `apps/app/src/progress/mapEvents.ts`).
 
@@ -396,7 +396,7 @@ Revert new files + mapEvents changes; `deriveSlotStatuses` still present so call
 
 ### Phase 3: Onboarding page 3 → capacity summary + expandable calendar + grouped materials
 
-**Status:** 🟡 Rework implemented locally; awaiting reviewer re-check (2026-07-02)
+**Status:** ✅ Complete — verified 2026-07-01 (see VERIFICATION Phase 3; a Phase-7 status edit mistakenly landed on this line 2026-07-02, corrected same day)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~4 files. Visual contract: [`mocks/proposed/onboarding-3.html`](./mocks/proposed/onboarding-3.html) (D13/D13a/D14/D14a).
 
@@ -438,7 +438,7 @@ Revert onboarding files; engine/derivations from P1/P2 remain.
 
 ### Phase 4: Session flow — Home suggestion → pre-session dial → running end-sheet
 
-**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
+**Status:** ✅ Complete — verified 2026-07-01 (see VERIFICATION Phase 4; status line was stale, corrected 2026-07-02)
 **Depends on:** Phase 1, Phase 2
 **Estimated scope:** ~6 files. **Large — implementer may sub-split** (4a Home+gate, 4b pre-session, 4c end-sheet+lifecycle). Visual contracts: [`mocks/proposed/home.html`](./mocks/proposed/home.html), [`session-presession.html`](./mocks/proposed/session-presession.html), [`session-running.html`](./mocks/proposed/session-running.html). Decisions D-04/D-05/D-06 (DECISIONS D15/D15a/D16/D17/D18).
 
@@ -589,7 +589,7 @@ Revert `projectFinish.ts` + the `progress.ts` swap → falls back to plain GP `f
 
 ### Phase 7: Replan window — levers → live re-projection
 
-**Status:** 🟡 Implemented locally; awaiting review (2026-07-01)
+**Status:** ✅ Complete — rework verified 2026-07-02, `6d4cc89` (see VERIFICATION Phase 7)
 **Depends on:** Phase 1, Phase 2, Phase 6
 **Estimated scope:** ~4 files. Visual contract: [`mocks/proposed/replan.html`](./mocks/proposed/replan.html) (D22/D-09).
 
