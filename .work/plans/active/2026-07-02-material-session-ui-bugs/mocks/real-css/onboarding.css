@@ -545,7 +545,13 @@
 }
 
 .cal-swatch.booked {
-  background: var(--moss);
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+}
+
+.cal-swatch.studyday {
+  background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--moss) 32%, var(--surface-card));
 }
 
 .cal-swatch.today {

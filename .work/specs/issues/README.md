@@ -25,8 +25,16 @@ Vertical-slice breakdown of `PRD-study-tracker-web.md`, generated via the `to-is
 | 16 | Password reset + email-confirmation polish | AFK | 1b |
 | 17 | Plausible Analytics | AFK | 1b |
 | 18 | Roadmap calendar — mobile swipe vertical-intent guard | AFK | — (roadmap-calendar verified) |
+| 19 | Session-runtime events not synced to cloud (SessionLifecycle bypasses sync_queue) | AFK | — |
+| 20 | `computeCalibration` TS/Python "parity" fixture actually encodes Python's overridden output | AFK | — |
+| 21 | Decide fate of orphaned Python roadmap-regenerate seam + dead `/v1` endpoints | HITL | — |
+| 22 | Decide whether to promote validated research findings (DP scheduler, conformal GP interval) to production | HITL | — |
 
 > **Post-review follow-ups (2026-06-26, from the roadmap-calendar plan):** #18 is a low-severity Phase-5 robustness fix surfaced in verification. #10 (re-plan flow) was **updated** — the Python-routed regenerate seam (`replanRoadmap` / `postRoadmapRegenerate` / `mapToRegenerateRequest`) now exists from roadmap-calendar Phase 7, and #10 gained an acceptance criterion to validate the Python response at runtime.
+>
+> **Architecture/research audit follow-ups (2026-07-03, from the 3rd-review-report context-gathering pass — see `.work/plans/active/2026-07-03 third-review-report-work/research/`):** #19–#22 were surfaced by a comprehensive trace of the app's pages/engines and a cross-reference against `research/`'s findings, not by a user report. #19 is a real cross-device data-completeness gap with no test coverage — highest priority of the four. #20 is a test-integrity issue (a "parity" test that isn't testing parity). #21 and #22 are HITL because they're maintenance-cost/product-direction calls (delete dead code vs. wire it up; promote a research finding vs. accept the gap), not single-fix bugs. #21 relates to #10's Python-routed seam note above — that seam exists and is tested but has zero live callers.
+>
+> **Correction (2026-07-03, same day):** #22 originally also claimed a scheduling-algorithm gap; that claim was withdrawn after cross-referencing `.work/plans/active/2026-06-30-material-session-decoupling/DECISIONS.md`, which shows the scheduling-comparison research question was explicitly retired by product decision (the packing problem it evaluated no longer exists post-redesign), not left unaddressed. #22 was narrowed to cover only the still-genuine split-conformal GP-interval gap; the cold-start/non-crossing half of the original GP-projection claim turned out to already be promoted (`packages/progress/src/projectFinish.ts`, 2026-07-01, one day after the research validated it). See #22's "Correction history" section for the full account, and `research/02-research-to-app-mapping.md` in the same audit folder for the corrected cross-project analysis.
 
 ## Dependency graph
 

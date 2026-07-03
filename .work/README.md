@@ -7,6 +7,12 @@ and `MASTER_TRACKER.md`.
 
 If you only read one file, read **[`STATUS.md`](STATUS.md)** — the single read-first index.
 
+## Access note
+
+`.work/` sits at this repo's root — an agent working in this repo reaches it directly at
+`.work/...` (single repo, no sibling checkout, no symlink). If ever sandboxed somewhere
+that can't see it, use the absolute repo path.
+
 ## Why `.work/` is committed to git (not ignored)
 
 History: working docs were lost once when git was acting as a "janitor" — a `git clean -fdx`
@@ -59,3 +65,9 @@ deviations, and review verdicts churn. Exactly one current spec per task.
 Start a task → run the loop above → on wrap: **distill** anything reusable into `../research/`
 or the repo's own docs → **move** the task folder to the matching `archive/` → **update**
 `STATUS.md` (row → Done, delete any fixed gotcha). Do these in that order so nothing is lost.
+
+## Ceremony dial (ceremony proportional to risk)
+
+- **Trivial** — one line in `STATUS.md`, no folder.
+- **Normal** — a spec + a state log.
+- **Complex** — the full planner → developer → verifier loop.

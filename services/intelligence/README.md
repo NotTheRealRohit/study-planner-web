@@ -92,6 +92,76 @@ PYTHON_IMAGE=python:3.12-slim UV_IMAGE=ghcr.io/astral-sh/uv:0.11.19 \
   docker compose up --build -d
 ```
 
+## Docker / Colima Troubleshooting
+
+Baseline checks — start with Docker, not Colima; Colima status can be less useful than the
+Docker daemon state:
+
+```bash
+docker info              # Context: colima
+docker ps --format '{{.Names}} {{.Ports}}'
+colima status
+```
+
+Don't stop/restart Colima just because a command is confusing — unrelated containers may be
+running (e.g. `wiremock-simulator` on port `9999`; never kill its SSH forward).
+
+### Missing Compose / Buildx plugins
+
+If `docker compose version` or `docker buildx version` fail, install the Homebrew plugin
+packages and point Docker at them:
+
+```bash
+brew install docker-compose docker-buildx
+```
+
+```json
+// ~/.docker/config.json
+{
+  "cliPluginsExtraDirs": [
+    "/opt/homebrew/lib/docker/cli-plugins"
+  ]
+}
+```
+
+Verify with `docker info` — the `Plugins:` section should list `buildx` and `compose`.
+
+### Host curl can't reach a published port
+
+`docker port` can show `0.0.0.0:8000->8000/tcp` while macOS localhost still refuses the
+connection. Verify from inside the container, then the Lima VM, before changing app code:
+
+```bash
+docker compose exec -T intelligence python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read().decode())"
+
+env LIMA_HOME=/Users/rsaji/.colima/_lima limactl shell colima ss -ltnp
+env LIMA_HOME=/Users/rsaji/.colima/_lima limactl shell colima curl -sS http://127.0.0.1:8000/health
+```
+
+If the service works in the container and VM but not from macOS, open a temporary SSH
+forward for verification, then remove only that forward:
+
+```bash
+ssh -F /Users/rsaji/.colima/ssh_config -N -L 127.0.0.1:8000:127.0.0.1:8000 colima
+# ... verify with curl, then ...
+ssh -F /Users/rsaji/.colima/ssh_config -O cancel -L 127.0.0.1:8000:127.0.0.1:8000 colima
+```
+
+Do not kill the existing `9999` SSH forward — it belongs to the WireMock simulator.
+
+### Standard verification flow
+
+```bash
+docker compose config
+docker compose up --build -d
+docker compose ps
+curl -sS http://127.0.0.1:8000/health
+docker compose down
+```
+
+If host curl cannot connect, use the port-forwarding checks above before touching service
+code.
+
 ## Curl examples
 
 The examples below use the golden fixtures under

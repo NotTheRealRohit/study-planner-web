@@ -401,6 +401,11 @@
   text-transform: uppercase;
 }
 
+.roadmap-weekday.roadmap-weekday-studyday {
+  color: var(--moss);
+  font-weight: 600;
+}
+
 .roadmap-week-row + .roadmap-week-row {
   border-top: var(--border-width-hair) solid var(--border-subtle);
 }
@@ -442,7 +447,20 @@
   background: var(--cal-week-band);
 }
 
+.roadmap-day-studyday {
+  background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
+}
+
+.roadmap-day-current-week.roadmap-day-studyday {
+  background: color-mix(in srgb, var(--moss) 8%, var(--cal-week-band));
+}
+
 .roadmap-day-today {
+  background: var(--cal-today-fill);
+}
+
+.roadmap-day-today.roadmap-day-studyday,
+.roadmap-day-today.roadmap-day-current-week.roadmap-day-studyday {
   background: var(--cal-today-fill);
 }
 
@@ -587,6 +605,11 @@
   color: var(--text-secondary);
   background: var(--surface-card);
   border: 1.4px solid var(--border-strong);
+}
+
+.roadmap-legend-swatch.roadmap-studyday-swatch {
+  background: color-mix(in srgb, var(--moss) 8%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--moss) 32%, var(--surface-card));
 }
 
 .roadmap-booking-blank {
@@ -775,7 +798,7 @@
   inset: 0;
   z-index: var(--z-modal);
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   padding: var(--space-4);
   background: rgba(42, 31, 24, 0.4);
@@ -784,18 +807,16 @@
 .bk-sheet {
   width: 100%;
   max-width: 460px;
+  max-height: calc(100dvh - var(--space-6));
+  overflow-y: auto;
   padding: var(--space-5) var(--space-5) var(--space-6);
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  border-radius: var(--radius-lg);
   background: var(--surface-card);
   box-shadow: var(--shadow-modal);
 }
 
 .bk-grip {
-  width: 36px;
-  height: 4px;
-  border-radius: var(--radius-pill);
-  background: var(--border-default);
-  margin: 0 auto var(--space-4);
+  display: none;
 }
 
 .bk-head {
@@ -1238,6 +1259,16 @@
   flex-direction: column;
   gap: var(--space-2);
   margin-top: var(--space-4);
+}
+
+.roadmap-day-sheet-empty {
+  margin: var(--space-4) 0 0;
+  color: var(--text-tertiary);
+  font-size: 14px;
+}
+
+.roadmap-day-sheet-add {
+  margin-top: var(--space-3);
 }
 
 .roadmap-day-sheet-row {
@@ -1722,6 +1753,16 @@
     z-index: var(--z-raised);
     box-shadow: var(--shadow-md);
   }
+
+  .onboarding-mini-calendar .roadmap-day-in-month:hover {
+    transform: none;
+    z-index: auto;
+    box-shadow: none;
+  }
+}
+
+.onboarding-mini-calendar .roadmap-day {
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {

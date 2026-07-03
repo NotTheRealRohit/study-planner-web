@@ -1,5 +1,8 @@
 # Study Tracker Web
 
+# Application test Credentials
+Can be found in `.work/specs/test-login-cred.txt`
+
 ## Overview
 
 A mobile-first responsive web app for self-directed learners. The app mirrors the user's discipline — quietly, respectfully — without enforcing it.
@@ -355,58 +358,14 @@ See [`DEPLOYMENT.md`](DEPLOYMENT.md) for:
 
 ## The `.work/` working directory  ·  read `.work/STATUS.md` first
 
-The project's planning/specs/working-memory live in **`.work/`** at the repo root
-(`./.work` from here). On 2026-06-25 the old scattered `plans/`, `issues/`, `prd/`,
-`handovers/`, and `MASTER_TRACKER.md` were consolidated into it. Full human map:
-[`.work/README.md`](.work/README.md).
+The project's planning/specs/working-memory live in **`.work/`** at the repo root. Full
+human map: [`.work/README.md`](.work/README.md) — folder map, the planner/developer/verifier
+flow, and the ceremony dial (trivial/normal/complex).
 
 **`.work/` is committed to git on purpose — do not break that.** It used to be lost when
-git's `git clean -fdx` deleted ignored/untracked files. The protection now is that `.work/`
-is **tracked**, so `git clean` can't touch it. Therefore: **never add `.work/` to
-`.gitignore`, and never run `git clean -fdx` at the repo root.** Because git no longer
-auto-removes finished docs, cleanup is a **manual** step (see lifecycle below).
-
-**Access note.** `.work/` sits at this repo's root, so an agent working in this repo reaches
-it directly at `.work/...` (this is a single repo — there is no separate sibling repo and no
-symlink needed). If you are ever sandboxed somewhere that can't see it, use the absolute repo
-path to `.work/`.
-
-### Folder map
-
-- **`.work/STATUS.md`** — the single index (the former MASTER_TRACKER). One-line rows tagged by
-  workstream (`[APP]` `[RESEARCH]` `[PILLAR-A]` `[KT]` `[DISSERTATION]` `[INFRA]`) under
-  **Active / Queued / Done / Reference / Gotchas**. **Read it first.** Keep it short and pruned;
-  full long-form detail lives in `.work/master-tracker-detail.md`.
-- **`.work/specs/`** — the stable **contracts**: `specs/prd/` (PRD) and `specs/issues/` (the
-  vertical-slice tickets). Build against these.
-- **`.work/plans/`** — implementation plans. `plans/active/<task>/` holds the in-flight
-  working memory (a `PLAN.md` spec **separate from** a `VERIFICATION.md` running log/review);
-  `plans/archive/` holds done/superseded plans.
-- **`.work/handovers/`** — cross-session batons; `handovers/archive/` = finished.
-- **`.work/prompts/`** — reusable prompts.
-- **`.work/archive/`** — retired/stray artifacts.
-- **`research/`** (repo root, **not** under `.work/`) — the reusable API/algorithm knowledge
-  base; a Python package + datasets the code imports. STATUS.md points to `research/doc/`.
-
-### Paths as the API (multi-agent flow)
-
-- **Planner** writes the spec → `.work/specs/` (ticket) and/or `.work/plans/active/<task>/PLAN.md`,
-  and pre-fills `VERIFICATION.md` with acceptance criteria. **Exactly one current spec per task.**
-- **Developer** reads the spec + `research/`, implements, and writes its log into
-  `.work/plans/active/<task>/VERIFICATION.md` (files changed, commit SHA, deviations + why).
-- **Verifier** reads the spec + the actual diff and writes pass/fail into that same
-  `VERIFICATION.md`.
-
-### Manual lifecycle (do these in order on wrap)
-
-Start a task → run planner → developer → verifier → on wrap: **distill** anything reusable into
-`research/` or the repo docs → **move** the task folder to the matching `archive/` → **update**
-`.work/STATUS.md` (row → Done, delete any fixed gotcha).
-
-### Ceremony dial (ceremony proportional to risk)
-
-- **Trivial** — one line in `STATUS.md`, no folder.
-- **Normal** — a spec + a state log.
-- **Complex** — the full planner → developer → verifier loop.
+git's `git clean -fdx` deleted ignored/untracked files; `.work/` is now **tracked**, so
+`git clean` can't touch it. **Never add `.work/` to `.gitignore`, and never run
+`git clean -fdx` at the repo root.** Cleanup after finishing a task is a **manual** step
+(see `.work/README.md`).
 
 <!-- END .work/ working-directory guide -->
