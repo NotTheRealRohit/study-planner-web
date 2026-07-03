@@ -275,7 +275,7 @@ Phases 7 and 8 remain not started.
   - The DaySheet empty state text was present.
   - Stopped the managed full app after the check.
 - Deviations: none to implementation.
-- Commit SHA: pending.
+- Commit SHA: `33a98c9`.
 
 **Reviewer findings:** _(pending)_
 

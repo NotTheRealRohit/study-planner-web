@@ -798,7 +798,7 @@ Revert `progress.ts` to `buildPlannedCumulative(roadmap.slots)` and restore the 
 
 ### Phase 6: Scroll the mobile DaySheet into view when it opens (BUG-7)
 
-**Status:** ✅ Complete - pending, reviewer pending
+**Status:** ✅ Complete - `33a98c9`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files, ~15 lines
 

@@ -1,9 +1,9 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:44 (Phase 6 implemented, commit pending)_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:50 (Phase 6 committed, reviewer pending)_
 
 ## Now
-**Phase 6 is implemented and awaiting the scoped commit plus reviewer verification.**
+**Phase 6 is implemented in `33a98c9` and awaiting reviewer verification.**
 `DaySheet.tsx` now keeps `useRef`/`useEffect` before the early return, attaches the ref to the root section, and calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` when a day opens.
 `RoadmapCalendar.test.tsx` covers the existing compact empty-day path with a jsdom `Element.prototype.scrollIntoView` stub.
 Required verification passed: grep found the new effect, app typecheck passed, and `pnpm --filter @study-tracker/app test -- RoadmapCalendar` passed with 59 files and 523 tests.
@@ -20,7 +20,7 @@ An unrelated untracked file also appeared outside this work: `.work/plans/active
 Do not stage or restore that unrelated deletion.
 
 ## Open
-- Phase 6 needs a scoped code/docs commit, then reviewer verification.
+- Phase 6 needs reviewer verification.
 - Phases 7 and 8 remain fully spec'd with no open design questions and are not being edited in this slice.
 - Run the authored hermetic E2E specs (`e2e/material-session-decoupling.spec.ts`'s two new BUG-2/BUG-4 cases) on a machine with `SUPABASE_SERVICE_ROLE_KEY` set — the reviewer replicated their assertions manually against the real test account instead, since the key is unset here. (Pre-existing item from the Phase 1-5 review, still open.)
 - Phase 8's Verification (DONE) step now also asks the implementer to record the *actual observed* cold-start restore duration during the live re-check (there's no production telemetry for this yet — D-09 leaned on an existing app-wide timeout convention, `intelligenceClient.ts`'s `TIMEOUT_MS=8000`, rather than a measurement). Worth surfacing if that number turns out to be way off from 8000ms.
@@ -55,13 +55,14 @@ Do not stage or restore that unrelated deletion.
 - [x] Add `RoadmapCalendar.test.tsx` coverage for `scrollIntoView`.
 - [x] Run Phase 6 verification: grep, app typecheck, and focused RoadmapCalendar test.
 - [x] Run real-app 390px browser check through the managed full-app lifecycle.
-- [x] Fill Phase 6 `VERIFICATION.md` implementer report with pending commit SHA.
-- [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 6 plan status with pending commit SHA.
-- [ ] Commit the scoped Phase 6 changes if verification passes.
+- [x] Fill Phase 6 `VERIFICATION.md` implementer report.
+- [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 6 plan status.
+- [x] Commit the scoped Phase 6 changes: `33a98c9`.
+- [x] Commit the docs follow-up recording `33a98c9`.
 
 ## In-flight edits
 - Source edits complete: `apps/app/src/roadmap/DaySheet.tsx` and `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
-- Tracking edits complete pending commit SHA replacement: `PLAN.md`, `VERIFICATION.md`, `SCRATCHPAD.md`, `.work/STATUS.md`.
+- none for Phase 6.
 - Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
 ## Decisions in force
@@ -94,4 +95,6 @@ Do not stage or restore that unrelated deletion.
 - Scoped Phase 5 implementation commit created: `256616b`.
 - Scoped `.work` docs follow-up committed after recording `256616b`.
 - Phase 6 implementation and verification completed.
+- Scoped Phase 6 implementation commit created: `33a98c9`.
+- Scoped `.work` docs follow-up committed after recording `33a98c9`.
 - Full-app browser check completed and services stopped.
