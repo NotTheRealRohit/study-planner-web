@@ -3,7 +3,7 @@
 _Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:50 (Phase 7 committed, reviewer pending)_
 
 ## Now
-**Phase 7 is implemented in `bd36126` and awaiting reviewer verification.**
+**Phase 7 is implemented in `75f734f` and awaiting reviewer verification.**
 The target is BUG-8: fix the onboarding-preview session bubble truncation at 390px using D-10 Option C.
 Prereq greps passed: `roadmap-bubble-label` / `roadmap-bubble-minutes` exist at the expected CSS rules, and the existing `.onboarding-mini-calendar` scoped rules are present.
 Implemented edit: `apps/app/src/roadmap/roadmap.css` now scopes the 390px bubble treatment to `.onboarding-mini-calendar` under `@media (max-width: 560px)`.
@@ -12,7 +12,7 @@ DONE grep, app typecheck, and the 390px browser visual check passed.
 The browser check used the managed full-app stack, real login, a seeded onboarding draft, and `/study/onboarding/3/preview?new=1`.
 Expanded-calendar computed result: visible bubble `innerText` is `1h`, label display is `none`, title/aria remain `Booked study session · 1h · Fri, Jul 3`, grid is `14px 12px`, and booked-day height equals empty-day height (`66.5px` each).
 Element screenshot saved at `/private/tmp/study-planner-bug8-bubble-element.png`.
-`VERIFICATION.md`, `PLAN.md`, and `.work/STATUS.md` have been updated for Phase 7 with commit `bd36126`.
+`VERIFICATION.md`, `PLAN.md`, and `.work/STATUS.md` have been updated for Phase 7 with commit `75f734f`.
 Next: reviewer-verify Phase 7, then implement Phase 8 when requested.
 
 ## Alignment
@@ -80,11 +80,11 @@ Do not stage or restore that unrelated deletion.
 - [x] Run 390px real-browser visual check.
 - [x] Fill Phase 7 `VERIFICATION.md` implementer report.
 - [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 7 plan status.
-- [x] Commit scoped Phase 7 code and docs: `bd36126`.
+- [x] Commit scoped Phase 7 code and docs: `75f734f`.
 
 ## In-flight edits
 - Source edits complete: `apps/app/src/roadmap/DaySheet.tsx` and `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
-- Phase 7 source edit complete and committed in `bd36126`: `apps/app/src/roadmap/roadmap.css`; grep, typecheck, and visual verification passed.
+- Phase 7 source edit complete and committed in `75f734f`: `apps/app/src/roadmap/roadmap.css`; grep, typecheck, and visual verification passed.
 - The edit includes the planned label hide and grid tightening, plus a scoped `.roadmap-bubble-minutes` display restore to counter the pre-existing max-780 rule.
 - Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
@@ -123,4 +123,4 @@ Do not stage or restore that unrelated deletion.
 - Scoped `.work` docs follow-up committed after recording `33a98c9`.
 - Full-app browser check completed and services stopped.
 - Phase 7 implementation and verification completed.
-- Scoped Phase 7 implementation commit created: `bd36126`.
+- Scoped Phase 7 implementation commit created: `75f734f`.

@@ -310,7 +310,7 @@ Phases 7 and 8 remain not started.
   - Added a scoped `.onboarding-mini-calendar .roadmap-bubble-minutes { display: inline; }` restore in the same max-560 block.
     The Phase 7 step block omitted this line, but the plan's own codebase-state section correctly noted the pre-existing max-780 rule hides `.roadmap-bubble-minutes`.
     Without the restore, the literal step block would render icon-only at 390px and would fail D-10's icon + duration contract.
-- Commit SHA: `bd36126`.
+- Commit SHA: `75f734f`.
 
 **Reviewer findings:** _(pending)_
 

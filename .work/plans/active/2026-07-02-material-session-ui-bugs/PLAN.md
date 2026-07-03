@@ -873,7 +873,7 @@ Remove the `useEffect`/`useRef`/`ref` additions and the `react` import; restore 
 
 ### Phase 7: Fix onboarding-preview session bubble truncation at narrow mobile width (BUG-8)
 
-**Status:** ✅ Complete - `bd36126`, reviewer pending
+**Status:** ✅ Complete - `75f734f`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file, ~10-15 lines CSS
 
