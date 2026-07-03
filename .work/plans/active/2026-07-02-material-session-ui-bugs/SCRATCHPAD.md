@@ -1,59 +1,27 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T16:20 (D-09 resolved, Phase 8 fully spec'd, ready to implement)_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:44 (Phase 6 implemented, commit pending)_
 
 ## Now
-**D-09 is resolved (✅ Agreed) and PLAN.md's Phase 8 is fully rewritten and ready to implement — nothing left blocking it.**
-Via `/grill-me`, Rohit picked **Option C1 ("Notebook mark")** outright, confirmed the long-wait secondary copy
-(~3s swap), and agreed the safety timeout stays **8000ms** but becomes a configurable `SyncProvider` prop
-(`initialRestoreSafetyTimeoutMs`, defaulted from a new `VITE_INITIAL_RESTORE_TIMEOUT_MS` env var, same pattern as
-`VITE_INTELLIGENCE_URL`) rather than a hardcoded literal — his ask was "make this timeout easily editable, like a
-plugin." Wrote the full decision + implementation detail into `PLAN.md`'s D-09 entry (same rigor as D-10) and
-rewrote Phase 8's Steps 5-7, added Steps 8-9 (new CSS in `packages/design-tokens/src/components.css`; env-var docs
-in `CLAUDE.md`/`apps/app/.env.example`), updated the Files-touched index, Tests, and Verification sections, and
-closed OQ-03. Phase 8 is now self-contained and implementable by a fresh agent with no outstanding design questions.
-
-Mock is built and visually verified (this is what grounded the grill-me discussion and is now Phase 8's cited visual contract):
-[`mocks/proposed/bug6-branded-loading.html`](./mocks/proposed/bug6-branded-loading.html) — baseline (byte-accurate
-to today's shipped, uncentered plain "Loading..." card) plus three candidate options, each real CSS (tokens/global/
-components templates refreshed-and-confirmed-identical to source) + real DOM (inline SVG built from the actual
-`favicon.svg` mark geometry, split into 3 separately-animatable ruled lines + dot), rendered live in both a 390×660
-phone iframe and a 640×420 desktop iframe:
-- **C1 — Notebook mark (recommended):** full-bleed paper background, the mark draws itself in line-by-line then the
-  dot settles into a quiet pulse, wordmark + plain-language caption cascade in underneath. Warmest/calmest.
-- **C2 — Ink curtain:** full-bleed `--surface-inverted` takeover (reusing the same inverted-surface token
-  `.card-inverted` already uses elsewhere, not a new dark mode), mark rendered directly on a soft terracotta glow,
-  sparse copy. Boldest/most ceremonial.
-- **C3 — Quiet caption:** same `.card.card-elevated` footprint/position as today's placeholder, small static mark +
-  one sentence of real status copy + "This only happens once." Smallest departure, safest/least memorable.
-
-A "Show long-wait state" toggle swaps each option's copy to a reassuring "still working" variant, to help ground
-the still-fully-open safety-timeout-duration question in something concrete rather than an abstract number.
-Verified via a throwaway Playwright script (screenshots of all 4 states × both viewports + the long-wait toggle,
-zero console/page errors) — not committed anywhere, just a local render check.
-
-**Next: implement Phases 6, 7, and 8** — all three are independent (no cross-dependencies) and fully spec'd with no
-open design questions. Order doesn't matter; pick whichever fits the next session's context budget.
+**Phase 6 is implemented and awaiting the scoped commit plus reviewer verification.**
+`DaySheet.tsx` now keeps `useRef`/`useEffect` before the early return, attaches the ref to the root section, and calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` when a day opens.
+`RoadmapCalendar.test.tsx` covers the existing compact empty-day path with a jsdom `Element.prototype.scrollIntoView` stub.
+Required verification passed: grep found the new effect, app typecheck passed, and `pnpm --filter @study-tracker/app test -- RoadmapCalendar` passed with 59 files and 523 tests.
+Live browser verification also passed against the real app at 390px: tapping `Open 2026-07-01 day options` scrolled from `0` to max scroll `758`, and the DaySheet was fully visible with the empty state present.
 
 ## Alignment
 Still aligned with the plan.
-Phases 1-4 are implemented and awaiting reviewer pass.
-Rohit explicitly asked to start Phases 5 and 6, so this session proceeds into Phase 5 despite the previous scratchpad's reviewer-pass next action.
-`PLAN.md` has only Phases 1-5 plus a final gate.
-The requested Phase 6 is interpreted as the final gate after Phase 5 unless a separate Phase 6 plan appears.
-Phase 5 prereq greps matched the expected legacy burn-up implementation.
-`pnpm --filter @study-tracker/progress test` passed before Phase 5 edits.
-The Phase 5 red tests failed for the intended reasons, then passed after the implementation.
-Focused verification passed: progress test suite, app typecheck, and `BurnUpChart Week` app tests.
-The pre-review final gate passed: lint exits 0 with pre-existing warnings, full typecheck passed, app tests passed, and progress tests passed.
-Browser visual inspection found and fixed an overly dense y-axis tick design from the plan's sample helper.
-The final browser probe of `/study/chart-test` showed sparse unique visible y labels and a nonblank 798x280 chart.
-No event model, intelligence math, routing basename, or Python code is in scope.
-Unrelated dirty rule/doc files and `_perm_test.txt` are present before this session and must not be touched or staged.
+Phases 1-5 are implemented and reviewer-verified.
+The live plan now has added Phases 6-8, and the user asked to start from Phase 6.
+Per the plan preamble, this turn is implementing Phase 6 only.
+No event model, intelligence math, routing basename, Python code, onboarding gate, or sync code is in scope for Phase 6.
+An unrelated deleted file is present before this session: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md`.
+An unrelated untracked file also appeared outside this work: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-3.md`.
+Do not stage or restore that unrelated deletion.
 
 ## Open
-- Phases 6, 7, and 8 are all fully spec'd with no open design questions — ready to implement whenever, in any order,
-  independently of each other.
+- Phase 6 needs a scoped code/docs commit, then reviewer verification.
+- Phases 7 and 8 remain fully spec'd with no open design questions and are not being edited in this slice.
 - Run the authored hermetic E2E specs (`e2e/material-session-decoupling.spec.ts`'s two new BUG-2/BUG-4 cases) on a machine with `SUPABASE_SERVICE_ROLE_KEY` set — the reviewer replicated their assertions manually against the real test account instead, since the key is unset here. (Pre-existing item from the Phase 1-5 review, still open.)
 - Phase 8's Verification (DONE) step now also asks the implementer to record the *actual observed* cold-start restore duration during the live re-check (there's no production telemetry for this yet — D-09 leaned on an existing app-wide timeout convention, `intelligenceClient.ts`'s `TIMEOUT_MS=8000`, rather than a measurement). Worth surfacing if that number turns out to be way off from 8000ms.
 
@@ -78,13 +46,23 @@ Unrelated dirty rule/doc files and `_perm_test.txt` are present before this sess
 - [x] Run `/grill-me` with Rohit — picked C1, confirmed long-wait copy, agreed 8000ms made configurable.
 - [x] Used `/write-implementation-plan` (adapted to update the existing living plan, not scaffold a new file) to
       write D-09 ✅ Agreed, rewrite Phase 8 Steps 5-7 and add Steps 8-9, update Files-touched/Tests/Verification, close OQ-03.
-- [ ] `work-journal` the outcome (this scratchpad + `.work/STATUS.md`).
-- [ ] Implement Phases 6, 7, 8 (next session or later this session, per Rohit's call).
+- [x] Read `.work/README.md`, `.work/STATUS.md`, `PLAN.md`, `VERIFICATION.md`, and this scratchpad.
+- [x] Read project-local `project-rules`, `code-memory`, `scratchpad`, and `work-journal` skills.
+- [x] Read applicable rules: `playwright-config`, `playwright-full-app-lifecycle`, `css-workspace-packages`, `form-design-spacing`, and `roadmap-engine`.
+- [x] Run Phase 6 prereq greps.
+- [x] Run baseline `pnpm --filter @study-tracker/app test -- RoadmapCalendar`.
+- [x] Implement Phase 6 `DaySheet.tsx` scroll effect.
+- [x] Add `RoadmapCalendar.test.tsx` coverage for `scrollIntoView`.
+- [x] Run Phase 6 verification: grep, app typecheck, and focused RoadmapCalendar test.
+- [x] Run real-app 390px browser check through the managed full-app lifecycle.
+- [x] Fill Phase 6 `VERIFICATION.md` implementer report with pending commit SHA.
+- [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 6 plan status with pending commit SHA.
+- [ ] Commit the scoped Phase 6 changes if verification passes.
 
 ## In-flight edits
-- none.
-  Phase 5 implementation is committed in `256616b`.
-  The `.work` SHA recording is committed in the current docs follow-up.
+- Source edits complete: `apps/app/src/roadmap/DaySheet.tsx` and `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
+- Tracking edits complete pending commit SHA replacement: `PLAN.md`, `VERIFICATION.md`, `SCRATCHPAD.md`, `.work/STATUS.md`.
+- Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
 ## Decisions in force
 - D-05: keep burn-up rendering client-side.
@@ -100,6 +78,7 @@ Unrelated dirty rule/doc files and `_perm_test.txt` are present before this sess
 - D-08: `initialRestorePending` clears immediately on the fast (already-hydrated) path; only the genuine cold-start slow path blocks — never add a visible delay to ordinary page reloads for returning users.
 - D-09: Phase 8 ships **Option C1 ("Notebook mark")** — resolved, no longer open. The old plain `ProtectedRoute`-style "Loading..." placeholder is fully superseded; do not implement it. Safety timeout stays 8000ms but ships as a configurable `initialRestoreSafetyTimeoutMs` prop (env-var-backed default via `VITE_INITIAL_RESTORE_TIMEOUT_MS`), not a hardcoded literal.
 - D-10: Phase 7 ships Option C (icon + duration, drop "Session" label) — resolved, no longer open.
+- Phase 6 must keep the DaySheet hooks before the `if (!day) return null` early return for Rules of Hooks compliance.
 
 ## Resolved (recent)
 - D-09 (Phase 8's loading-state visual + safety-timeout duration) — resolved via `/frontend-design` mock + `/grill-me`: Option C1, long-wait copy at ~3s, 8000ms timeout made configurable. OQ-03 closed. PLAN.md's Phase 8 fully rewritten (Steps 5-9) and ready to implement.
@@ -114,3 +93,5 @@ Unrelated dirty rule/doc files and `_perm_test.txt` are present before this sess
 - Final-gate probe passed after the tick-density visual fix.
 - Scoped Phase 5 implementation commit created: `256616b`.
 - Scoped `.work` docs follow-up committed after recording `256616b`.
+- Phase 6 implementation and verification completed.
+- Full-app browser check completed and services stopped.

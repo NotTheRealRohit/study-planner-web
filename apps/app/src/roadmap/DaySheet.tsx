@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { format, parseISO } from 'date-fns'
 import type { BoundCalendarDay, CalendarBubble } from './calendarModel'
 import { statusCopyFor } from './SessionDetailModal'
@@ -30,10 +31,17 @@ export function DaySheet({
   onAddSession,
   canAddSession = false,
 }: DaySheetProps) {
+  const sheetRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (day) sheetRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [day])
+
   if (!day) return null
 
   return (
     <section
+      ref={sheetRef}
       className="roadmap-day-sheet"
       role="dialog"
       aria-modal="true"

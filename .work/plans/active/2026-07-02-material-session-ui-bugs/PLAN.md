@@ -798,7 +798,7 @@ Revert `progress.ts` to `buildPlannedCumulative(roadmap.slots)` and restore the 
 
 ### Phase 6: Scroll the mobile DaySheet into view when it opens (BUG-7)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - pending, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~2 files, ~15 lines
 
@@ -862,7 +862,12 @@ pnpm --filter @study-tracker/app typecheck && pnpm --filter @study-tracker/app t
 Remove the `useEffect`/`useRef`/`ref` additions and the `react` import; restore the original early-return-first function body.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Added `useRef` and `useEffect` to `apps/app/src/roadmap/DaySheet.tsx`.
+- Kept both hooks before the `if (!day) return null` early return.
+- Attached the ref to the root `<section>` and call `scrollIntoView({ behavior: 'smooth', block: 'start' })` when `day` is non-null.
+- Added a `RoadmapCalendar.test.tsx` assertion in the existing compact empty-day flow, with `Element.prototype.scrollIntoView` stubbed per test.
+- Verification passed: `grep -n "scrollIntoView" apps/app/src/roadmap/DaySheet.tsx`, `pnpm --filter @study-tracker/app typecheck`, and `pnpm --filter @study-tracker/app test -- RoadmapCalendar`.
+- Live browser check passed against the real app at 390px: tapped enabled empty day `Open 2026-07-01 day options`, page scrolled from `0` to max scroll `758`, DaySheet box was fully visible, and the empty state text was present.
 
 ---
 

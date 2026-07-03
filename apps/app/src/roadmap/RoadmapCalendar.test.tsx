@@ -12,6 +12,8 @@ const mockState = vi.hoisted(() => ({
 
 const mockViewport = vi.hoisted(() => ({ isCompact: false }))
 
+const scrollIntoViewMock = vi.fn()
+
 vi.mock('../events/useEventStore', () => ({
   useEventStore: () => ({
     getAll: vi.fn().mockResolvedValue(mockState.events),
@@ -131,6 +133,8 @@ function openBookingEditor(name = /Booked: Distributed Systems, 1h/) {
 
 describe('RoadmapCalendar booking interactions', () => {
   beforeEach(() => {
+    scrollIntoViewMock.mockReset()
+    Element.prototype.scrollIntoView = scrollIntoViewMock
     mockState.events = baseEvents()
     mockState.logEvent.mockReset()
     mockState.logEvent.mockResolvedValue(1)
@@ -212,6 +216,9 @@ describe('RoadmapCalendar booking interactions', () => {
     fireEvent.click(within(emptyDay as HTMLElement).getByRole('button', { name: 'Open 2099-06-01 day options' }))
 
     expect(screen.getByRole('dialog', { name: 'Roadmap day sheet' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
+    })
     expect(screen.getByText('No sessions booked for this day.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '+ Add session' }))

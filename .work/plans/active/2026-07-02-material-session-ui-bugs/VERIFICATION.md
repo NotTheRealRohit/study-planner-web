@@ -238,20 +238,44 @@ Two incidental, out-of-scope observations surfaced during live testing (neither 
 1. **Cold-start cloud-restore race** (pre-existing, architectural): on a genuinely fresh browser profile with no local IndexedDB yet, navigating straight to a `RequireOnboarding`-gated route (e.g. `/roadmaps`) immediately after sign-in can transiently bounce `/roadmaps → /onboarding/1 → /home` before `SyncEngine`'s cloud restore finishes populating local Dexie. Reproduced 3/3 times with a fresh Playwright context; does not reproduce with a persistent/already-hydrated profile. Only affects a genuinely new device/browser (or an automated test using a fresh context), not a returning user's normal browser. Not touched by this plan's diffs (`EventStoreProvider`/`SyncProvider`/`RequireOnboarding` are untouched). Flagging for awareness/triage, not fixed here — out of scope.
 2. Two minor pre-existing cosmetic notes recorded inline in the Phase 3 and Phase 4 findings above (DaySheet scroll position; onboarding bubble truncation at 390px) — neither introduced by this plan, both worth a follow-up glance.
 
-**Update 2026-07-03 (same day):** all three items above were discussed with Rohit and agreed to be fixed as a plan addendum. See `PLAN.md`'s Phases 6-8 and Decisions D-07 through D-10. Acceptance criteria for the three new phases are pre-filled below; they are ☐ Not started (Phase 6, 8) / 🛑 Blocked on a design pick (Phase 7) as of this writing.
+**Update 2026-07-03 (same day):** all three items above were discussed with Rohit and agreed to be fixed as a plan addendum.
+See `PLAN.md`'s Phases 6-8 and Decisions D-07 through D-10.
+Phase 6 is now implemented and awaiting reviewer verification.
+Phases 7 and 8 remain not started.
 
 ---
 
-## Phase 6 — Scroll the mobile DaySheet into view on open (BUG-7) · Status: ☐ Not started
+## Phase 6 — Scroll the mobile DaySheet into view on open (BUG-7) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `DaySheet.tsx` calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` on its root `<section>` whenever `day` transitions to non-null (implements the Phase 6 step in `PLAN.md`).
-- [ ] The `useRef`/`useEffect` are called unconditionally before the `if (!day) return null` early return (Rules of Hooks compliance).
-- [ ] No other behavior of `DaySheet` changes — empty state, add-session button, bubble list, and close button all work exactly as before.
-- [ ] `RoadmapCalendar.test.tsx` stubs `Element.prototype.scrollIntoView` and asserts it's called with the correct args when a day sheet opens.
-- [ ] `pnpm --filter @study-tracker/app typecheck` + `test -- RoadmapCalendar` green.
+- [x] `DaySheet.tsx` calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` on its root `<section>` whenever `day` transitions to non-null (implements the Phase 6 step in `PLAN.md`).
+- [x] The `useRef`/`useEffect` are called unconditionally before the `if (!day) return null` early return (Rules of Hooks compliance).
+- [x] No other behavior of `DaySheet` changes - empty state, add-session button, bubble list, and close button all work exactly as before.
+- [x] `RoadmapCalendar.test.tsx` stubs `Element.prototype.scrollIntoView` and asserts it's called with the correct args when a day sheet opens.
+- [x] `pnpm --filter @study-tracker/app typecheck` + `test -- RoadmapCalendar` green.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-03
+- Files changed: `apps/app/src/roadmap/DaySheet.tsx`, `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
+- Added `useRef` and `useEffect` in `DaySheet.tsx` before the early return.
+- Attached the ref to the root day-sheet `<section>`.
+- The effect calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` only when `day` is non-null.
+- Extended the existing compact empty-day `RoadmapCalendar.test.tsx` flow with a jsdom `Element.prototype.scrollIntoView` stub and assertion.
+- Baseline before edits: `pnpm --filter @study-tracker/app test -- RoadmapCalendar` passed with 59 files and 523 tests.
+- Verification after edits:
+  - `grep -n "scrollIntoView" apps/app/src/roadmap/DaySheet.tsx` found the new effect.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - `pnpm --filter @study-tracker/app test -- RoadmapCalendar` passed with 59 files and 523 tests.
+- Live browser check:
+  - Started the managed full app via `./full-app start full`.
+  - The first sandboxed start failed on uv cache access at `/Users/rsaji/.cache/uv`, so the same manager command was rerun outside the sandbox and succeeded.
+  - Health checks passed: `curl -i http://127.0.0.1:8000/health` returned 200 and `curl -i http://localhost:5173/study/sign-in` returned 200.
+  - A sandboxed Chromium probe hit the known macOS Mach-port permission failure, so the read-only browser probe was rerun outside the sandbox.
+  - At 390px width against the real app and test login, tapping enabled empty day `Open 2026-07-01 day options` scrolled `window.scrollY` from `0` to max scroll `758`.
+  - The DaySheet bounding box was `{ x: 12, y: 518.78125, width: 366, height: 201.390625 }` in an 844px-high viewport, so it was fully visible after scroll.
+  - The DaySheet empty state text was present.
+  - Stopped the managed full app after the check.
+- Deviations: none to implementation.
+- Commit SHA: pending.
 
 **Reviewer findings:** _(pending)_
 
