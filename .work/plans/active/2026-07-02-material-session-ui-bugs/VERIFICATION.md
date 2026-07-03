@@ -281,17 +281,36 @@ Phases 7 and 8 remain not started.
 
 ---
 
-## Phase 7 — Fix onboarding-preview bubble truncation at narrow width (BUG-8) · Status: ☐ Not started
+## Phase 7 — Fix onboarding-preview bubble truncation at narrow width (BUG-8) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
 - [x] D-10 has been updated from ⚠️ Deferred to ✅ Agreed with Rohit's chosen option recorded before implementation starts. Resolved 2026-07-03: **Option C** (icon + duration, drop the "Session" label), picked against the real-CSS mock [`mocks/proposed/bug8-bubble-truncation.html`](./mocks/proposed/bug8-bubble-truncation.html).
-- [ ] The chosen CSS rule is scoped to `.onboarding-mini-calendar` inside a `@media (max-width: 560px)` query, placed near the other Phase-4 onboarding-scoped rules in `roadmap.css` — hides `.roadmap-bubble-label` and tightens `.roadmap-bubble`'s grid to `14px auto`.
-- [ ] At a 390px viewport, the session bubble no longer renders as an unreadable single clipped character — it shows icon + duration cleanly, same cell height as baseline, no wrap.
-- [ ] The bubble's `title`/`aria-label` (from Phase 4) are unaffected — full text still available on hover/screen-reader regardless of the visual treatment.
-- [ ] No regression to the bubble's appearance above 560px or in the main roadmap calendar (this rule is scoped to `.onboarding-mini-calendar` only).
-- [ ] `pnpm --filter @study-tracker/app typecheck` green; a visual/Playwright check at 390px confirms icon + duration render with no truncation.
+- [x] The chosen CSS rule is scoped to `.onboarding-mini-calendar` inside a `@media (max-width: 560px)` query, placed near the other Phase-4 onboarding-scoped rules in `roadmap.css` — hides `.roadmap-bubble-label` and tightens `.roadmap-bubble`'s grid to `14px auto`.
+- [x] At a 390px viewport, the session bubble no longer renders as an unreadable single clipped character — it shows icon + duration cleanly, same cell height as baseline, no wrap.
+- [x] The bubble's `title`/`aria-label` (from Phase 4) are unaffected — full text still available on hover/screen-reader regardless of the visual treatment.
+- [x] No regression to the bubble's appearance above 560px or in the main roadmap calendar (this rule is scoped to `.onboarding-mini-calendar` only).
+- [x] `pnpm --filter @study-tracker/app typecheck` green; a visual/Playwright check at 390px confirms icon + duration render with no truncation.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-03
+- Files changed: `apps/app/src/roadmap/roadmap.css`.
+- Added the Phase 7 `@media (max-width: 560px)` block near the existing `.onboarding-mini-calendar` Phase-4 rules.
+- The scoped rule hides `.roadmap-bubble-label`, tightens `.roadmap-bubble` to `grid-template-columns: 14px auto`, and restores `.roadmap-bubble-minutes` display inside the onboarding mini-calendar.
+- Verification:
+  - Prereq grep `grep -n "roadmap-bubble-label\|roadmap-bubble-minutes" apps/app/src/roadmap/roadmap.css` found the expected label/minute rules and the pre-existing max-780 minute hide.
+  - Prereq grep `grep -n "onboarding-mini-calendar" apps/app/src/roadmap/roadmap.css` found the existing Phase-4 scoped rules.
+  - DONE grep `grep -n "onboarding-mini-calendar .roadmap-bubble" apps/app/src/roadmap/roadmap.css` found all three new scoped selectors at lines 1769, 1773, and 1777.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - Managed full-app stack started via `./full-app start full`; first sandboxed start hit the known uv-cache permission failure and was rerun outside the sandbox, then both `intelligence` and `app` reported healthy.
+  - Health checks passed: `curl -i http://127.0.0.1:8000/health` returned 200 and `curl -i http://localhost:5173/study/sign-in` returned 200.
+  - Sandboxed Chromium hit the known macOS Mach-port permission failure, so the browser probe was rerun outside the sandbox.
+  - The 390px probe used the real login, seeded an onboarding draft, opened `/study/onboarding/3/preview?new=1`, expanded the calendar, and inspected `.onboarding-mini-calendar .roadmap-chip-booked`.
+  - Browser result: visible bubble `innerText` was `1h`; `title` and `aria-label` stayed `Booked study session · 1h · Fri, Jul 3`; `grid-template-columns` was `14px 12px`; label `display` was `none`; minutes text was `1h`; booked-day and empty-day heights both measured `66.5px`.
+  - Element screenshot saved to `/private/tmp/study-planner-bug8-bubble-element.png`.
+- Deviations:
+  - Added a scoped `.onboarding-mini-calendar .roadmap-bubble-minutes { display: inline; }` restore in the same max-560 block.
+    The Phase 7 step block omitted this line, but the plan's own codebase-state section correctly noted the pre-existing max-780 rule hides `.roadmap-bubble-minutes`.
+    Without the restore, the literal step block would render icon-only at 390px and would fail D-10's icon + duration contract.
+- Commit SHA: `bd36126`.
 
 **Reviewer findings:** _(pending)_
 

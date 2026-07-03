@@ -1,27 +1,37 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:50 (Phase 6 committed, reviewer pending)_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:50 (Phase 7 committed, reviewer pending)_
 
 ## Now
-**Phase 6 is implemented in `33a98c9` and awaiting reviewer verification.**
-`DaySheet.tsx` now keeps `useRef`/`useEffect` before the early return, attaches the ref to the root section, and calls `scrollIntoView({ behavior: 'smooth', block: 'start' })` when a day opens.
-`RoadmapCalendar.test.tsx` covers the existing compact empty-day path with a jsdom `Element.prototype.scrollIntoView` stub.
-Required verification passed: grep found the new effect, app typecheck passed, and `pnpm --filter @study-tracker/app test -- RoadmapCalendar` passed with 59 files and 523 tests.
-Live browser verification also passed against the real app at 390px: tapping `Open 2026-07-01 day options` scrolled from `0` to max scroll `758`, and the DaySheet was fully visible with the empty state present.
+**Phase 7 is implemented in `bd36126` and awaiting reviewer verification.**
+The target is BUG-8: fix the onboarding-preview session bubble truncation at 390px using D-10 Option C.
+Prereq greps passed: `roadmap-bubble-label` / `roadmap-bubble-minutes` exist at the expected CSS rules, and the existing `.onboarding-mini-calendar` scoped rules are present.
+Implemented edit: `apps/app/src/roadmap/roadmap.css` now scopes the 390px bubble treatment to `.onboarding-mini-calendar` under `@media (max-width: 560px)`.
+It hides the redundant label, tightens the grid to `14px auto`, and restores `.roadmap-bubble-minutes` display so D-10 renders icon + duration instead of icon-only.
+DONE grep, app typecheck, and the 390px browser visual check passed.
+The browser check used the managed full-app stack, real login, a seeded onboarding draft, and `/study/onboarding/3/preview?new=1`.
+Expanded-calendar computed result: visible bubble `innerText` is `1h`, label display is `none`, title/aria remain `Booked study session · 1h · Fri, Jul 3`, grid is `14px 12px`, and booked-day height equals empty-day height (`66.5px` each).
+Element screenshot saved at `/private/tmp/study-planner-bug8-bubble-element.png`.
+`VERIFICATION.md`, `PLAN.md`, and `.work/STATUS.md` have been updated for Phase 7 with commit `bd36126`.
+Next: reviewer-verify Phase 7, then implement Phase 8 when requested.
 
 ## Alignment
 Still aligned with the plan.
 Phases 1-5 are implemented and reviewer-verified.
-The live plan now has added Phases 6-8, and the user asked to start from Phase 6.
-Per the plan preamble, this turn is implementing Phase 6 only.
-No event model, intelligence math, routing basename, Python code, onboarding gate, or sync code is in scope for Phase 6.
+Phase 6 is implemented in `33a98c9` and awaiting reviewer verification.
+The live plan has added Phases 6-8, and the user asked to start from Phase 7.
+Per the plan preamble and this request, this turn is implementing Phase 7 only.
+No event model, intelligence math, routing basename, Python code, onboarding gate, or sync code is in scope for Phase 7.
 An unrelated deleted file is present before this session: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md`.
 An unrelated untracked file also appeared outside this work: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-3.md`.
 Do not stage or restore that unrelated deletion.
 
 ## Open
 - Phase 6 needs reviewer verification.
-- Phases 7 and 8 remain fully spec'd with no open design questions and are not being edited in this slice.
+- Phase 7 needs reviewer verification.
+- Phase 7 has a minor plan-code mismatch: the step block does not restore `.roadmap-bubble-minutes`, but the existing `@media (max-width: 780px)` hides it.
+  The implemented CSS must add a scoped minute-display restore inside `.onboarding-mini-calendar` at max 560px to satisfy D-10's icon + duration contract.
+- Phase 8 remains fully spec'd with no open design questions and is not being edited in this slice.
 - Run the authored hermetic E2E specs (`e2e/material-session-decoupling.spec.ts`'s two new BUG-2/BUG-4 cases) on a machine with `SUPABASE_SERVICE_ROLE_KEY` set — the reviewer replicated their assertions manually against the real test account instead, since the key is unset here. (Pre-existing item from the Phase 1-5 review, still open.)
 - Phase 8's Verification (DONE) step now also asks the implementer to record the *actual observed* cold-start restore duration during the live re-check (there's no production telemetry for this yet — D-09 leaned on an existing app-wide timeout convention, `intelligenceClient.ts`'s `TIMEOUT_MS=8000`, rather than a measurement). Worth surfacing if that number turns out to be way off from 8000ms.
 
@@ -59,10 +69,23 @@ Do not stage or restore that unrelated deletion.
 - [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 6 plan status.
 - [x] Commit the scoped Phase 6 changes: `33a98c9`.
 - [x] Commit the docs follow-up recording `33a98c9`.
+- [x] Read `.work/README.md`, `.work/STATUS.md`, `PLAN.md`, `VERIFICATION.md`, and this scratchpad for the Phase 7 start.
+- [x] Read project-local skills for plan implementation, scratchpad, work-journal, project rules, code memory, TDD, debug-session, and frontend design.
+- [x] Read applicable rules: `css-workspace-packages`, `form-design-spacing`, `roadmap-engine`, `playwright-config`, and `playwright-full-app-lifecycle`.
+- [x] Run Phase 7 prereq greps.
+- [x] Inspect CSS neighborhood and identify the scoped minute-display restore needed for D-10.
+- [x] Implement Phase 7 scoped CSS rule in `apps/app/src/roadmap/roadmap.css`.
+- [x] Run Phase 7 verification grep.
+- [x] Run `pnpm --filter @study-tracker/app typecheck`.
+- [x] Run 390px real-browser visual check.
+- [x] Fill Phase 7 `VERIFICATION.md` implementer report.
+- [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 7 plan status.
+- [x] Commit scoped Phase 7 code and docs: `bd36126`.
 
 ## In-flight edits
 - Source edits complete: `apps/app/src/roadmap/DaySheet.tsx` and `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
-- none for Phase 6.
+- Phase 7 source edit complete and committed in `bd36126`: `apps/app/src/roadmap/roadmap.css`; grep, typecheck, and visual verification passed.
+- The edit includes the planned label hide and grid tightening, plus a scoped `.roadmap-bubble-minutes` display restore to counter the pre-existing max-780 rule.
 - Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
 ## Decisions in force
@@ -79,6 +102,7 @@ Do not stage or restore that unrelated deletion.
 - D-08: `initialRestorePending` clears immediately on the fast (already-hydrated) path; only the genuine cold-start slow path blocks — never add a visible delay to ordinary page reloads for returning users.
 - D-09: Phase 8 ships **Option C1 ("Notebook mark")** — resolved, no longer open. The old plain `ProtectedRoute`-style "Loading..." placeholder is fully superseded; do not implement it. Safety timeout stays 8000ms but ships as a configurable `initialRestoreSafetyTimeoutMs` prop (env-var-backed default via `VITE_INITIAL_RESTORE_TIMEOUT_MS`), not a hardcoded literal.
 - D-10: Phase 7 ships Option C (icon + duration, drop "Session" label) — resolved, no longer open.
+- Phase 7 must scope the CSS to `.onboarding-mini-calendar` under `@media (max-width: 560px)` only, so the main roadmap calendar and wider onboarding preview do not change.
 - Phase 6 must keep the DaySheet hooks before the `if (!day) return null` early return for Rules of Hooks compliance.
 
 ## Resolved (recent)
@@ -98,3 +122,5 @@ Do not stage or restore that unrelated deletion.
 - Scoped Phase 6 implementation commit created: `33a98c9`.
 - Scoped `.work` docs follow-up committed after recording `33a98c9`.
 - Full-app browser check completed and services stopped.
+- Phase 7 implementation and verification completed.
+- Scoped Phase 7 implementation commit created: `bd36126`.

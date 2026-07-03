@@ -873,7 +873,7 @@ Remove the `useEffect`/`useRef`/`ref` additions and the `react` import; restore 
 
 ### Phase 7: Fix onboarding-preview session bubble truncation at narrow mobile width (BUG-8)
 
-**Status:** ☐ Not started
+**Status:** ✅ Complete - `bd36126`, reviewer pending
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file, ~10-15 lines CSS
 
@@ -924,7 +924,12 @@ Plus the manual/Playwright visual check at 390px width confirming icon + duratio
 Remove the new `@media (max-width: 560px) { .onboarding-mini-calendar ... }` block; no other files touched.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Added the scoped max-560 onboarding mini-calendar CSS in `apps/app/src/roadmap/roadmap.css`.
+- The rule hides `.roadmap-bubble-label`, tightens `.roadmap-bubble` to `14px auto`, and restores `.roadmap-bubble-minutes` display inside `.onboarding-mini-calendar`.
+- Deviation: the implementation adds the scoped minutes-display restore because the pre-existing max-780 rule hides `.roadmap-bubble-minutes`.
+  The literal step block would have rendered icon-only at 390px, which conflicts with D-10's icon + duration contract.
+- Verification passed: DONE grep, `pnpm --filter @study-tracker/app typecheck`, and a 390px real-browser probe against the managed full app.
+  The expanded-calendar probe measured visible bubble text `1h`, preserved title/aria copy, hidden label, grid `14px 12px`, and equal booked/empty day heights.
 
 ---
 

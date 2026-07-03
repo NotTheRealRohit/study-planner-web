@@ -1765,6 +1765,20 @@
   cursor: default;
 }
 
+@media (max-width: 560px) {
+  .onboarding-mini-calendar .roadmap-bubble-label {
+    display: none;
+  }
+
+  .onboarding-mini-calendar .roadmap-bubble {
+    grid-template-columns: 14px auto;
+  }
+
+  .onboarding-mini-calendar .roadmap-bubble-minutes {
+    display: inline;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .roadmap-calendar-slide,
   .roadmap-day {
