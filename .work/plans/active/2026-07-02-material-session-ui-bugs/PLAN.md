@@ -935,7 +935,7 @@ Remove the new `@media (max-width: 560px) { .onboarding-mini-calendar ... }` blo
 
 ### Phase 8: Gate the cold-start cloud-restore race in `SyncProvider` (BUG-6)
 
-**Status:** ✅ Complete - pending, reviewer pending
+**Status:** ✅ Complete - `f6313f8`, reviewer pending
 **Depends on:** none — can start immediately (independent of Phases 6-7 and of Phases 1-5)
 **Estimated scope:** ~7 files, ~150 lines (+ tests). D-09 is now ✅ Agreed (Option C1) — the design discussion that used to gate Step 7 is done; this phase can be implemented straight through.
 

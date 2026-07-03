@@ -371,6 +371,6 @@ Phases 7 and 8 remain not started.
     A fully mocked restore would not exercise the engine's `notifyState({ initialRestorePending: false })`, which is the behavior the provider gate relies on.
   - The boot subcaption uses a plain hyphen (`Bringing over your study history - this only happens once.`) instead of the mock's em dash to comply with the repo instruction banning em dashes.
   - New boot CSS uses `letter-spacing: 0` for the added classes to comply with the frontend instruction.
-- Commit SHA: `pending`.
+- Commit SHA: `f6313f8`.
 
 **Reviewer findings:** _(pending)_

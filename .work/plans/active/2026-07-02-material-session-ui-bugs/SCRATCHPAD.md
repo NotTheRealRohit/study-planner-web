@@ -1,6 +1,6 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T22:47 (Phase 8 implemented, commit pending)_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T22:58 (Phase 8 implemented and committed in `f6313f8`)_
 
 ## Now
 **Phase 8 is now active.**
@@ -17,7 +17,7 @@ Phase 8 grep checks passed, `pnpm --filter @study-tracker/app typecheck` passed,
 Managed full-app browser verification passed after sandbox fallbacks: final path `/study/roadmaps`, route log only `/study/roadmaps`, no `/study/onboarding/1`, boot screen visible, observed boot-screen duration about 2808ms, and no browser console/page errors.
 Reduced-motion verification passed: line/dot/caption animations computed to `none`, the line dash offset was `0px`, dot opacity was `1`, and caption opacity was `1`.
 `PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad are updated with Phase 8 implementation evidence.
-Next: make the scoped Phase 8 commit, replace `pending` with the commit SHA in docs, amend, and hand off for reviewer verification.
+Next: hand off Phase 8 for reviewer verification.
 
 ## Alignment
 Still aligned with the plan.
@@ -102,14 +102,13 @@ Do not stage or restore that unrelated deletion.
 - [x] Run Phase 8 focused tests and typecheck.
 - [x] Run the fresh-profile browser re-check and reduced-motion check through `./full-app`.
 - [x] Fill Phase 8 `VERIFICATION.md`, update `PLAN.md`, update `.work/STATUS.md`, and refresh this scratchpad.
-- [ ] Commit only scoped Phase 8 files, then replace `pending` with the commit SHA and amend.
+- [x] Commit only scoped Phase 8 files, then replace `pending` with the commit SHA and amend: `f6313f8`.
 
 ## In-flight edits
 - Phase 8 SyncEngine edits complete and focused tests green: `apps/app/src/sync/types.ts`, `apps/app/src/sync/SyncEngine.ts`, and `apps/app/src/sync/SyncEngine.test.ts`.
 - Phase 8 provider edits complete and focused tests green: `apps/app/src/sync/SyncProvider.tsx` and `apps/app/src/sync/SyncProvider.test.tsx`.
 - Phase 8 CSS/docs/type fixture edits complete: `packages/design-tokens/src/components.css`, `CLAUDE.md`, `apps/app/.env.example`, and `apps/app/src/components/SyncIndicator.test.tsx`.
-- Phase 8 implementation/report files are ready for scoped commit.
-- Pending scoped commit files: `CLAUDE.md`, `apps/app/.env.example`, `apps/app/src/components/SyncIndicator.test.tsx`, `apps/app/src/sync/SyncEngine.test.ts`, `apps/app/src/sync/SyncEngine.ts`, `apps/app/src/sync/SyncProvider.test.tsx`, `apps/app/src/sync/SyncProvider.tsx`, `apps/app/src/sync/types.ts`, `packages/design-tokens/src/components.css`, `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/SCRATCHPAD.md`, `.work/STATUS.md`.
+- Phase 8 implementation/report files were committed in `f6313f8`.
 - Do not stage unrelated third-review/dissertation files: `.work/plans/active/2026-07-03 third-review-report-work/research/04-application-evolution-trace.md`, deleted `SCRATCHPAD-research-2.md`, untracked `SCRATCHPAD-research-3.md`, or untracked `college/mydeliverables/REPORT_WRITING_GUIDE.md`.
 - Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
