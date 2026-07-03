@@ -935,7 +935,7 @@ Remove the new `@media (max-width: 560px) { .onboarding-mini-calendar ... }` blo
 
 ### Phase 8: Gate the cold-start cloud-restore race in `SyncProvider` (BUG-6)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete - pending, reviewer pending
 **Depends on:** none — can start immediately (independent of Phases 6-7 and of Phases 1-5)
 **Estimated scope:** ~7 files, ~150 lines (+ tests). D-09 is now ✅ Agreed (Option C1) — the design discussion that used to gate Step 7 is done; this phase can be implemented straight through.
 
@@ -1308,7 +1308,19 @@ Plus a live re-check of the original repro: fresh Playwright profile (`chromium.
 Revert `apps/app/src/sync/types.ts`, `SyncEngine.ts`, and `SyncProvider.tsx` to drop `initialRestorePending`/`resolveInitialRestoreSafetyTimeoutMs`/`BootScreen`/the two timers (remove `initialRestorePending` from `SyncState`, the constructor, the fast-path clear, the `finally` clear, and `SyncProvider`'s new constants/components/props/initial state/timers/render branch). Remove the `.boot-*` block from `packages/design-tokens/src/components.css`. Revert the `CLAUDE.md`/`apps/app/.env.example` doc additions. The two onboarding gates were never touched, so no rollback needed there.
 
 #### Notes (filled in during implementation)
-*(empty)*
+- Implemented `initialRestorePending` in `SyncState`, `SyncEngine`, and `SyncProvider`.
+- The already-hydrated fast path clears the flag immediately before `flushQueue()`/`pullAndMerge()`.
+- The public `restoreFromCloud()` wrapper clears the flag in `finally`, covering every slow-path success/error/early-return exit.
+- `SyncProvider` now withholds children behind the D-09 Option C1 `BootScreen` while the initial restore is pending, then falls back after configurable `initialRestoreSafetyTimeoutMs`.
+- The timeout defaults through `resolveInitialRestoreSafetyTimeoutMs(import.meta.env.VITE_INITIAL_RESTORE_TIMEOUT_MS)` with an 8000ms fallback, and `apps/app/.env.example` plus `CLAUDE.md` document the optional override.
+- Added SyncEngine tests for fast-path clear, cold-start pending-until-success, and cold-start error clear.
+- Added SyncProvider tests for boot-screen gating, safety-timeout fallback, and timeout parsing.
+- Updated `SyncIndicator.test.tsx` fixtures for the new required `SyncState.initialRestorePending` field.
+- Focused verification passed: `pnpm --filter @study-tracker/app typecheck` and `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider`.
+- Live fresh-profile verification passed against the real running app and test login: route log stayed on `/study/roadmaps`, never visited `/study/onboarding/1`, boot screen was visible, and the observed cold-start boot-screen duration was about 2808ms.
+- Reduced-motion verification passed: boot mark, dot, and caption animations computed to `none`, with the mark fully drawn/static.
+- Deviations: the provider transition test uses the real `restoreFromCloud()` path with a prototype spy rather than a fully mocked deferred restore, because a full mock would not exercise the engine state notification that clears the provider gate.
+- Deviations: boot subcaption uses a plain hyphen instead of the mock's em dash, and the new boot CSS uses `letter-spacing: 0`, to comply with active repo/frontend instructions.
 
 ---
 

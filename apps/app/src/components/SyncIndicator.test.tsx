@@ -52,6 +52,7 @@ describe('SyncIndicator', () => {
           lastSyncedAt: recentDate,
           lastError: null,
           pendingCount: 0,
+          initialRestorePending: false,
         }}>
           <SyncIndicator />
         </FakeSyncProvider>
@@ -71,6 +72,7 @@ describe('SyncIndicator', () => {
           lastSyncedAt: null,
           lastError: null,
           pendingCount: 0,
+          initialRestorePending: false,
         }}>
           <SyncIndicator />
         </FakeSyncProvider>
@@ -90,6 +92,7 @@ describe('SyncIndicator', () => {
           lastSyncedAt: new Date(),
           lastError: null,
           pendingCount: 0,
+          initialRestorePending: false,
         }}>
           <SyncIndicator />
         </FakeSyncProvider>
@@ -111,6 +114,7 @@ describe('SyncIndicator', () => {
           lastSyncedAt: new Date(),
           lastError: 'Network error',
           pendingCount: 3,
+          initialRestorePending: false,
         }}>
           <SyncIndicator />
         </FakeSyncProvider>
@@ -132,6 +136,7 @@ describe('SyncIndicator', () => {
           lastSyncedAt: new Date(),
           lastError: null,
           pendingCount: 0,
+          initialRestorePending: false,
         }}>
           <SyncIndicator />
         </FakeSyncProvider>
@@ -156,6 +161,7 @@ describe('SyncIndicator', () => {
             lastSyncedAt: new Date(),
             lastError: null,
             pendingCount: 0,
+            initialRestorePending: false,
           }}
           forceSyncNow={forceSyncNow}
         >

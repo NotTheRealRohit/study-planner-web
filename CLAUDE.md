@@ -147,7 +147,7 @@ Read the relevant rule before changing that area, and cite it by name in plans.
 
 ## Environment Variables
 
-`apps/app/.env.local` (template `apps/app/.env.example`): `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `VITE_INTELLIGENCE_URL` (defaults to `http://localhost:8000`). E2E hermetic specs also read `SUPABASE_SERVICE_ROLE_KEY`.
+`apps/app/.env.local` (template `apps/app/.env.example`): `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `VITE_INTELLIGENCE_URL` (defaults to `http://localhost:8000`), optional `VITE_INITIAL_RESTORE_TIMEOUT_MS` (defaults to `8000`). E2E hermetic specs also read `SUPABASE_SERVICE_ROLE_KEY`.
 
 `services/intelligence/.env`: `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, optional `CORS_ORIGINS`.
 

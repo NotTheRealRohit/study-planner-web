@@ -1048,3 +1048,150 @@
     padding-bottom: 60px;
   }
 }
+
+/* ---- Boot screen for brand-new device cold-start cloud restore ---- */
+.boot-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  text-align: center;
+  background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--terracotta) 5%, var(--surface-page)), var(--surface-page) 70%);
+}
+
+.boot-mark-wrap {
+  margin-bottom: var(--space-3);
+}
+.boot-mark-svg {
+  display: block;
+}
+.boot-mark-bg {
+  fill: var(--ink);
+}
+.boot-mark-line {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.boot-mark-dot {
+  fill: var(--terracotta);
+}
+
+.boot-mark-line-1 {
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: boot-line-draw 400ms var(--ease-out) 100ms forwards;
+}
+.boot-mark-line-2 {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  animation: boot-line-draw 360ms var(--ease-out) 320ms forwards;
+}
+.boot-mark-line-3 {
+  stroke-dasharray: 8;
+  stroke-dashoffset: 8;
+  animation: boot-line-draw 300ms var(--ease-out) 540ms forwards;
+}
+.boot-mark-dot {
+  opacity: 0;
+  transform-origin: 24px 22px;
+  animation:
+    boot-dot-in 340ms var(--ease-spring) 760ms forwards,
+    boot-dot-pulse 2.6s ease-in-out 1100ms infinite;
+}
+
+@keyframes boot-line-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes boot-dot-in {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes boot-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.88);
+  }
+}
+
+.boot-wordmark {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 28px;
+  color: var(--text-primary);
+  letter-spacing: 0;
+  opacity: 0;
+  animation: boot-fade-up 420ms var(--ease-out) 480ms forwards;
+}
+.boot-caption {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-top: var(--space-1);
+  opacity: 0;
+  animation: boot-fade-up 420ms var(--ease-out) 640ms forwards;
+}
+.boot-subcaption {
+  max-width: 280px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+  margin-top: var(--space-2);
+  opacity: 0;
+  animation: boot-fade-up 420ms var(--ease-out) 780ms forwards;
+}
+@keyframes boot-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-mark-line {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
+  .boot-mark-dot {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    animation: none !important;
+  }
+  .boot-wordmark,
+  .boot-caption,
+  .boot-subcaption {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: none !important;
+  }
+}

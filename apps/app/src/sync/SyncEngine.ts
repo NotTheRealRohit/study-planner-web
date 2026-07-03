@@ -76,6 +76,7 @@ export class SyncEngine {
       lastSyncedAt: null,
       lastError: null,
       pendingCount: 0,
+      initialRestorePending: true,
     };
   }
 
@@ -436,6 +437,7 @@ export class SyncEngine {
       await this.restoreInFlight;
     } finally {
       this.restoreInFlight = null;
+      this.notifyState({ initialRestorePending: false });
     }
   }
 
@@ -452,6 +454,7 @@ export class SyncEngine {
       // is for cold-start clients with an empty local event log.
       const localEventCount = await this.eventStore.table('events').count();
       if (localEventCount > 0) {
+        this.notifyState({ initialRestorePending: false });
         await this.flushQueue();
         await this.deduplicateLocalSessionEvents();
         await this.pullAndMerge();

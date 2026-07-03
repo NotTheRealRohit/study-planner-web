@@ -5,6 +5,9 @@ export interface SyncState {
   lastSyncedAt: Date | null;
   lastError: string | null;
   pendingCount: number;
+  /** True until the first restoreFromCloud() attempt settles.
+   * Cleared early on the fast path; kept true during a cold-start snapshot restore. */
+  initialRestorePending: boolean;
 }
 
 export interface SyncOptions {

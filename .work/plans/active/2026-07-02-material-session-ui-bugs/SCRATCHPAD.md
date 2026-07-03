@@ -1,27 +1,33 @@
 # Scratchpad - material-session-ui-bugs
 
-_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T21:50 (Phase 7 committed, reviewer pending)_
+_Plan: PLAN.md · Log: VERIFICATION.md · Updated: 2026-07-03T22:47 (Phase 8 implemented, commit pending)_
 
 ## Now
-**Phase 7 is implemented in `75f734f` and awaiting reviewer verification.**
-The target is BUG-8: fix the onboarding-preview session bubble truncation at 390px using D-10 Option C.
-Prereq greps passed: `roadmap-bubble-label` / `roadmap-bubble-minutes` exist at the expected CSS rules, and the existing `.onboarding-mini-calendar` scoped rules are present.
-Implemented edit: `apps/app/src/roadmap/roadmap.css` now scopes the 390px bubble treatment to `.onboarding-mini-calendar` under `@media (max-width: 560px)`.
-It hides the redundant label, tightens the grid to `14px auto`, and restores `.roadmap-bubble-minutes` display so D-10 renders icon + duration instead of icon-only.
-DONE grep, app typecheck, and the 390px browser visual check passed.
-The browser check used the managed full-app stack, real login, a seeded onboarding draft, and `/study/onboarding/3/preview?new=1`.
-Expanded-calendar computed result: visible bubble `innerText` is `1h`, label display is `none`, title/aria remain `Booked study session · 1h · Fri, Jul 3`, grid is `14px 12px`, and booked-day height equals empty-day height (`66.5px` each).
-Element screenshot saved at `/private/tmp/study-planner-bug8-bubble-element.png`.
-`VERIFICATION.md`, `PLAN.md`, and `.work/STATUS.md` have been updated for Phase 7 with commit `75f734f`.
-Next: reviewer-verify Phase 7, then implement Phase 8 when requested.
+**Phase 8 is now active.**
+The target is BUG-6: fix the cold-start cloud-restore race by gating centrally in `SyncProvider`, adding `initialRestorePending` to `SyncState`, keeping the already-hydrated fast path effectively instant, and rendering the D-09 Option C1 branded boot screen while a true cold-start restore is pending.
+Phase 8 prereqs passed on 2026-07-03: the old four-field `SyncState` is still present, the `restoreFromCloud()` `finally` exists, `initialRestorePending` is absent, and `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider` passed with 59 files and 523 tests.
+SyncEngine and SyncProvider red-green slices are complete.
+Added three restore-pending tests in `apps/app/src/sync/SyncEngine.test.ts`, confirmed the expected red failure (`initialRestorePending` was `undefined`), then implemented the flag in `apps/app/src/sync/types.ts` and `apps/app/src/sync/SyncEngine.ts`.
+Focused `pnpm --filter @study-tracker/app test -- SyncEngine` passed with 59 files and 526 tests.
+Added provider tests for the boot-screen gate, timeout fallback, and `resolveInitialRestoreSafetyTimeoutMs`.
+Confirmed the expected red failure for the missing `Study Tracker` boot screen, then implemented `BootScreen`, timer state, child gating, and timeout parsing in `apps/app/src/sync/SyncProvider.tsx`.
+Focused `pnpm --filter @study-tracker/app test -- SyncProvider` passed with 59 files and 532 tests.
+Added `.boot-*` CSS in `packages/design-tokens/src/components.css`, documented `VITE_INITIAL_RESTORE_TIMEOUT_MS`, and updated `SyncIndicator.test.tsx` fixtures for the new required `SyncState` field.
+Phase 8 grep checks passed, `pnpm --filter @study-tracker/app typecheck` passed, and `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider` passed with 59 files and 532 tests.
+Managed full-app browser verification passed after sandbox fallbacks: final path `/study/roadmaps`, route log only `/study/roadmaps`, no `/study/onboarding/1`, boot screen visible, observed boot-screen duration about 2808ms, and no browser console/page errors.
+Reduced-motion verification passed: line/dot/caption animations computed to `none`, the line dash offset was `0px`, dot opacity was `1`, and caption opacity was `1`.
+`PLAN.md`, `VERIFICATION.md`, `.work/STATUS.md`, and this scratchpad are updated with Phase 8 implementation evidence.
+Next: make the scoped Phase 8 commit, replace `pending` with the commit SHA in docs, amend, and hand off for reviewer verification.
 
 ## Alignment
 Still aligned with the plan.
 Phases 1-5 are implemented and reviewer-verified.
 Phase 6 is implemented in `33a98c9` and awaiting reviewer verification.
-The live plan has added Phases 6-8, and the user asked to start from Phase 7.
-Per the plan preamble and this request, this turn is implementing Phase 7 only.
-No event model, intelligence math, routing basename, Python code, onboarding gate, or sync code is in scope for Phase 7.
+Phase 7 is implemented in `75f734f` and awaiting reviewer verification.
+The live plan has added Phases 6-8, and the user asked to start from Phase 8.
+Per the plan preamble and this request, this turn is implementing Phase 8 only.
+No event model, intelligence math, Python code, `RequireOnboarding.tsx`, or `OnboardingGate.tsx` edits are in scope for Phase 8.
+The existing dirty third-review report files are unrelated and must not be staged or restored.
 An unrelated deleted file is present before this session: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md`.
 An unrelated untracked file also appeared outside this work: `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-3.md`.
 Do not stage or restore that unrelated deletion.
@@ -29,9 +35,9 @@ Do not stage or restore that unrelated deletion.
 ## Open
 - Phase 6 needs reviewer verification.
 - Phase 7 needs reviewer verification.
-- Phase 7 has a minor plan-code mismatch: the step block does not restore `.roadmap-bubble-minutes`, but the existing `@media (max-width: 780px)` hides it.
-  The implemented CSS must add a scoped minute-display restore inside `.onboarding-mini-calendar` at max 560px to satisfy D-10's icon + duration contract.
-- Phase 8 remains fully spec'd with no open design questions and is not being edited in this slice.
+- Phase 8 is fully spec'd with no open design questions.
+  The live plan and `STATUS.md` say D-09 Option C1 is agreed; the older `VERIFICATION.md` Phase 8 acceptance checklist still contains one stale line saying the visual was pending.
+  Resolved: `VERIFICATION.md` was corrected while filling the Phase 8 report.
 - Run the authored hermetic E2E specs (`e2e/material-session-decoupling.spec.ts`'s two new BUG-2/BUG-4 cases) on a machine with `SUPABASE_SERVICE_ROLE_KEY` set — the reviewer replicated their assertions manually against the real test account instead, since the key is unset here. (Pre-existing item from the Phase 1-5 review, still open.)
 - Phase 8's Verification (DONE) step now also asks the implementer to record the *actual observed* cold-start restore duration during the live re-check (there's no production telemetry for this yet — D-09 leaned on an existing app-wide timeout convention, `intelligenceClient.ts`'s `TIMEOUT_MS=8000`, rather than a measurement). Worth surfacing if that number turns out to be way off from 8000ms.
 
@@ -81,11 +87,30 @@ Do not stage or restore that unrelated deletion.
 - [x] Fill Phase 7 `VERIFICATION.md` implementer report.
 - [x] Update `SCRATCHPAD.md`, `.work/STATUS.md`, and Phase 7 plan status.
 - [x] Commit scoped Phase 7 code and docs: `75f734f`.
+- [x] Read `.work/README.md`, `.work/STATUS.md`, `PLAN.md`, `VERIFICATION.md`, and this scratchpad for the Phase 8 start.
+- [x] Read project-local skills for plan implementation, scratchpad, work-journal, project rules, code memory, and TDD.
+- [x] Read applicable rules: `sync-architecture`, `sync-provider-testing`, `auth-init-timeout`, `css-workspace-packages`, `dexie-test-setup`, `playwright-config`, `playwright-full-app-lifecycle`, and `pnpm-build-registry`.
+- [x] Inspect dirty tree and identify unrelated third-review report changes that must stay out of Phase 8 staging.
+- [x] Run Phase 8 prereq greps.
+- [x] Run baseline `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider`.
+- [x] Add failing SyncEngine tests for `initialRestorePending` fast path, slow success, and slow error.
+- [x] Add failing SyncProvider tests for boot-screen gating, safety-timeout fallback, and timeout parsing.
+- [x] Implement `initialRestorePending` in `SyncState` and `SyncEngine`.
+- [x] Implement `SyncProvider` timeout parsing, boot screen, timers, and child gating.
+- [x] Add Option C1 `.boot-*` CSS in `packages/design-tokens/src/components.css`.
+- [x] Document `VITE_INITIAL_RESTORE_TIMEOUT_MS` in `CLAUDE.md` and `apps/app/.env.example`.
+- [x] Run Phase 8 focused tests and typecheck.
+- [x] Run the fresh-profile browser re-check and reduced-motion check through `./full-app`.
+- [x] Fill Phase 8 `VERIFICATION.md`, update `PLAN.md`, update `.work/STATUS.md`, and refresh this scratchpad.
+- [ ] Commit only scoped Phase 8 files, then replace `pending` with the commit SHA and amend.
 
 ## In-flight edits
-- Source edits complete: `apps/app/src/roadmap/DaySheet.tsx` and `apps/app/src/roadmap/RoadmapCalendar.test.tsx`.
-- Phase 7 source edit complete and committed in `75f734f`: `apps/app/src/roadmap/roadmap.css`; grep, typecheck, and visual verification passed.
-- The edit includes the planned label hide and grid tightening, plus a scoped `.roadmap-bubble-minutes` display restore to counter the pre-existing max-780 rule.
+- Phase 8 SyncEngine edits complete and focused tests green: `apps/app/src/sync/types.ts`, `apps/app/src/sync/SyncEngine.ts`, and `apps/app/src/sync/SyncEngine.test.ts`.
+- Phase 8 provider edits complete and focused tests green: `apps/app/src/sync/SyncProvider.tsx` and `apps/app/src/sync/SyncProvider.test.tsx`.
+- Phase 8 CSS/docs/type fixture edits complete: `packages/design-tokens/src/components.css`, `CLAUDE.md`, `apps/app/.env.example`, and `apps/app/src/components/SyncIndicator.test.tsx`.
+- Phase 8 implementation/report files are ready for scoped commit.
+- Pending scoped commit files: `CLAUDE.md`, `apps/app/.env.example`, `apps/app/src/components/SyncIndicator.test.tsx`, `apps/app/src/sync/SyncEngine.test.ts`, `apps/app/src/sync/SyncEngine.ts`, `apps/app/src/sync/SyncProvider.test.tsx`, `apps/app/src/sync/SyncProvider.tsx`, `apps/app/src/sync/types.ts`, `packages/design-tokens/src/components.css`, `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/SCRATCHPAD.md`, `.work/STATUS.md`.
+- Do not stage unrelated third-review/dissertation files: `.work/plans/active/2026-07-03 third-review-report-work/research/04-application-evolution-trace.md`, deleted `SCRATCHPAD-research-2.md`, untracked `SCRATCHPAD-research-3.md`, or untracked `college/mydeliverables/REPORT_WRITING_GUIDE.md`.
 - Do not touch or stage the unrelated deleted `.work/plans/active/2026-07-03 third-review-report-work/research/SCRATCHPAD-research-2.md` or untracked sibling `SCRATCHPAD-research-3.md`.
 
 ## Decisions in force
@@ -104,8 +129,16 @@ Do not stage or restore that unrelated deletion.
 - D-10: Phase 7 ships Option C (icon + duration, drop "Session" label) — resolved, no longer open.
 - Phase 7 must scope the CSS to `.onboarding-mini-calendar` under `@media (max-width: 560px)` only, so the main roadmap calendar and wider onboarding preview do not change.
 - Phase 6 must keep the DaySheet hooks before the `if (!day) return null` early return for Rules of Hooks compliance.
+- Phase 8 must use prototype spies for `SyncProvider` tests because `SyncEngine` is constructed inside a `useEffect`.
+- Phase 8 must use the managed full-app lifecycle for browser verification.
+- Phase 8 implementation uses a plain hyphen in the boot subcaption instead of the mock's em dash to honor the repo instruction banning em dashes.
+- Phase 8 boot CSS sets new letter spacing to `0` for the new classes to honor the frontend instruction.
 
 ## Resolved (recent)
+- Phase 8 implementation and verification completed.
+- Focused app typecheck and `SyncEngine SyncProvider` tests passed.
+- Live fresh-profile deep-link check passed with no `/study/onboarding/1` visit.
+- Reduced-motion boot-screen check passed.
 - D-09 (Phase 8's loading-state visual + safety-timeout duration) — resolved via `/frontend-design` mock + `/grill-me`: Option C1, long-wait copy at ~3s, 8000ms timeout made configurable. OQ-03 closed. PLAN.md's Phase 8 fully rewritten (Steps 5-9) and ready to implement.
 - Phase 5's full implementation checklist (prereqs → tests → implementation → verification → commits) completed; see the previous scratchpad revision or `VERIFICATION.md` for the itemized list.
 - Planning handoff state superseded by implementation state for Phase 1 and Phase 2.

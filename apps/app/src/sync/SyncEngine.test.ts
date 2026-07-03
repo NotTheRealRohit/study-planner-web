@@ -672,6 +672,73 @@ describe('SyncEngine', () => {
       expect(state.lastError).toContain('schema v999');
     });
 
+    it('clears initialRestorePending immediately on the fast already hydrated path', async () => {
+      await eventStore.append('SessionLogged', {
+        sessionId: 'existing-session',
+        duration: 45,
+      });
+
+      const engine = createEngine();
+      await engine.restoreFromCloud();
+
+      expect(engine.getState().initialRestorePending).toBe(false);
+    });
+
+    it('keeps initialRestorePending true until a cold start restore settles', async () => {
+      const snapshotData = {
+        schemaVersion: 1,
+        asOfRemoteId: 10,
+        asOfCreatedAt: '2024-01-15T10:00:00Z',
+        events: [
+          { kind: 'SessionLogged', payload: { duration: 30 }, createdAt: '2024-01-15T08:00:00Z', clientId: 'other', deviceLocalId: 1 }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(snapshotData)], { type: 'application/json' });
+      fakeSupabase._snapshots.set(`${userId}/snapshot.json`, blob);
+      fakeSupabase._checkpoints.set(userId, {
+        user_id: userId,
+        as_of_remote_id: 10,
+        schema_version: 1,
+        event_count: 1,
+        created_at: '2024-01-15T10:00:00Z',
+      });
+
+      const engine = createEngine();
+      const restorePromise = engine.restoreFromCloud();
+
+      expect(engine.getState().initialRestorePending).toBe(true);
+
+      await restorePromise;
+
+      expect(engine.getState().initialRestorePending).toBe(false);
+    });
+
+    it('clears initialRestorePending even when a cold start restore errors', async () => {
+      const snapshotData = {
+        schemaVersion: 999,
+        asOfRemoteId: 10,
+        asOfCreatedAt: '2024-01-15T10:00:00Z',
+        events: [
+          { kind: 'SessionLogged', payload: { duration: 30 }, createdAt: '2024-01-15T08:00:00Z', clientId: 'other', deviceLocalId: 1 }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(snapshotData)], { type: 'application/json' });
+      fakeSupabase._snapshots.set(`${userId}/snapshot.json`, blob);
+      fakeSupabase._checkpoints.set(userId, {
+        user_id: userId,
+        as_of_remote_id: 10,
+        schema_version: 999,
+        event_count: 1,
+        created_at: '2024-01-15T10:00:00Z',
+      });
+
+      const engine = createEngine();
+      await engine.restoreFromCloud();
+
+      expect(engine.getState().status).toBe('error');
+      expect(engine.getState().initialRestorePending).toBe(false);
+    });
+
     it('does not wipe and re-append on re-login when local events already exist', async () => {
       const sessionIdA = 'session-a';
       const sessionIdB = 'session-b';

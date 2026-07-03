@@ -8,6 +8,51 @@ const DEFAULT_OPTIONS = {
   visibilityIdleThresholdMs: 5 * 60 * 1000,
 };
 
+const FALLBACK_INITIAL_RESTORE_SAFETY_TIMEOUT_MS = 8000;
+const LONG_WAIT_COPY_THRESHOLD_MS = 3000;
+
+export function resolveInitialRestoreSafetyTimeoutMs(rawEnvValue: string | undefined): number {
+  const parsed = Number(rawEnvValue);
+  return Number.isFinite(parsed) && parsed > 0
+    ? parsed
+    : FALLBACK_INITIAL_RESTORE_SAFETY_TIMEOUT_MS;
+}
+
+const DEFAULT_INITIAL_RESTORE_SAFETY_TIMEOUT_MS = resolveInitialRestoreSafetyTimeoutMs(
+  import.meta.env.VITE_INITIAL_RESTORE_TIMEOUT_MS
+);
+
+function BootMark() {
+  return (
+    <svg className="boot-mark-svg" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true">
+      <rect width="32" height="32" rx="6" className="boot-mark-bg" />
+      <path d="M8 10h16" className="boot-mark-line boot-mark-line-1" />
+      <path d="M8 16h12" className="boot-mark-line boot-mark-line-2" />
+      <path d="M8 22h8" className="boot-mark-line boot-mark-line-3" />
+      <circle cx="24" cy="22" r="3" className="boot-mark-dot" />
+    </svg>
+  );
+}
+
+function BootScreen({ longWait }: { longWait: boolean }) {
+  return (
+    <div className="boot-screen" role="status" aria-live="polite">
+      <div className="boot-mark-wrap">
+        <BootMark />
+      </div>
+      <div className="boot-wordmark">Study Tracker</div>
+      <div className="boot-caption">
+        {longWait ? 'Still bringing things over' : 'Setting up this device'}
+      </div>
+      <div className="boot-subcaption">
+        {longWait
+          ? 'Larger histories take a little longer. Hang tight.'
+          : 'Bringing over your study history - this only happens once.'}
+      </div>
+    </div>
+  );
+}
+
 interface SyncContextValue {
   syncState: SyncState;
   logEvent: (kind: string, payload: Record<string, unknown>, createdAt?: string) => Promise<number>;
@@ -32,16 +77,27 @@ interface SyncProviderProps {
   supabaseUrl?: string;
   userId: string;
   eventStore: EventStore;
+  initialRestoreSafetyTimeoutMs?: number;
 }
 
-export function SyncProvider({ children, supabase, supabaseUrl, userId, eventStore }: SyncProviderProps) {
+export function SyncProvider({
+  children,
+  supabase,
+  supabaseUrl,
+  userId,
+  eventStore,
+  initialRestoreSafetyTimeoutMs = DEFAULT_INITIAL_RESTORE_SAFETY_TIMEOUT_MS,
+}: SyncProviderProps) {
   const [syncState, setSyncState] = useState<SyncState>({
     status: 'idle',
     lastSyncedAt: null,
     lastError: null,
     pendingCount: 0,
+    initialRestorePending: true,
   });
   const [isOnline, setIsOnline] = useState(true);
+  const [initialRestoreTimedOut, setInitialRestoreTimedOut] = useState(false);
+  const [showLongWaitCopy, setShowLongWaitCopy] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -79,6 +135,9 @@ export function SyncProvider({ children, supabase, supabaseUrl, userId, eventSto
       }
     }
 
+    setInitialRestoreTimedOut(false);
+    setShowLongWaitCopy(false);
+
     const sendBeaconUrl = supabaseUrl ? `${supabaseUrl}/rest/v1/events` : '';
 
     const engine = new SyncEngine(
@@ -97,11 +156,22 @@ export function SyncProvider({ children, supabase, supabaseUrl, userId, eventSto
 
     engine.restoreFromCloud().catch(() => {});
 
+    const safetyTimeoutId = setTimeout(
+      () => setInitialRestoreTimedOut(true),
+      initialRestoreSafetyTimeoutMs
+    );
+    const longWaitCopyTimeoutId = setTimeout(
+      () => setShowLongWaitCopy(true),
+      LONG_WAIT_COPY_THRESHOLD_MS
+    );
+
     return () => {
       engine.destroy();
       engineRef.current = null;
+      clearTimeout(safetyTimeoutId);
+      clearTimeout(longWaitCopyTimeoutId);
     };
-  }, [supabase, userId, eventStore]);
+  }, [supabase, userId, eventStore, initialRestoreSafetyTimeoutMs]);
 
   useEffect(() => {
     const hooks = new DurabilityHooks();
@@ -146,9 +216,12 @@ export function SyncProvider({ children, supabase, supabaseUrl, userId, eventSto
     forceSyncNow,
   };
 
+  const shouldBlockOnInitialRestore =
+    effectiveSyncState.initialRestorePending && !initialRestoreTimedOut;
+
   return (
     <SyncContext.Provider value={value}>
-      {children}
+      {shouldBlockOnInitialRestore ? <BootScreen longWait={showLongWaitCopy} /> : children}
     </SyncContext.Provider>
   );
 }

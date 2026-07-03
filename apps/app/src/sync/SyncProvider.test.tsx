@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import Dexie from 'dexie';
 import { EventStore } from '../events/EventStore';
-import { SyncProvider } from './SyncProvider';
+import { resolveInitialRestoreSafetyTimeoutMs, SyncProvider } from './SyncProvider';
 import { useSync } from './useSync';
 import { SyncEngine } from './SyncEngine';
 import type { SupabaseClientLike } from './types';
@@ -196,6 +196,25 @@ function createEventStore(userId: string): { db: Dexie; eventStore: EventStore }
   return { db, eventStore: new EventStore(db) };
 }
 
+describe('resolveInitialRestoreSafetyTimeoutMs', () => {
+  it('falls back to 8000 when unset', () => {
+    expect(resolveInitialRestoreSafetyTimeoutMs(undefined)).toBe(8000);
+  });
+
+  it('uses a positive numeric env value', () => {
+    expect(resolveInitialRestoreSafetyTimeoutMs('3000')).toBe(3000);
+  });
+
+  it('falls back to 8000 for non-numeric values', () => {
+    expect(resolveInitialRestoreSafetyTimeoutMs('abc')).toBe(8000);
+  });
+
+  it('falls back to 8000 for non-positive values', () => {
+    expect(resolveInitialRestoreSafetyTimeoutMs('0')).toBe(8000);
+    expect(resolveInitialRestoreSafetyTimeoutMs('-100')).toBe(8000);
+  });
+});
+
 describe('SyncProvider', () => {
   let fakeSupabase: ReturnType<typeof createFakeSupabase>;
   let eventStore: EventStore;
@@ -272,6 +291,59 @@ describe('SyncProvider', () => {
 
       await waitFor(() => {
         expect(restoreSpy).toHaveBeenCalled();
+      });
+
+      restoreSpy.mockRestore();
+    });
+  });
+
+  describe('initial restore gating', () => {
+    it('withholds children behind the boot screen until the initial restore clears', async () => {
+      const restoreSpy = vi.spyOn(SyncEngine.prototype, 'restoreFromCloud');
+
+      render(
+        <SyncProvider
+          supabase={fakeSupabase}
+          userId="test-user-123"
+          eventStore={eventStore}
+        >
+          <div data-testid="app-child">app ready</div>
+        </SyncProvider>
+      );
+
+      expect(screen.getByText('Study Tracker')).toBeInTheDocument();
+      expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-child')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Study Tracker')).not.toBeInTheDocument();
+      expect(restoreSpy).toHaveBeenCalled();
+
+      restoreSpy.mockRestore();
+    });
+
+    it('renders children after the safety timeout when restoreFromCloud never settles', async () => {
+      const restoreSpy = vi
+        .spyOn(SyncEngine.prototype, 'restoreFromCloud')
+        .mockReturnValue(new Promise(() => {}));
+
+      render(
+        <SyncProvider
+          supabase={fakeSupabase}
+          userId="test-user-123"
+          eventStore={eventStore}
+          initialRestoreSafetyTimeoutMs={20}
+        >
+          <div data-testid="app-child">app ready</div>
+        </SyncProvider>
+      );
+
+      expect(screen.getByText('Study Tracker')).toBeInTheDocument();
+      expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('app-child')).toBeInTheDocument();
       });
 
       restoreSpy.mockRestore();

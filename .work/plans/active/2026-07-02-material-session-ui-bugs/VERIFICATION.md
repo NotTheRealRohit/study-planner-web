@@ -316,23 +316,61 @@ Phases 7 and 8 remain not started.
 
 ---
 
-## Phase 8 — Gate the cold-start cloud-restore race in SyncProvider (BUG-6) · Status: ☐ Not started
+## Phase 8 - Gate the cold-start cloud-restore race in SyncProvider (BUG-6) · Status: 🟡 Implemented, awaiting review
 
 **Acceptance criteria**
-- [ ] `SyncState` (`types.ts`) gains `initialRestorePending: boolean`.
-- [ ] `SyncEngine`'s constructor defaults `initialRestorePending: true`.
-- [ ] The fast path (`localEventCount > 0` in `doRestoreFromCloud`) clears `initialRestorePending` immediately, before `flushQueue`/`pullAndMerge` run — implements D-08, so ordinary page reloads for already-hydrated devices are not delayed.
-- [ ] The public `restoreFromCloud()` wrapper's existing `finally` block clears `initialRestorePending` unconditionally, covering every slow-path exit (success, schema-guard error, empty-blob error, catch-all, and the bare-return-via-`pullAndMerge` branches) without needing to touch each one individually.
-- [ ] `SyncProvider` withholds rendering `children` while `syncState.initialRestorePending && !initialRestoreTimedOut`, showing a loading state instead (implements D-07).
-- [ ] A safety timeout (default 8000ms, tunable) force-clears the block via `initialRestoreTimedOut` if the restore never settles, so a hung/offline connection cannot brick the app.
-- [ ] The timeout is reset (`setInitialRestoreTimedOut(false)`) whenever a new engine is created (user/eventStore change), and cleared on effect cleanup.
-- [ ] `RequireOnboarding.tsx` and `OnboardingGate.tsx` are **not modified** — confirmed unchanged in the diff (D-07: fix is centralized in the sync layer only).
-- [ ] `SyncEngine.test.ts` covers: fast path clears immediately; slow path stays pending until success; slow path clears even on error.
-- [ ] `SyncProvider.test.tsx` covers: children withheld then rendered once pending clears; children rendered after the safety timeout even if `restoreFromCloud` never settles.
-- [ ] `pnpm --filter @study-tracker/app typecheck` + `test -- SyncEngine SyncProvider` green.
-- [ ] Live re-check: a genuinely fresh Playwright profile (new `userDataDir`) signing in and immediately deep-linking to a `RequireOnboarding`-gated route no longer transiently visits `/onboarding/1` before settling.
-- [ ] D-09 (loading-state visual + exact timeout value): direction picked 2026-07-03 (Option C, a branded moment), concrete design + timeout number still pending a follow-up session — not a blocker for implementing/shipping this phase with the documented fallback placeholder, but the real Option C treatment should land before calling Phase 8's UX final.
+- [x] `SyncState` (`types.ts`) gains `initialRestorePending: boolean`.
+- [x] `SyncEngine`'s constructor defaults `initialRestorePending: true`.
+- [x] The fast path (`localEventCount > 0` in `doRestoreFromCloud`) clears `initialRestorePending` immediately, before `flushQueue`/`pullAndMerge` run - implements D-08, so ordinary page reloads for already-hydrated devices are not delayed.
+- [x] The public `restoreFromCloud()` wrapper's existing `finally` block clears `initialRestorePending` unconditionally, covering every slow-path exit (success, schema-guard error, empty-blob error, catch-all, and the bare-return-via-`pullAndMerge` branches) without needing to touch each one individually.
+- [x] `SyncProvider` withholds rendering `children` while `syncState.initialRestorePending && !initialRestoreTimedOut`, showing the D-09 Option C1 boot screen instead (implements D-07).
+- [x] A safety timeout (default 8000ms, tunable) force-clears the block via `initialRestoreTimedOut` if the restore never settles, so a hung/offline connection cannot brick the app.
+- [x] The timeout is reset (`setInitialRestoreTimedOut(false)`) whenever a new engine is created (user/eventStore change), and cleared on effect cleanup.
+- [x] `RequireOnboarding.tsx` and `OnboardingGate.tsx` are **not modified** - confirmed unchanged in the diff (D-07: fix is centralized in the sync layer only).
+- [x] `SyncEngine.test.ts` covers: fast path clears immediately; slow path stays pending until success; slow path clears even on error.
+- [x] `SyncProvider.test.tsx` covers: children withheld behind the boot screen until pending clears; children rendered after the safety timeout even if `restoreFromCloud` never settles; timeout parsing fallback/override behavior.
+- [x] `pnpm --filter @study-tracker/app typecheck` + `test -- SyncEngine SyncProvider` green.
+- [x] Live re-check: a genuinely fresh Playwright profile (new `userDataDir`) signing in and immediately deep-linking to a `RequireOnboarding`-gated route no longer transiently visits `/onboarding/1` before settling.
+- [x] D-09 (loading-state visual + exact timeout value): Option C1 shipped with configurable `VITE_INITIAL_RESTORE_TIMEOUT_MS` defaulting to 8000ms, plus reduced-motion verification.
 
-**Implementer report:** _(pending)_
+**Implementer report:** 2026-07-03
+- Files changed: `apps/app/src/sync/types.ts`, `apps/app/src/sync/SyncEngine.ts`, `apps/app/src/sync/SyncEngine.test.ts`, `apps/app/src/sync/SyncProvider.tsx`, `apps/app/src/sync/SyncProvider.test.tsx`, `apps/app/src/components/SyncIndicator.test.tsx`, `packages/design-tokens/src/components.css`, `CLAUDE.md`, `apps/app/.env.example`, `.work/plans/active/2026-07-02-material-session-ui-bugs/PLAN.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/VERIFICATION.md`, `.work/plans/active/2026-07-02-material-session-ui-bugs/SCRATCHPAD.md`, `.work/STATUS.md`.
+- Added `initialRestorePending` to `SyncState`.
+- Defaulted `SyncEngine` to pending, cleared it immediately on the already-hydrated fast path, and cleared it unconditionally in the public `restoreFromCloud()` wrapper's `finally`.
+- Added SyncEngine tests for the fast path, slow-path success, and slow-path error cases.
+- Implemented `SyncProvider` gating with `BootScreen`, `initialRestoreTimedOut`, `showLongWaitCopy`, `resolveInitialRestoreSafetyTimeoutMs`, and `initialRestoreSafetyTimeoutMs`.
+- Added SyncProvider tests for boot-screen child withholding, safety-timeout fallback, and timeout parsing.
+- Added the Option C1 `.boot-*` styles to `packages/design-tokens/src/components.css`.
+- Documented optional `VITE_INITIAL_RESTORE_TIMEOUT_MS` in `CLAUDE.md` and `apps/app/.env.example`.
+- Updated `SyncIndicator.test.tsx` fixtures to include `initialRestorePending: false` for the required `SyncState` field.
+- Prereq verification:
+  - `grep -n "status: 'idle'\|status: 'syncing'\|status: 'error'\|status: 'offline'" apps/app/src/sync/types.ts` found the pre-phase four-state union.
+  - `grep -n "finally {" apps/app/src/sync/SyncEngine.ts` found the existing restore wrapper finally.
+  - `grep -n "initialRestorePending" apps/app/src/sync/*.ts apps/app/src/sync/*.tsx` returned no rows before implementation.
+  - Baseline `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider` passed with 59 files and 523 tests.
+- Red-green evidence:
+  - New SyncEngine tests first failed because `initialRestorePending` was `undefined`, then passed after the engine implementation.
+  - New SyncProvider tests first failed because the boot screen was missing and children rendered immediately, then passed after the provider implementation.
+- Verification:
+  - `grep -n "initialRestorePending" apps/app/src/sync/types.ts apps/app/src/sync/SyncEngine.ts apps/app/src/sync/SyncProvider.tsx` found the field and all write sites.
+  - `grep -n "resolveInitialRestoreSafetyTimeoutMs\|BootScreen\|initialRestoreSafetyTimeoutMs" apps/app/src/sync/SyncProvider.tsx` found the provider config, component, and prop.
+  - `grep -n "\.boot-screen\b" packages/design-tokens/src/components.css` found the new CSS at line 1053.
+  - `grep -n "VITE_INITIAL_RESTORE_TIMEOUT_MS" CLAUDE.md apps/app/.env.example` found both doc entries.
+  - `pnpm --filter @study-tracker/app typecheck` passed.
+  - `pnpm --filter @study-tracker/app test -- SyncEngine SyncProvider` passed with 59 files and 532 tests.
+- Live browser verification:
+  - `./full-app start full` first failed in the sandbox on the known `uv` cache permission issue, then succeeded outside the sandbox.
+  - Health checks passed: `curl -i http://127.0.0.1:8000/health` returned 200, and `curl -i http://localhost:5173/study/sign-in` returned 200.
+  - Sandboxed Chromium hit the known macOS Mach-port permission failure, so the focused probe was rerun outside the sandbox.
+  - Fresh persistent profile, real login, immediate deep link to `/study/roadmaps`: final path was `/study/roadmaps`, route log contained only `/study/roadmaps`, `sawOnboardingOne` was `false`, and browser console/page errors were empty.
+  - The boot screen became visible 26ms after the deep link and remained visible for about 2808ms before the route settled.
+  - Reduced-motion check passed: `.boot-mark-line-1` animation was `none` with dash offset `0px`, `.boot-mark-dot` animation was `none` with opacity `1`, and `.boot-caption` animation was `none` with opacity `1`.
+  - Managed full-app stack was stopped after verification.
+- Deviations:
+  - The provider transition test uses the real `restoreFromCloud()` path with a prototype spy rather than a fully mocked deferred restore.
+    A fully mocked restore would not exercise the engine's `notifyState({ initialRestorePending: false })`, which is the behavior the provider gate relies on.
+  - The boot subcaption uses a plain hyphen (`Bringing over your study history - this only happens once.`) instead of the mock's em dash to comply with the repo instruction banning em dashes.
+  - New boot CSS uses `letter-spacing: 0` for the added classes to comply with the frontend instruction.
+- Commit SHA: `pending`.
 
 **Reviewer findings:** _(pending)_
