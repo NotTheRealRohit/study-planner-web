@@ -277,7 +277,21 @@ Phases 7 and 8 remain not started.
 - Deviations: none to implementation.
 - Commit SHA: `33a98c9`.
 
-**Reviewer findings:** _(pending)_
+**Reviewer findings:** 2026-07-04 review-fix update, awaiting re-review.
+- Fixed the stale `SyncEngine` callback race in `SyncProvider` without changing `SyncEngine`, `RequireOnboarding.tsx`, or `OnboardingGate.tsx`.
+- `SyncProvider` now assigns a provider-local engine generation to each created engine and ignores state callbacks whose generation is no longer current.
+- Cleanup invalidates the active generation before destroying the old engine, so late `restoreFromCloud().finally` notifications cannot clear a newer engine's restore gate.
+- `SyncProvider` resets `syncState` to the initial pending state whenever a new engine is created.
+- `SyncProvider` also blocks children during the render where `userId` or `eventStore` has changed but the new engine effect has not committed yet, closing the one-render hole after user/store changes.
+- Added a `SyncProvider.test.tsx` regression that keeps restores pending, lets user A clear the gate before switching to user B, manually emits a stale settled state from user A after the switch, and verifies children remain blocked until user B's current engine clears `initialRestorePending`.
+- Added `initialRestorePending: false` to the remaining incomplete `useSync` fakes in `RoadmapCalendar.test.tsx`, `OnboardingFlow.test.tsx`, `Step3Preview.test.tsx`, `roadmap/replan/Replan.test.tsx`, `pages/Roadmaps.test.tsx`, and `pages/Replan.test.tsx`.
+- `rg -n "syncState: \\{ status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null \\}" apps/app/src -g '*.test.ts' -g '*.test.tsx'` now returns no matches.
+- Verification run: `pnpm --filter @study-tracker/app exec vitest run SyncProvider SyncEngine RoadmapCalendar` passed with 3 files and 55 tests.
+- Additional touched-fake verification run: `pnpm --filter @study-tracker/app exec vitest run src/onboarding/OnboardingFlow.test.tsx src/onboarding/steps/Step3Preview.test.tsx src/roadmap/replan/Replan.test.tsx src/pages/Roadmaps.test.tsx src/pages/Replan.test.tsx` passed with 5 files and 30 tests.
+- `pnpm --filter @study-tracker/app typecheck` passed.
+- `pnpm lint` exited 0 with the same four pre-existing `@typescript-eslint/no-explicit-any` warnings in `YouTubePlayerAdapter.test.ts` and `loadYouTubeApi.ts`.
+- `git diff --check` passed.
+- Note: the package-script form `pnpm --filter @study-tracker/app test -- SyncProvider SyncEngine RoadmapCalendar` was not used for final evidence because it ran the full app suite in this workspace; that full run still hits an unrelated existing `Home.test.tsx` failure looking for `/Study session/`.
 
 ---
 

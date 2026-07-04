@@ -5,7 +5,7 @@ import { EventStore } from '../events/EventStore';
 import { resolveInitialRestoreSafetyTimeoutMs, SyncProvider } from './SyncProvider';
 import { useSync } from './useSync';
 import { SyncEngine } from './SyncEngine';
-import type { SupabaseClientLike } from './types';
+import type { SupabaseClientLike, SyncState } from './types';
 
 interface FakeRemoteEvent {
   id: number;
@@ -347,6 +347,103 @@ describe('SyncProvider', () => {
       });
 
       restoreSpy.mockRestore();
+    });
+
+    it('ignores stale engine notifications when switching users during initial restore', async () => {
+      const engines: SyncEngine[] = [];
+      const restoreSpy = vi
+        .spyOn(SyncEngine.prototype, 'restoreFromCloud')
+        .mockImplementation(function capturePendingRestore(this: SyncEngine) {
+          engines.push(this);
+          return new Promise(() => {});
+        });
+
+      const userA = 'restore-user-a';
+      const userB = 'restore-user-b';
+      const createdA = createEventStore(userA);
+      const createdB = createEventStore(userB);
+      await createdA.db.open();
+      await createdB.db.open();
+
+      const staleSettledState: SyncState = {
+        status: 'idle',
+        lastSyncedAt: null,
+        lastError: null,
+        pendingCount: 0,
+        initialRestorePending: false,
+      };
+
+      const pendingState: SyncState = {
+        ...staleSettledState,
+        initialRestorePending: true,
+      };
+
+      const notifyEngine = (engine: SyncEngine, state: SyncState) => {
+        const notifier = (engine as unknown as {
+          onStateChange?: (newState: SyncState) => void;
+        }).onStateChange;
+        notifier?.(state);
+      };
+
+      try {
+        const { rerender } = render(
+          <SyncProvider
+            supabase={fakeSupabase}
+            userId={userA}
+            eventStore={createdA.eventStore}
+          >
+            <div data-testid="app-child">app ready</div>
+          </SyncProvider>
+        );
+
+        await waitFor(() => {
+          expect(engines).toHaveLength(1);
+        });
+        expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+        act(() => {
+          notifyEngine(engines[0], staleSettledState);
+        });
+        expect(screen.getByTestId('app-child')).toBeInTheDocument();
+
+        rerender(
+          <SyncProvider
+            supabase={fakeSupabase}
+            userId={userB}
+            eventStore={createdB.eventStore}
+          >
+            <div data-testid="app-child">app ready</div>
+          </SyncProvider>
+        );
+
+        expect(screen.getByText('Study Tracker')).toBeInTheDocument();
+        expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+        await waitFor(() => {
+          expect(engines).toHaveLength(2);
+        });
+
+        act(() => {
+          notifyEngine(engines[0], staleSettledState);
+        });
+
+        expect(screen.getByText('Study Tracker')).toBeInTheDocument();
+        expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+        act(() => {
+          notifyEngine(engines[1], pendingState);
+        });
+        expect(screen.queryByTestId('app-child')).not.toBeInTheDocument();
+
+        act(() => {
+          notifyEngine(engines[1], staleSettledState);
+        });
+        expect(screen.getByTestId('app-child')).toBeInTheDocument();
+      } finally {
+        restoreSpy.mockRestore();
+        createdA.db.close();
+        createdB.db.close();
+      }
     });
   });
 

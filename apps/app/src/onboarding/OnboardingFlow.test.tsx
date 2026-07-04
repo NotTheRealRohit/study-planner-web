@@ -113,7 +113,7 @@ describe('OnboardingFlow (Integration)', () => {
       ready: true,
     })
     mockUseEventStore.mockReturnValue(mockEventStore as never)
-    mockUseSync.mockReturnValue({ logEvent: logEventMock, syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null }, forceSyncNow: vi.fn() } as never)
+    mockUseSync.mockReturnValue({ logEvent: logEventMock, syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null, initialRestorePending: false }, forceSyncNow: vi.fn() } as never)
 
     const { generateBookings } = await import('@study-tracker/roadmap-engine')
     vi.mocked(generateBookings).mockReturnValue(mockBookingResult())

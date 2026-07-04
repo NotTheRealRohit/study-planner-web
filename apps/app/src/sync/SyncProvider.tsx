@@ -22,6 +22,16 @@ const DEFAULT_INITIAL_RESTORE_SAFETY_TIMEOUT_MS = resolveInitialRestoreSafetyTim
   import.meta.env.VITE_INITIAL_RESTORE_TIMEOUT_MS
 );
 
+function initialSyncState(): SyncState {
+  return {
+    status: 'idle',
+    lastSyncedAt: null,
+    lastError: null,
+    pendingCount: 0,
+    initialRestorePending: true,
+  };
+}
+
 function BootMark() {
   return (
     <svg className="boot-mark-svg" viewBox="0 0 32 32" width="56" height="56" aria-hidden="true">
@@ -88,13 +98,7 @@ export function SyncProvider({
   eventStore,
   initialRestoreSafetyTimeoutMs = DEFAULT_INITIAL_RESTORE_SAFETY_TIMEOUT_MS,
 }: SyncProviderProps) {
-  const [syncState, setSyncState] = useState<SyncState>({
-    status: 'idle',
-    lastSyncedAt: null,
-    lastError: null,
-    pendingCount: 0,
-    initialRestorePending: true,
-  });
+  const [syncState, setSyncState] = useState<SyncState>(initialSyncState);
   const [isOnline, setIsOnline] = useState(true);
   const [initialRestoreTimedOut, setInitialRestoreTimedOut] = useState(false);
   const [showLongWaitCopy, setShowLongWaitCopy] = useState(false);
@@ -115,6 +119,7 @@ export function SyncProvider({
   }, []);
 
   const engineRef = useRef<SyncEngine | null>(null);
+  const engineGenerationRef = useRef(0);
   const clientIdRef = useRef<string>(getOrCreateClientId());
   const lastUserIdRef = useRef<string | null>(null);
   const lastEventStoreRef = useRef<EventStore | null>(null);
@@ -137,15 +142,22 @@ export function SyncProvider({
 
     setInitialRestoreTimedOut(false);
     setShowLongWaitCopy(false);
+    setSyncState(initialSyncState());
 
     const sendBeaconUrl = supabaseUrl ? `${supabaseUrl}/rest/v1/events` : '';
+    const engineGeneration = engineGenerationRef.current + 1;
+    engineGenerationRef.current = engineGeneration;
 
     const engine = new SyncEngine(
       supabase,
       eventStore,
       userId,
       clientIdRef.current,
-      (newState) => setSyncState(newState),
+      (newState) => {
+        if (engineGenerationRef.current === engineGeneration) {
+          setSyncState(newState);
+        }
+      },
       sendBeaconUrl,
       DEFAULT_OPTIONS
     );
@@ -166,8 +178,13 @@ export function SyncProvider({
     );
 
     return () => {
+      if (engineGenerationRef.current === engineGeneration) {
+        engineGenerationRef.current += 1;
+      }
       engine.destroy();
-      engineRef.current = null;
+      if (engineRef.current === engine) {
+        engineRef.current = null;
+      }
       clearTimeout(safetyTimeoutId);
       clearTimeout(longWaitCopyTimeoutId);
     };
@@ -216,8 +233,10 @@ export function SyncProvider({
     forceSyncNow,
   };
 
+  const engineIdentityChanged =
+    lastUserIdRef.current !== userId || lastEventStoreRef.current !== eventStore;
   const shouldBlockOnInitialRestore =
-    effectiveSyncState.initialRestorePending && !initialRestoreTimedOut;
+    engineIdentityChanged || (effectiveSyncState.initialRestorePending && !initialRestoreTimedOut);
 
   return (
     <SyncContext.Provider value={value}>

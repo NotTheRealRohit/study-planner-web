@@ -23,7 +23,7 @@ vi.mock('../events/useEventStore', () => ({
 vi.mock('../sync/useSync', () => ({
   useSync: () => ({
     logEvent: mockState.logEvent,
-    syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null },
+    syncState: { status: 'idle', lastSyncedAt: null, pendingCount: 0, lastError: null, initialRestorePending: false },
     forceSyncNow: vi.fn(),
   }),
 }))

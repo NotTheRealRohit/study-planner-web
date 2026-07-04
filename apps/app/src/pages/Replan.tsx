@@ -52,8 +52,9 @@ function dayOfWeekForISO(iso: string): DayOfWeek {
 }
 
 function fmtMin(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
+  const safeMinutes = Math.max(0, Math.round(minutes))
+  const h = Math.floor(safeMinutes / 60)
+  const m = safeMinutes % 60
   if (h > 0 && m > 0) return `${h}h ${m}m`
   if (h > 0) return `${h}h`
   return `${m}m`

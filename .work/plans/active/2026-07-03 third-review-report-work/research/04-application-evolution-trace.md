@@ -1,6 +1,6 @@
 ---
 title: Application Evolution Trace — git-log-grounded chronological history, 2026-05-01 → 2026-07-03
-status: durable reference (third-review-report-work research stage 2)
+status: durable reference (third-review-report-work research stage 2) — independently re-verified 2026-07-03
 last_updated: 2026-07-03
 scope: >
   How the app got to the state documented in `01-app-architecture-and-data-flow.md`,
@@ -15,23 +15,82 @@ sources: >
   cross-referencing the matching `.work/plans/` folder(s) plus docs 01-03 for
   current-state truth, synthesized into this single doc by the orchestrating session,
   which additionally ran two direct verification passes on cross-era ambiguities the
-  agents flagged (§8).
+  agents flagged (§9). A second, independent verification stage (2026-07-03, same day,
+  after this document's initial commit `e60773e`) then re-fact-checked every specific,
+  checkable claim below via 8 fresh agents (one per era plus one meta-auditor) that
+  treated the original agents' work as unverified rather than as ground truth — see the
+  "Verification notice" immediately below for what that pass found and corrected.
 ---
 
 # Application Evolution Trace
 
+## Verification notice (2026-07-03, independent second-pass audit)
+
+After this document's initial commit (`e60773e`), 8 independent agents (one per era 0-6,
+plus one meta-auditor for §1/§9/§10) re-fact-checked every specific, checkable claim below
+against fresh `git log`/`git show`/`grep` output, instructed to actively look for errors
+rather than confirm the original text. Findings, and what changed as a result:
+
+- **Per-era commit counts (eras 1, 2, 4, 5, 6) initially looked "off by one"** against a
+  naive `git log START..END | wc -l`. Root cause: every era's stated count consistently
+  includes its own start-boundary commit (i.e. it's actually `git log START^..END | wc -l`),
+  which the exclusive `A..B` range notation doesn't signal on its own. The numbers
+  themselves are internally consistent under that convention, and independently confirmed
+  to have no overlap or gap between adjacent eras — this was a missing methodology
+  footnote, not a wrong count. Now stated explicitly in §0.
+- **§0's "341 commits" total was simply wrong** — no reconciliation of era counts, `git log`
+  windows, or branch/HEAD variants reproduces 341; the correct total is 304 (see §1).
+  Corrected below.
+- **Era 0's topology explanation was wrong.** The original text claimed `27fe887`'s parent
+  was a `feature/issue-004` branch commit; it isn't — `27fe887`'s real parent is an
+  unrelated same-day mainline commit (`d3ce43f`). The 4 extra pre-2026-05-01 commits
+  actually enter the naive range through a later merge (`557fd47`, 2026-05-03) reconciling
+  the long-diverged `feature/issue-004` branch. Corrected in §2.
+- **Era 0's narrative silently omitted 5 real code commits** inside its own commit set
+  (`1ac6ccf`, `3b3168f`, `37a398a`, `35de3d5`, `23dc3ca`) — none change any conclusion, but
+  `23dc3ca` is a genuine Home.tsx behavior change worth naming. Added to §2.
+- **Era 3's "reviewer-verified… 11/12 frozen, 9/12 reality" claim was unsupported.** No
+  Cowork review actually happened anywhere in era 3 (that plan's `VERIFICATION.md` review
+  sections are still unfilled "pending" placeholders across the whole commit range), and
+  the 9/12 reality figure belongs to a later phase's re-score, not the discovery commit
+  itself (whose own evidence showed 10/12 reality). Corrected in §5.
+- **Era 4's "lifts the calibrator verbatim" overstated a small, real change** — one
+  defensive guard clause was added, not a byte-identical copy. Corrected in §6.
+- **Era 5's quoted user direction was a blended paraphrase, not a verbatim quote**, and its
+  "first commit with booking vocabulary, three days after" claim conflated application-code
+  and planning-doc vocabulary (two different first-use dates). Corrected in §7.
+- **A genuine section-numbering bug**: "Cross-era resolutions" is `## 9`, not `## 8` as
+  several internal citations claimed (frontmatter, §0, era 0, era 2, era 3); era 5 also
+  cited a non-existent "§8.3". All fixed to point at the right section.
+- **Two coda (§10) claims have gone stale since this document's initial commit** — not
+  because they were wrong when written, but because a concurrent, unrelated session kept
+  landing commits on the same calendar day after this document was committed. §10 is
+  updated to reflect that.
+- Everything else — every other cited commit SHA, timestamp, diff content, quoted decision,
+  and numeric result (fixture counts, AUC scores, coverage numbers, Holm-win counts other
+  than the one flagged above, hyperparameter values, grep results) — held up exactly under
+  independent re-verification. No other correction was needed.
+
 ## 0. How to read this document
 
 Each era below is a **contiguous, non-overlapping commit range** (exact SHA boundaries
-given), covering all 341 commits from 2026-05-01 to 2026-07-03. Every era section was
+given), covering the 304 commits inside the 7 eras below (2026-05-01 through 2026-07-02;
+see the counting-convention note at the end of this section). This document's own
+out-of-band commits on 2026-07-03 are covered separately in §10. Every era section was
 produced by an agent instructed to (a) read the matching plan/decision docs for stated
 intent, (b) verify against actual `git show` diffs rather than trust commit subject lines,
 and (c) explicitly flag — not assume — whether what it found is still true today, using
 docs 01-03 as the current-state reference. Where two eras' agents disagreed or flagged an
-open question about each other's territory, §8 records the orchestrator's direct
+open question about each other's territory, §9 records the orchestrator's direct
 verification and resolution. Nothing below is asserted from a plan document alone without
 a corroborating commit; where a plan doc's stated date didn't match when the work actually
 landed, the commit date wins and the discrepancy is noted.
+
+**Counting convention**: each era's stated commit count includes that era's own
+start-boundary SHA (i.e. it is `git log --oneline START^..END | wc -l`, not the exclusive
+`git log START..END` that the `SHA1..SHA2` range notation conventionally implies) —
+independently confirmed to be applied consistently across all 7 eras below, with no
+overlapping or double-counted commits between adjacent eras.
 
 ## 1. Timeline overview
 
@@ -47,17 +106,25 @@ landed, the commit date wins and the discrepancy is noted.
 | 6 | 2026-06-30 → 07-02 | `17bb1af..08783ed` | 48 | **The major refactor**: material/session decoupling retires packed-slot for a booking model; ETA cold-start composite promoted one day after validation |
 | coda | 2026-07-03 | (uncommitted) | — | This documentation task itself; UI-bugs Phases 6-8 spec'd, not yet built |
 
-Total: 304 commits from 2026-05-01 to the end of era 6 (37+16+58+46+42+57+48 = 304, matching
-`git log --since=2026-05-01 --until="2026-07-03 23:59" --oneline | wc -l`).
+Total: 304 commits across the 7 eras above (37+16+58+46+42+57+48 = 304), spanning
+2026-05-01 through the end of era 6 (2026-07-02). A plain `git log --since=2026-05-01
+--until="2026-07-03 23:59" --oneline | wc -l` returns more than 304 from any point after
+this document's own commit — that command also counts commits *about* this document, and,
+later the same day, unrelated work from a concurrent task (see the verification notice
+above and §10's coda for the reconciliation).
 
 ---
 
 ## 2. Era 0 — Progress/Calibration Engine Genesis (2026-05-01 → 2026-05-09, `27fe887..a14de65`, 37 commits)
 
-**Topology note:** a literal `git log 27fe887^..a14de65` returns 41 commits because
-`27fe887`'s true parent is a `feature/issue-004` branch commit forked before mainline
-advanced; the 4 extra pre-2026-05-01 commits it pulls in (onboarding CSS, the Session page,
-all dated 2026-04-30) are excluded below.
+**Topology note:** a literal `git log 27fe887^..a14de65` returns 41 commits, 4 more than
+this era's stated 37. The 4 extra pre-2026-05-01 commits (onboarding CSS, the Session page,
+and their two merge wrappers — all dated 2026-04-30) are **not** `27fe887`'s own ancestors —
+its real parent is an unrelated same-day mainline commit, `d3ce43f`. They enter the naive
+range through a later merge, `557fd47` (2026-05-03, "Merge feature/issue-004 into main"),
+which reconciles a long-diverged `feature/issue-004` branch tip back into a history that by
+then already includes `27fe887..a14de65`. They're excluded below as pre-2026-05-01,
+out-of-scope branch work — not because of anything about `27fe887`'s direct lineage.
 
 ### What shipped
 
@@ -95,6 +162,12 @@ video-cursor tracking, multi-video auto-advance, and cross-session cursor roll-f
 `1d0875b`/`a14de65`(05-09): stale-preview-edit fix and a flaky-`SyncEngine`-test fix
 (undestroyed engines left `setTimeout` callbacks alive across test boundaries).
 
+Also inside this era's commit set but not otherwise narrated above: `1ac6ccf`/`3b3168f`/
+`37a398a`/`35de3d5` (progress-engine and Week/Home test coverage additions), and `23dc3ca` —
+a real Home.tsx behavior change ("Fix Home stats: always show 'This week', compare
+projection to deadline") that predates and is unrelated to the later `aed137a` Home
+overhaul.
+
 ### Why (stated intent)
 
 Plan A's decisions log: three-level Hierarchical Bayesian chosen because "this should be a
@@ -118,7 +191,7 @@ us so that the existing CUSUM can match their need?" (D-10).
   era 1) — a full month later. `git ls-tree -r a14de65 -- packages/` shows only
   `design-tokens`, `progress`, `roadmap-engine`.
 - **`videoPlayTimeMinutes`** — the field is declared here (`f3e6e2c`) but, per orchestrator
-  verification (§8.1), **has never been assigned by `logSession()` in any commit across the
+  verification (§9.1), **has never been assigned by `logSession()` in any commit across the
   project's entire history** — confirmed dead-on-arrival, not a later regression.
 - **OQ-01 (GP CI under-coverage, the 1.5× inflation fudge)** — still an open question as of
   2026-07-03 per doc 01 §3.5/doc 03: the split-conformal fix this era's own plan flagged as
@@ -232,7 +305,7 @@ file-only (`results/kt/*.json`), never an import.
   this era, unchanged since.** Not a later retrofit.
 - **`.work/plans/active/2026-06-14-pillar-a-rigour.md`'s phases (A0-A4) are NOT executed in
   this era** despite the filename date — confirmed absent from era 2's commit range; they
-  land 2026-06-18/19 (era 3 confirms the same boundary independently — see §8, no conflict).
+  land 2026-06-17/18 (era 3 confirms the same boundary independently — see §5, no conflict).
 
 ---
 
@@ -269,9 +342,15 @@ Phase 2: archetype set extended 6→9 specifically so the most interesting held-
 Phase 3, 10:51:06 — the discovery commit**: adds `EnrichedShrinkageCalibrator`
 (`enriched_shrink`) to the research harness — a ridge/shrinkage log-linear regression over
 observable signals the null-era candidates ignored (fatigue, deadline-proximity from the new
-`planned_horizon` field, recency), shrunk toward a TRAIN-only population prior. Reviewer-
-verified as a genuine, leakage-free win: Holm-surviving on held-out `context_pred_mae` in
-11/12 frozen cells and 9/12 reality cells. `a919ea4` Phase 4: archetype-aware router variants
+`planned_horizon` field, recency), shrunk toward a TRAIN-only population prior. A genuine,
+leakage-free win by the plan's own held-out/Holm criterion — **though not Cowork-reviewed
+within this era**: that plan's `VERIFICATION.md` review sections remain unfilled "pending"
+placeholders across the whole commit range, so "reviewer-verified" (as an earlier version of
+this document put it) overstated what actually happened here. At this discovery commit's own
+evidence, `enriched_shrink` is Holm-surviving on held-out `context_pred_mae` in 11/12 frozen
+cells and **10/12** reality cells — the oft-cited "9/12 reality" figure is Phase 5's later
+re-score, after archetype-router candidates were folded into the correction family (see
+below). `a919ea4` Phase 4: archetype-aware router variants
 tested and **honestly rejected** — neither beats plain shrinkage. `922c64e` Phase 5: final
 recommendation is `enriched_shrink` alone, not the archetype layer.
 
@@ -283,7 +362,7 @@ touched anywhere in this era). Dataclass defaults at introduction were already
 run's own grid search *selected* different values for its own evaluation runs:
 `ridge=1.0, shrink=6.0` (frozen dataset) and `ridge=1.0, shrink=2.0` (reality dataset) — not
 the defaults (evidence: `research/doc/verification-runs/2026-06-19-a6-enriched/evidence.json`).
-**§8.2 resolves this**: the defaults were independently re-validated (not blindly inherited)
+**§9.2 resolves this**: the defaults were independently re-validated (not blindly inherited)
 by the very next era's Phase 0. The dual-prior ensemble (`DualPriorWeightedCalibrator`,
 `REALITY_POPULATION_PRIOR`/`FROZEN_POPULATION_PRIOR`) does **not** exist yet — confirmed
 absent throughout era 3; first appears `bd9eafa` (2026-06-20, era 4).
@@ -312,8 +391,10 @@ validates the `DualPriorWeightedCalibrator` ensemble (two `EnrichedShrinkageCali
 one per `REALITY_`/`FROZEN_POPULATION_PRIOR`, leave-one-out-weighted, static (0.6,0.4)
 cold-start blend) — **GO**, 7 Holm-surviving wins, with a documented small-band-regression
 caveat recorded the same evening (`c3b6a71`). `0032479` Phase 1 lifts the calibrator
-**verbatim** into `packages/py-progress/src/py_progress/enriched.py` — production behavior
-unchanged this phase. `eef569a` Phase 2 wires it into `compute_calibration`, overriding only
+**near-verbatim** into `packages/py-progress/src/py_progress/enriched.py` — one defensive
+guard clause is added to `fit_global` (returns the prior mean for an empty session list,
+absent from the research version) — production behavior unchanged this phase regardless,
+since nothing calls `production_calibrator()` yet. `eef569a` Phase 2 wires it into `compute_calibration`, overriding only
 `globalMultiplier`/`globalPosterior.variance` (role multipliers, CUSUM, Kalman trend
 untouched, per D-03) and adds the (ultimately unused client-side) `nextSessionForecast`
 field. `e4555c1` Phase 3 creates `intelligenceClient.ts` and rewires `useCalibration.ts` to
@@ -357,7 +438,7 @@ Phases 3-4: month nav + session/day detail modals. `3967553` Phase 5: mobile dot
 swipe. `192cbef` Phase 6: `RoadmapMarkedComplete/Abandoned` terminal events + lifecycle
 grouping. `84abbd2` Phase 7: the Python-routed replan seam (`postRoadmapRegenerate` →
 `/v1/roadmap/regenerate`, TS `regenerateRoadmap` as offline fallback) — **per the user's
-explicit direction, "it shd route to the python backend."**
+explicit direction — "Create an interface and its shd route to python backend."**
 
 **Roadmaps Dashboard, 7 phases (2026-06-26/27):** `4631152` Phase 1: identity-aware lifecycle
 grouping (a replan chain collapses to one entry). `37a0361` Phase 2: date-window session
@@ -389,14 +470,18 @@ not the booking system that's live today.**
    with TS `regenerateRoadmap` invoked only as an offline fallback.
 4. Zero trace of booking vocabulary anywhere in the era-5 tree
    (`generateBookings`/`SessionBooked`/`BookingCleared`/`deriveBookingStatuses` all return no
-   hits). The first commit introducing any booking vocabulary is `327ca45` (2026-07-01) —
-   three days after this era ends, inside era 6.
+   hits). The first commit introducing booking vocabulary into **application code**
+   (`apps/app`/`packages`) is `327ca45` (2026-07-01) — four days after this era ends, inside
+   era 6. Two `.work/` planning-doc commits use the vocabulary earlier still (`8272d46`,
+   2026-06-30, three days after this era ends; `8c65b07`, 2026-07-01), but neither touches
+   application code — the substantive point stands: the live app's code doesn't gain booking
+   vocabulary until era 6.
 
 ### Cross-era status check
 
 **This entire UI shell was built and verified against the packed-slot engine — the fact that
 today's `RoadmapCalendar.tsx` reads `deriveBookingStatuses` instead is a later-era migration,
-not something this era did.** Era 6 (§8.3, confirmed independently by the era-6 agent, not
+not something this era did.** Era 6 (§8, confirmed independently by the era-6 agent, not
 just inferred here) shows the migration rewired exactly the three call sites this era built
 (`Step3Preview.tsx`, `commitReplan.ts`, `RoadmapCalendar.tsx`) onto the booking model while
 apparently keeping this era's UI shell (calendar grid, lifecycle dashboard, banners, terminal
@@ -521,10 +606,21 @@ contradiction or an error in either era's work.
 
 ## 10. Coda — 2026-07-03 (today, not a commit-graph era)
 
-As of this writing, the working tree contains no code commits for 2026-07-03 — only
-in-progress planning/documentation state: this stage-2 evolution-trace task (and its stage-1
+**As originally written**, at this document's own commit (`e60773e`, 2026-07-03 21:25): the
+working tree contained no code commits for 2026-07-03 — only in-progress
+planning/documentation state: this stage-2 evolution-trace task (and its stage-1
 predecessor, docs 01-03), issues 019-022 filed from stage 1's findings, and
-`.work/plans/active/2026-07-02-material-session-ui-bugs/`'s Phases 6-8, which are fully
+`.work/plans/active/2026-07-02-material-session-ui-bugs/`'s Phases 6-8, which were fully
 spec'd (mock HTML files for the branded-loading state and bubble-truncation fix exist) but
-have zero implementation commits yet. Nothing in this coda should be read as "shipped" — it
-is the state the next work session picks up from.
+had zero implementation commits yet.
+
+**Updated by this document's independent verification pass** (still 2026-07-03, same day):
+that state has already moved on, from a concurrent session unrelated to this one. `33a98c9`
+("scroll day sheet into view," 21:40) implements Phase 6 of the material-session-ui-bugs
+plan, and `f70126b` (21:41) records its work-journal wrap — per that task's own
+`SCRATCHPAD.md`, Phase 6 is implemented and awaiting reviewer verification; Phases 7-8
+remain unimplemented. This verification stage of the third-review-report-work task (the one
+that produced the corrections in this document) is itself further same-day activity not yet
+fully wrapped. Nothing in this coda should be read as a snapshot that stays current for
+long — on a day with this much concurrent activity, re-run `git log --oneline 08783ed..HEAD`
+before citing "what's shipped as of 2026-07-03" in the dissertation.
