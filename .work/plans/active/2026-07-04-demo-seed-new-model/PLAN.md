@@ -230,7 +230,7 @@ Read path (unchanged, production): `findActiveRoadmap` → folds active `Session
 
 ### Phase 1: Rewrite `seedTestData.ts` to the no-slot model — active roadmap only
 
-**Status:** 🟡 In progress - implemented in `ebf6bbf`, awaiting reviewer verification
+**Status:** ✅ Complete - `ebf6bbf`; reviewer verified after local-date fix `pending`
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file rewritten (~200 lines), 1 console string.
 
@@ -533,14 +533,15 @@ Then a live smoke check (see `.claude/rules/playwright-full-app-lifecycle.md`): 
 - The implementation keeps Phase 1 scoped to `seedTestData.ts` and `DevSeeder.tsx`.
 - Deviation: Phase 1 omits `RoadmapMarkedCompletePayload` and `RoadmapMarkedAbandonedPayload` imports until Phase 2 because `apps/app/tsconfig.json` has `noUnusedLocals: true`.
 - Deviation: new console text uses plain hyphens instead of em dashes to follow the project instruction.
-- Deviation: seed date helpers use UTC day keys because the app's live `todayISO()` also uses `new Date().toISOString().slice(0, 10)`.
-- The UTC helper deviation fixed a live smoke issue where a Saturday seed initially rendered Home as a rest day.
+- Reviewer finding: the UTC day-key helper drifted from Home's local `format(new Date(), 'yyyy-MM-dd')` date near late-evening UTC boundaries.
+- Resolved in `pending`: seed date keys, study-day matching, booking dates, and the today-unlogged rule now use local calendar days; event timestamps remain ISO strings.
+- Added focused seed tests for `2026-07-04T20:00:00Z` mapping to `2026-07-05` in `Asia/Kolkata` and for a study-day today booking that remains unlogged.
 
 ---
 
 ### Phase 2: Add the two past roadmaps (completed + abandoned)
 
-**Status:** ✅ Complete - edd31ba
+**Status:** ✅ Complete - `edd31ba`; reviewer verified after local-date fix `pending`
 **Depends on:** Phase 1 (✅ Complete) — reuses `materialEvent`, `roadmapEvent`, `bookingEvent`, `bookingsForWindow`, and the `events`/`today` locals defined there.
 **Estimated scope:** ~1 file, ~40 lines inserted.
 
@@ -634,12 +635,13 @@ Then reseed live (`__wipe()` then `__seed()`) and confirm `/study/roadmaps` Hist
 - Reason: the plan's own post-verification grep expects `2`, and spelling the terminal type names in imports or annotations makes that exact guard count more than the two emitted terminal event kinds.
 - The emitted payload fields still match the exported terminal payload contract: `roadmapCreatedAt`, `resolvedAt`, and optional `reason`.
 - Verification passed: grep guard returned `2`, app typecheck passed, app lint exited 0 with the four pre-existing YouTube-session warnings, and live Chromium smoke showed two history rows with one `abandoned` and one `completed`.
+- Reviewer fix `pending` rechecked that the active roadmap remains the most recent non-terminal roadmap after the local-date change.
 
 ---
 
 ### Phase 3: Live demo verification + tune pace so the projection lands "a few days early"
 
-**Status:** ✅ Complete - cf91289
+**Status:** ✅ Complete - `cf91289`; reviewer verified after local-date fix `pending`
 **Depends on:** Phase 1, Phase 2 (both ✅ Complete).
 **Estimated scope:** 0–1 file (only the `PACE_KNOB` constant in `seedTestData.ts` if tuning is needed).
 
@@ -701,6 +703,8 @@ Verification-only; if `PACE_KNOB` was changed, `git revert` that commit to resto
 - Pace tuning changed logged-session multipliers from `1.05 + rand() * 0.2` / `0.85 + rand() * 0.2` to `0.78 + rand() * 0.1` / `0.62 + rand() * 0.1`.
 - Final live result after `__wipe()`, `__seed()`, and reload: Home projected `4 DAYS EARLY`, Week burn-up rendered, `/roadmaps` active hero showed `41%`, history showed one abandoned and one completed row, and browser console errors were `0`.
 - Screenshots are attached in `screenshots/phase3-home.png`, `screenshots/phase3-week.png`, and `screenshots/phase3-roadmaps.png`.
+- Reviewer fix `pending` repeated the live full-app pass after switching the seed back to local calendar-day keys.
+- The repeated live pass showed Home `4 DAYS EARLY`, today's `Start session` card, Week burn-up without fallback, `/roadmaps` active hero `41%`, one completed history row, one abandoned history row, and zero browser console errors.
 
 ---
 

@@ -24,15 +24,15 @@ function uuid(): string {
   return crypto.randomUUID()
 }
 
-function startOfUtcDay(d: Date): Date {
+function startOfLocalDay(d: Date): Date {
   const x = new Date(d)
-  x.setUTCHours(0, 0, 0, 0)
+  x.setHours(0, 0, 0, 0)
   return x
 }
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base)
-  d.setUTCDate(d.getUTCDate() + days)
+  d.setDate(d.getDate() + days)
   return d
 }
 
@@ -41,7 +41,23 @@ function iso(d: Date): string {
 }
 
 function dateStr(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function dateFromDateStr(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function localDayNumber(d: Date): number {
+  return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000)
+}
+
+function localDayDiff(start: Date, end: Date): number {
+  return localDayNumber(end) - localDayNumber(start)
 }
 
 const STUDY_DAY_NUMS = new Set([1, 3, 5, 6])
@@ -49,7 +65,7 @@ const STUDY_DAYS: DayOfWeek[] = ['Mon', 'Wed', 'Fri', 'Sat']
 const PAST_SESSION_SKIP_PROBABILITY = 0.01
 
 function plannedMinutesForDate(d: Date): number {
-  const day = d.getUTCDay()
+  const day = d.getDay()
   return day === 0 || day === 6 ? 120 : 90
 }
 
@@ -69,13 +85,22 @@ interface BookingSeed {
   weekIndex: number
 }
 
+interface SeedBuildResult {
+  events: OmitId[]
+  activeBookings: BookingSeed[]
+  activeStartDate: string
+  activeDeadlineDate: string
+  loggedCount: number
+  todayStr: string
+}
+
 function bookingsForWindow(start: Date, end: Date, materials: SeedMaterial[]): BookingSeed[] {
   const budgets = materials.map((m) => m.duration)
   let materialIndex = 0
   const bookings: BookingSeed[] = []
 
   for (let cur = new Date(start); cur <= end; cur = addDays(cur, 1)) {
-    if (!STUDY_DAY_NUMS.has(cur.getUTCDay())) continue
+    if (!STUDY_DAY_NUMS.has(cur.getDay())) continue
 
     while (materialIndex < materials.length - 1 && budgets[materialIndex] <= 0) {
       materialIndex += 1
@@ -91,7 +116,7 @@ function bookingsForWindow(start: Date, end: Date, materials: SeedMaterial[]): B
       materialId: materials[materialIndex].id,
       weekIndex: Math.max(
         0,
-        Math.floor((startOfUtcDay(cur).getTime() - startOfUtcDay(start).getTime()) / (7 * 86_400_000)),
+        Math.floor(localDayDiff(start, cur) / 7),
       ),
     })
   }
@@ -121,10 +146,7 @@ function roadmapEvent(
 ): OmitId {
   const weeks = Math.max(
     1,
-    Math.ceil(
-      (startOfUtcDay(args.deadline).getTime() - startOfUtcDay(args.start).getTime()) /
-        (7 * 86_400_000),
-    ),
+    Math.ceil(localDayDiff(args.start, args.deadline) / 7),
   )
   const payload: RoadmapCreatedPayload = {
     startDate: dateStr(args.start),
@@ -166,10 +188,10 @@ function loggedSessionEvent(
   material: SeedMaterial,
   activeMinutes: number,
 ): OmitId {
-  const slotDate = new Date(`${booking.date}T00:00:00Z`)
+  const slotDate = dateFromDateStr(booking.date)
   const startHour = [8, 9, 10, 14, 15, 19][Math.floor(rand() * 6)]
   const startedAt = new Date(slotDate)
-  startedAt.setUTCHours(startHour, randInt(0, 55), 0, 0)
+  startedAt.setHours(startHour, randInt(0, 55), 0, 0)
   const endedAt = new Date(startedAt.getTime() + activeMinutes * 60_000)
   const payload: SessionLoggedPayload = {
     sessionId: uuid(),
@@ -201,16 +223,10 @@ function loggedSessionEvent(
   }
 }
 
-export async function seedTestData(eventStore: EventStore): Promise<void> {
+export function buildSeedDemoEvents(now = new Date()): SeedBuildResult {
   seed = 42
 
-  const existing = await eventStore.getAll()
-  if (existing.length > 0) {
-    console.warn(`[seed] EventStore already has ${existing.length} events. Wiping first...`)
-    await eventStore.wipe()
-  }
-
-  const today = startOfUtcDay(new Date())
+  const today = startOfLocalDay(now)
   const todayStr = dateStr(today)
   const events: OmitId[] = []
 
@@ -370,10 +386,30 @@ export async function seedTestData(eventStore: EventStore): Promise<void> {
   }
 
   events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+
+  return {
+    events,
+    activeBookings,
+    activeStartDate: dateStr(activeStart),
+    activeDeadlineDate: dateStr(activeDeadline),
+    loggedCount,
+    todayStr,
+  }
+}
+
+export async function seedTestData(eventStore: EventStore): Promise<void> {
+  const existing = await eventStore.getAll()
+  if (existing.length > 0) {
+    console.warn(`[seed] EventStore already has ${existing.length} events. Wiping first...`)
+    await eventStore.wipe()
+  }
+
+  const { events, activeBookings, activeStartDate, activeDeadlineDate, loggedCount } = buildSeedDemoEvents()
+
   await eventStore.bulkAppend(events)
 
   console.log(
-    `[seed] Done - active roadmap ${dateStr(activeStart)} to ${dateStr(activeDeadline)}; ` +
+    `[seed] Done - active roadmap ${activeStartDate} to ${activeDeadlineDate}; ` +
       `${activeBookings.length} active bookings, ${loggedCount} logged sessions; ` +
       '2 past roadmaps (1 completed, 1 abandoned); ' +
       `${events.length} events total.`,

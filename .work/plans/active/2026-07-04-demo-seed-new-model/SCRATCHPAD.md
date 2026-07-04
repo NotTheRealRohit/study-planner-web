@@ -2,20 +2,15 @@
 _Plan: `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-04T08:28_
 
 ## Now
-Phase 3 is started by explicit user request.
-`PLAN.md` Phase 3 status is now `🟡 In progress - live verification started 2026-07-04`, committed in `e0b5c39`.
-Phase 3 prereqs passed: `./full-app status full` reported both services healthy, `curl -i http://localhost:5173/study/sign-in` returned 200, and `curl -i http://127.0.0.1:8000/health` returned 200.
-Live Chromium verification must wait for the sync indicator to show `Synced` before running `__wipe()` and `__seed()`.
-The corrected live pass showed Home `7 DAYS EARLY`, Week burn-up rendered, and `/roadmaps` history correct, but active hero was only `30%` complete.
-The dev seed skip probability was first tuned to `0.05`, which live-checked at `35%`.
-Full RNG-path simulation showed `0.01` keeps one skipped past booking and targets about `41%`.
-The dev seed skip probability is now `0.01`.
-App typecheck passed and app lint exited 0 with the same four pre-existing YouTube `any` warnings.
-The `0.01` skip probability live-checked at `/roadmaps` active hero `41%`, but Home projection was too aggressive at `20 DAYS EARLY`.
-Phase 3 implementation is complete in `cf91289`, pending reviewer verification.
-Final live result after sync-settled `__wipe()` / `__seed()` / reload: Home `4 DAYS EARLY`, Week burn-up chart visible, `/roadmaps` active hero `41%`, history one abandoned plus one completed, console errors `0`.
-Final screenshots are in `screenshots/phase3-home.png`, `screenshots/phase3-week.png`, and `screenshots/phase3-roadmaps.png`.
-The immediate next action is reviewer verification for Phases 1-3.
+Reviewer blocker fix is implemented and awaiting the final commit SHA.
+The seed now uses local calendar-day helpers for `today`, study-day matching, booking date keys, and the today-unlogged rule.
+Seeded `createdAt`, `startedAt`, and `endedAt` fields remain ISO timestamps.
+Added `apps/app/src/dev/seedTestData.test.ts` for the `Asia/Kolkata` late-evening UTC boundary.
+Verification passed: `grep -c "slots"` output `0`, terminal-event grep output `2`, app typecheck passed, app lint exited 0 with the same four pre-existing YouTube `any` warnings, app tests passed `535/535`, and progress tests passed `98/98`.
+Full-app status was healthy for intelligence and app.
+Live Chromium verification after sync-settled `__wipe()` / `__seed()` / reload showed Home `4 DAYS EARLY`, today's `Start session` card, Week burn-up visible, `/roadmaps` active hero `41%`, one abandoned history row, one completed history row, and console errors `0`.
+`PLAN.md` and `VERIFICATION.md` now mark Phases 1-3 reviewer-verified with the pending fix commit.
+The immediate next action is to commit the reviewer blocker fix and replace `pending` with the actual SHA.
 
 ## Alignment
 Work remains aligned with D-01 dev-only scope.
@@ -24,8 +19,6 @@ No production roadmap, progress, chart, or page logic may change unless a genuin
 Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, `VERIFICATION.md`, `SCRATCHPAD.md`, and `.work/STATUS.md`, plus `apps/app/src/dev/seedTestData.ts` only if pace tuning is needed.
 
 ## Open
-- Phase 1 and Phase 2 reviewer sections are still blank in `VERIFICATION.md`.
-  The user explicitly asked to start Phase 3 anyway, so this session is live demo verification, not reviewer sign-off for prior phases.
 - Pre-existing unrelated dirty files in `.work/plans/active/2026-07-02-material-session-ui-bugs/` must stay unstaged and out of demo-seed commits.
 
 ## Blockers
@@ -61,6 +54,13 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - [x] Fill Phase 3 implementer report in `VERIFICATION.md`.
 - [x] Update `.work/STATUS.md`.
 - [x] Commit Phase 3 and amend `pending` to the real commit SHA.
+- [x] Read the reviewer-fix plan from the fresh context.
+- [x] Switch seed date handling from UTC day keys back to local calendar-day keys.
+- [x] Add deterministic `Asia/Kolkata` boundary coverage for the reviewer finding.
+- [x] Run grep guards, app typecheck, app lint, app tests, and progress tests.
+- [x] Repeat full-app live browser verification after the fix.
+- [x] Fill reviewer findings and redo resolution sections for Phases 1-3.
+- [ ] Commit reviewer blocker fix and replace pending SHA references.
 
 ## In-flight edits
 - none
@@ -75,7 +75,7 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - D-07: chart and projection issues require live verification before any production change.
 - Phase 1 implementation omits Phase 2-only terminal-event imports until Phase 2 to satisfy `noUnusedLocals`.
 - New console help text uses plain hyphens to follow project punctuation instructions.
-- Seed date keys use UTC day helpers to match the app's `todayISO()` convention.
+- Seed date keys use local day helpers to match Home's `format(new Date(), 'yyyy-MM-dd')` convention.
 - Phase 2 proceeds by explicit user request even though Phase 1's reviewer block is still blank.
 - Phase 2 terminal payload objects stay unannotated so the plan's grep guard counts only emitted terminal event kinds.
 - Phase 3 proceeds by explicit user request even though prior reviewer sections are still blank.
@@ -100,3 +100,5 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - Phase 3 projection resolved: pace multipliers `0.78 + rand() * 0.1` and `0.62 + rand() * 0.1` yield `4 DAYS EARLY`.
 - Phase 3 screenshots resolved: final Week screenshot captures the visible burn-up chart before the past-week navigation click.
 - Phase 3 commit resolved: `cf91289`.
+- Reviewer blocker resolved in working tree: the seed no longer uses UTC day boundaries for booking date keys.
+- Reviewer blocker resolved in working tree: Phase 1, Phase 2, and Phase 3 reviewer sections are filled and marked verified pending the final fix commit SHA.
