@@ -31,7 +31,7 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 - Deviation: omitted Phase 2-only terminal-event payload imports until Phase 2 because Phase 1 does not use them and `noUnusedLocals` is enabled.
 - Deviation: used plain hyphens in new console helper text to comply with project punctuation instructions.
 - Superseded deviation: the first implementation used UTC day-key helpers.
-- Reviewer fix `pending` replaced that with local calendar-day helpers to match Home's `format(new Date(), 'yyyy-MM-dd')` behavior.
+- Reviewer fix `337976b` replaced that with local calendar-day helpers to match Home's `format(new Date(), 'yyyy-MM-dd')` behavior.
 - Self-check vs criteria: `grep -c "slots" apps/app/src/dev/seedTestData.ts` returned `0`.
 - Self-check vs criteria: `grep -c "SessionBooked\|materialIds\|bookingId" apps/app/src/dev/seedTestData.ts` returned `8`.
 - Self-check vs criteria: `pnpm --filter @study-tracker/app typecheck` passed.
@@ -43,7 +43,7 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Reviewer findings (Cowork fills)
 
-- Per-criterion verdict: all Phase 1 criteria pass after redo `pending`.
+- Per-criterion verdict: all Phase 1 criteria pass after redo `337976b`.
 - Issue: the earlier UTC day-key helper could make the seed and Home disagree near late-evening UTC boundaries.
 - Issue: Phase 1 status was still marked in progress even though the implementation commit existed.
 - Required changes: use one local calendar-day model for seed `today`, study-day matching, booking date keys, and the today-unlogged rule.
@@ -53,9 +53,9 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Resolution (implementer, on redo)
 
-- Redo `pending` added `buildSeedDemoEvents(now)` and switched date keys and study-day matching from UTC getters to local calendar-day helpers.
-- Redo `pending` added `seedTestData.test.ts`, covering `2026-07-04T20:00:00Z` in `Asia/Kolkata` as local `2026-07-05`.
-- Redo `pending` also covers `2026-07-05T20:00:00Z` in `Asia/Kolkata`, proving a local Monday booking is created and left unlogged.
+- Redo `337976b` added `buildSeedDemoEvents(now)` and switched date keys and study-day matching from UTC getters to local calendar-day helpers.
+- Redo `337976b` added `seedTestData.test.ts`, covering `2026-07-04T20:00:00Z` in `Asia/Kolkata` as local `2026-07-05`.
+- Redo `337976b` also covers `2026-07-05T20:00:00Z` in `Asia/Kolkata`, proving a local Monday booking is created and left unlogged.
 - Verification passed: `grep -c "slots"` returned `0`, app typecheck passed, app lint exited 0 with the same four pre-existing warnings, app tests passed `535/535`, and live Home showed `4 DAYS EARLY` with today's `Start session` card.
 
 ---
@@ -95,15 +95,15 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Reviewer findings (Cowork fills)
 
-- Per-criterion verdict: all Phase 2 criteria pass after redo `pending`.
+- Per-criterion verdict: all Phase 2 criteria pass after redo `337976b`.
 - Issue: the same UTC day-key drift could shift the past and active roadmap windows relative to the browser's local day.
 - Required changes: preserve the no-slot past roadmap shape and terminal-event counts while moving the seed date model to local calendar days.
 - **Status:** ✅ Verified
 
 ### Resolution (implementer, on redo)
 
-- Redo `pending` kept the past roadmaps as `MaterialAdded`, no-slot `RoadmapCreated`, `SessionBooked`, and one terminal event each.
-- Redo `pending` did not add any past-roadmap `SessionLogged` events.
+- Redo `337976b` kept the past roadmaps as `MaterialAdded`, no-slot `RoadmapCreated`, `SessionBooked`, and one terminal event each.
+- Redo `337976b` did not add any past-roadmap `SessionLogged` events.
 - Verification passed: `grep -c "RoadmapMarkedComplete\|RoadmapMarkedAbandoned"` returned `2`, app typecheck passed, app lint exited 0 with the same four pre-existing warnings, and live `/roadmaps` showed one completed plus one abandoned history row.
 
 ---
@@ -138,14 +138,14 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Reviewer findings (Cowork fills)
 
-- Per-criterion verdict: all Phase 3 criteria pass after redo `pending`.
+- Per-criterion verdict: all Phase 3 criteria pass after redo `337976b`.
 - Issue: the live acceptance had not been repeated after correcting the UTC/local-date mismatch.
 - Required changes: rerun full-app live verification after the seed fix and record the reviewer outcome.
 - **Status:** ✅ Verified
 
 ### Resolution (implementer, on redo)
 
-- Redo `pending` repeated full-app live verification after waiting for `Synced`, then running `__wipe()` and `__seed()`.
+- Redo `337976b` repeated full-app live verification after waiting for `Synced`, then running `__wipe()` and `__seed()`.
 - Live Home showed today's study card with `Start session`, `3 hr 5 min` this week, recent activity, and `4 DAYS EARLY`.
 - Live Week rendered the projected-finish tile, rendered the burn-up chart, and did not show the fallback.
 - Live `/roadmaps` showed the React/TypeScript active hero at `41%`, exactly one abandoned history row, and exactly one completed history row.

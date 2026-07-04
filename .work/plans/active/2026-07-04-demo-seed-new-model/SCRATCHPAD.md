@@ -2,15 +2,15 @@
 _Plan: `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-04T08:28_
 
 ## Now
-Reviewer blocker fix is implemented and awaiting the final commit SHA.
+Reviewer blocker fix was implemented in `337976b`.
 The seed now uses local calendar-day helpers for `today`, study-day matching, booking date keys, and the today-unlogged rule.
 Seeded `createdAt`, `startedAt`, and `endedAt` fields remain ISO timestamps.
 Added `apps/app/src/dev/seedTestData.test.ts` for the `Asia/Kolkata` late-evening UTC boundary.
 Verification passed: `grep -c "slots"` output `0`, terminal-event grep output `2`, app typecheck passed, app lint exited 0 with the same four pre-existing YouTube `any` warnings, app tests passed `535/535`, and progress tests passed `98/98`.
 Full-app status was healthy for intelligence and app.
 Live Chromium verification after sync-settled `__wipe()` / `__seed()` / reload showed Home `4 DAYS EARLY`, today's `Start session` card, Week burn-up visible, `/roadmaps` active hero `41%`, one abandoned history row, one completed history row, and console errors `0`.
-`PLAN.md` and `VERIFICATION.md` now mark Phases 1-3 reviewer-verified with the pending fix commit.
-The immediate next action is to commit the reviewer blocker fix and replace `pending` with the actual SHA.
+`PLAN.md` and `VERIFICATION.md` now mark Phases 1-3 reviewer-verified with fix commit `337976b`.
+The immediate next action is to commit this SHA-recording docs update.
 
 ## Alignment
 Work remains aligned with D-01 dev-only scope.
@@ -60,7 +60,7 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - [x] Run grep guards, app typecheck, app lint, app tests, and progress tests.
 - [x] Repeat full-app live browser verification after the fix.
 - [x] Fill reviewer findings and redo resolution sections for Phases 1-3.
-- [ ] Commit reviewer blocker fix and replace pending SHA references.
+- [x] Commit reviewer blocker fix and replace pending SHA references.
 
 ## In-flight edits
 - none
@@ -101,4 +101,4 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - Phase 3 screenshots resolved: final Week screenshot captures the visible burn-up chart before the past-week navigation click.
 - Phase 3 commit resolved: `cf91289`.
 - Reviewer blocker resolved in working tree: the seed no longer uses UTC day boundaries for booking date keys.
-- Reviewer blocker resolved in working tree: Phase 1, Phase 2, and Phase 3 reviewer sections are filled and marked verified pending the final fix commit SHA.
+- Reviewer blocker resolved in `337976b`: Phase 1, Phase 2, and Phase 3 reviewer sections are filled and marked verified.
