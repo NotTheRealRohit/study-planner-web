@@ -12,7 +12,7 @@ Full RNG-path simulation showed `0.01` keeps one skipped past booking and target
 The dev seed skip probability is now `0.01`.
 App typecheck passed and app lint exited 0 with the same four pre-existing YouTube `any` warnings.
 The `0.01` skip probability live-checked at `/roadmaps` active hero `41%`, but Home projection was too aggressive at `20 DAYS EARLY`.
-Phase 3 implementation is complete in `07c8f2e`, pending reviewer verification.
+Phase 3 implementation is complete in `cf91289`, pending reviewer verification.
 Final live result after sync-settled `__wipe()` / `__seed()` / reload: Home `4 DAYS EARLY`, Week burn-up chart visible, `/roadmaps` active hero `41%`, history one abandoned plus one completed, console errors `0`.
 Final screenshots are in `screenshots/phase3-home.png`, `screenshots/phase3-week.png`, and `screenshots/phase3-roadmaps.png`.
 The immediate next action is reviewer verification for Phases 1-3.
@@ -99,4 +99,4 @@ Expected files are `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, 
 - Phase 3 active hero resolved: `PAST_SESSION_SKIP_PROBABILITY = 0.01` yields `41%`.
 - Phase 3 projection resolved: pace multipliers `0.78 + rand() * 0.1` and `0.62 + rand() * 0.1` yield `4 DAYS EARLY`.
 - Phase 3 screenshots resolved: final Week screenshot captures the visible burn-up chart before the past-week navigation click.
-- Phase 3 commit resolved: `07c8f2e`.
+- Phase 3 commit resolved: `cf91289`.

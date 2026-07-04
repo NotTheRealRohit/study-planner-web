@@ -639,7 +639,7 @@ Then reseed live (`__wipe()` then `__seed()`) and confirm `/study/roadmaps` Hist
 
 ### Phase 3: Live demo verification + tune pace so the projection lands "a few days early"
 
-**Status:** ✅ Complete - 07c8f2e
+**Status:** ✅ Complete - cf91289
 **Depends on:** Phase 1, Phase 2 (both ✅ Complete).
 **Estimated scope:** 0–1 file (only the `PACE_KNOB` constant in `seedTestData.ts` if tuning is needed).
 
@@ -694,7 +694,7 @@ Verification-only; if `PACE_KNOB` was changed, `git revert` that commit to resto
 
 #### Notes (filled in during implementation)
 
-- Implemented in `07c8f2e`.
+- Implemented in `cf91289`.
 - Live verification must wait for the sync indicator to show `Synced` before running `__wipe()` and `__seed()`.
 - Without that wait, initial cloud restore can overwrite the local-only seed on reload and make pre-existing cloud roadmaps appear active.
 - Pace tuning changed the active logged-session skip threshold from the literal `0.15` to named `PAST_SESSION_SKIP_PROBABILITY = 0.01`, yielding one deterministic missed past booking and a `41%` active hero.

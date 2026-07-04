@@ -111,7 +111,7 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 ### Implementer report (Codex/Sonnet fills)
 
 - Files changed: `apps/app/src/dev/seedTestData.ts`, `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, `.work/plans/active/2026-07-04-demo-seed-new-model/VERIFICATION.md`, `.work/plans/active/2026-07-04-demo-seed-new-model/SCRATCHPAD.md`, `.work/STATUS.md`, and the three Phase 3 screenshots under `screenshots/`.
-- Commit SHA: `07c8f2e`.
+- Commit SHA: `cf91289`.
 - Live results - Home: after waiting for sync restore, running `__wipe()` / `__seed()`, and reloading, Home showed the active study session card for today, `3 hr 5 min` this week, recent activity, and `Projected finish · provisional` = `Aug 3-Aug 6` / `4 DAYS EARLY`.
 - Live results - Week: daily-minutes bars rendered, provisional finish rendered, burn-up chart rendered instead of the fallback, and past-week navigation changed the page state.
 - Live results - Roadmaps: active hero showed `Learn modern React + TypeScript`, `41%` complete, `15` sessions, and `17h 56m` logged; history showed exactly one `abandoned` row and one `completed` row.
