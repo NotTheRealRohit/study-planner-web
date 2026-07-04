@@ -24,8 +24,8 @@ export function DevSeeder() {
 
     console.log(
       '[dev] Seed commands available:\n' +
-        '  __seed()  — generate 4 weeks of test data\n' +
-        '  __wipe()  — clear all events',
+        '  __seed()  - generate demo data (2 past + 1 active roadmap)\n' +
+        '  __wipe()  - clear all events',
     )
 
     return () => {

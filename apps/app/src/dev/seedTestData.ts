@@ -1,38 +1,203 @@
+import type { DayOfWeek } from '@study-tracker/roadmap-engine'
 import type { EventStore, Event } from '../events/EventStore'
+import type {
+  MaterialAddedPayload,
+  RoadmapCreatedPayload,
+  SessionBookedPayload,
+} from '../sync/types'
+import type { SessionLoggedPayload } from '../session/types'
+
+type OmitId = Omit<Event, 'id'>
+
+let seed = 42
+
+function rand(): number {
+  seed = (seed * 16807) % 2147483647
+  return (seed - 1) / 2147483646
+}
+
+function randInt(min: number, max: number): number {
+  return Math.round(min + rand() * (max - min))
+}
 
 function uuid(): string {
   return crypto.randomUUID()
 }
 
-type OmitId = Omit<Event, 'id'>
-
-function iso(date: Date): string {
-  return date.toISOString()
-}
-
-function dateStr(date: Date): string {
-  return date.toISOString().slice(0, 10)
+function startOfUtcDay(d: Date): Date {
+  const x = new Date(d)
+  x.setUTCHours(0, 0, 0, 0)
+  return x
 }
 
 function addDays(base: Date, days: number): Date {
   const d = new Date(base)
-  d.setDate(d.getDate() + days)
+  d.setUTCDate(d.getUTCDate() + days)
   return d
 }
 
-function dayOfWeekName(date: Date): string {
-  return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()]
+function iso(d: Date): string {
+  return d.toISOString()
 }
 
-// Deterministic pseudo-random for reproducibility
-let seed = 42
-function rand(): number {
-  seed = (seed * 16807 + 0) % 2147483647
-  return (seed - 1) / 2147483646
+function dateStr(d: Date): string {
+  return d.toISOString().slice(0, 10)
 }
 
-function randBetween(min: number, max: number): number {
-  return Math.round(min + rand() * (max - min))
+const STUDY_DAY_NUMS = new Set([1, 3, 5, 6])
+const STUDY_DAYS: DayOfWeek[] = ['Mon', 'Wed', 'Fri', 'Sat']
+
+function plannedMinutesForDate(d: Date): number {
+  const day = d.getUTCDay()
+  return day === 0 || day === 6 ? 120 : 90
+}
+
+interface SeedMaterial {
+  id: string
+  title: string
+  duration: number
+  role: 'anchor' | 'foundation' | 'practice'
+  kind: 'youtube' | 'article' | 'manual'
+}
+
+interface BookingSeed {
+  bookingId: string
+  date: string
+  estimatedDuration: number
+  materialId: string
+  weekIndex: number
+}
+
+function bookingsForWindow(start: Date, end: Date, materials: SeedMaterial[]): BookingSeed[] {
+  const budgets = materials.map((m) => m.duration)
+  let materialIndex = 0
+  const bookings: BookingSeed[] = []
+
+  for (let cur = new Date(start); cur <= end; cur = addDays(cur, 1)) {
+    if (!STUDY_DAY_NUMS.has(cur.getUTCDay())) continue
+
+    while (materialIndex < materials.length - 1 && budgets[materialIndex] <= 0) {
+      materialIndex += 1
+    }
+
+    const estimatedDuration = plannedMinutesForDate(cur)
+    budgets[materialIndex] -= estimatedDuration
+
+    bookings.push({
+      bookingId: uuid(),
+      date: dateStr(cur),
+      estimatedDuration,
+      materialId: materials[materialIndex].id,
+      weekIndex: Math.max(
+        0,
+        Math.floor((startOfUtcDay(cur).getTime() - startOfUtcDay(start).getTime()) / (7 * 86_400_000)),
+      ),
+    })
+  }
+
+  return bookings
+}
+
+function materialEvent(material: SeedMaterial, createdAt: string): OmitId {
+  const payload: MaterialAddedPayload = {
+    materialId: material.id,
+    title: material.title,
+    estimatedDuration: material.duration,
+    kind: material.kind,
+    role: material.role,
+  }
+
+  return {
+    kind: 'MaterialAdded',
+    payload: payload as unknown as Record<string, unknown>,
+    createdAt,
+  }
+}
+
+function roadmapEvent(
+  args: { start: Date; deadline: Date; materials: SeedMaterial[]; purpose: string },
+  createdAt: string,
+): OmitId {
+  const weeks = Math.max(
+    1,
+    Math.ceil(
+      (startOfUtcDay(args.deadline).getTime() - startOfUtcDay(args.start).getTime()) /
+        (7 * 86_400_000),
+    ),
+  )
+  const payload: RoadmapCreatedPayload = {
+    startDate: dateStr(args.start),
+    deadline: dateStr(args.deadline),
+    weeks,
+    purpose: args.purpose,
+    selectedStudyDays: STUDY_DAYS,
+    weekdayHours: 1.5,
+    weekendHours: 2,
+    weeklyHours: 6.5,
+    materialIds: args.materials.map((material) => material.id),
+  }
+
+  return {
+    kind: 'RoadmapCreated',
+    payload: payload as unknown as Record<string, unknown>,
+    createdAt,
+  }
+}
+
+function bookingEvent(booking: BookingSeed, roadmapCreatedAt: string): OmitId {
+  const payload: SessionBookedPayload = {
+    roadmapCreatedAt,
+    bookingId: booking.bookingId,
+    date: booking.date,
+    estimatedDuration: booking.estimatedDuration,
+    materialId: booking.materialId,
+  }
+
+  return {
+    kind: 'SessionBooked',
+    payload: payload as unknown as Record<string, unknown>,
+    createdAt: roadmapCreatedAt,
+  }
+}
+
+function loggedSessionEvent(
+  booking: BookingSeed,
+  material: SeedMaterial,
+  activeMinutes: number,
+): OmitId {
+  const slotDate = new Date(`${booking.date}T00:00:00Z`)
+  const startHour = [8, 9, 10, 14, 15, 19][Math.floor(rand() * 6)]
+  const startedAt = new Date(slotDate)
+  startedAt.setUTCHours(startHour, randInt(0, 55), 0, 0)
+  const endedAt = new Date(startedAt.getTime() + activeMinutes * 60_000)
+  const payload: SessionLoggedPayload = {
+    sessionId: uuid(),
+    materialId: booking.materialId,
+    sessionTitle: material.title,
+    slotDate: booking.date,
+    weekIndex: booking.weekIndex,
+    plannedMinutes: booking.estimatedDuration,
+    bookingId: booking.bookingId,
+    plannedSessionMinutes: booking.estimatedDuration,
+    materialConsumedMinutes: activeMinutes,
+    startedAt: iso(startedAt),
+    endedAt: iso(endedAt),
+    activeMinutes,
+    pauseCount: randInt(0, 3),
+    totalPauseMinutes: randInt(0, 8),
+    pomodorosCompleted: Math.floor(activeMinutes / 25),
+    source: 'active',
+    resolution: 'completed',
+    duration: activeMinutes,
+    description: material.title,
+    date: booking.date,
+  }
+
+  return {
+    kind: 'SessionLogged',
+    payload: payload as unknown as Record<string, unknown>,
+    createdAt: iso(endedAt),
+  }
 }
 
 export async function seedTestData(eventStore: EventStore): Promise<void> {
@@ -40,207 +205,67 @@ export async function seedTestData(eventStore: EventStore): Promise<void> {
 
   const existing = await eventStore.getAll()
   if (existing.length > 0) {
-    console.warn(
-      `[seed] EventStore already has ${existing.length} events. Wiping first...`,
-    )
+    console.warn(`[seed] EventStore already has ${existing.length} events. Wiping first...`)
     await eventStore.wipe()
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-
-  const startDate = addDays(today, -28) // 4 weeks ago
-  const deadline = addDays(today, 42)   // 6 weeks from now
-  const totalWeeks = 10
-
-  // Study days: Mon, Wed, Fri, Sat
-  const studyDayNums = new Set([1, 3, 5, 6])
-  const studyDayNames = ['monday', 'wednesday', 'friday', 'saturday']
-
-  // --- Materials ---
-  const materials = [
-    {
-      id: uuid(),
-      title: 'React 19 Deep Dive',
-      duration: 600,
-      role: 'anchor' as const,
-      kind: 'youtube',
-    },
-    {
-      id: uuid(),
-      title: 'TypeScript Patterns',
-      duration: 480,
-      role: 'foundation' as const,
-      kind: 'article',
-    },
-    {
-      id: uuid(),
-      title: 'Practice Problems Set',
-      duration: 360,
-      role: 'practice' as const,
-      kind: 'manual',
-    },
-  ]
-
-  // --- Generate roadmap slots ---
-  const slots: Array<{
-    date: string
-    dayOfWeek: string
-    weekIndex: number
-    plannedMinutes: number
-    candidateMaterialIds: string[]
-    role: string
-    sessionTitle: string
-  }> = []
-
-  let slotIndex = 0
-  for (let d = 0; d < totalWeeks * 7; d++) {
-    const date = addDays(startDate, d)
-    if (!studyDayNums.has(date.getDay())) continue
-
-    const matIndex = slotIndex % materials.length
-    const mat = materials[matIndex]
-    const plannedMinutes = date.getDay() === 6 ? 120 : 90
-
-    slots.push({
-      date: dateStr(date),
-      dayOfWeek: dayOfWeekName(date),
-      weekIndex: Math.floor(d / 7),
-      plannedMinutes,
-      candidateMaterialIds: [mat.id],
-      role: mat.role,
-      sessionTitle: mat.title,
-    })
-    slotIndex++
-  }
-
-  // --- Build events ---
+  const today = startOfUtcDay(new Date())
+  const todayStr = dateStr(today)
   const events: OmitId[] = []
 
-  // 1. OnboardingCompleted
-  events.push({
-    kind: 'OnboardingCompleted',
-    payload: {},
-    createdAt: iso(addDays(startDate, -1)),
-  })
+  // Phase 2 inserts the two past roadmaps here.
 
-  // 2. MaterialAdded (one per material)
-  for (const mat of materials) {
-    events.push({
-      kind: 'MaterialAdded',
-      payload: {
-        materialId: mat.id,
-        title: mat.title,
-        estimatedDuration: mat.duration,
-        kind: mat.kind,
-        role: mat.role,
-      },
-      createdAt: iso(addDays(startDate, -1)),
-    })
+  const activeStart = addDays(today, -28)
+  const activeDeadline = addDays(today, 35)
+  const activeCreatedAt = iso(addDays(activeStart, -1))
+  const activeMaterials: SeedMaterial[] = [
+    { id: uuid(), title: 'React 19 Deep Dive', duration: 1080, role: 'anchor', kind: 'youtube' },
+    { id: uuid(), title: 'TypeScript Patterns', duration: 780, role: 'foundation', kind: 'article' },
+    { id: uuid(), title: 'Practice Problems Set', duration: 540, role: 'practice', kind: 'manual' },
+  ]
+
+  events.push({ kind: 'OnboardingCompleted', payload: {}, createdAt: activeCreatedAt })
+
+  for (const material of activeMaterials) {
+    events.push(materialEvent(material, activeCreatedAt))
   }
 
-  // 3. RoadmapCreated
-  events.push({
-    kind: 'RoadmapCreated',
-    payload: {
-      startDate: dateStr(startDate),
-      deadline: dateStr(deadline),
-      weeks: totalWeeks,
-      purpose: 'Learn modern React + TypeScript',
-      selectedStudyDays: studyDayNames,
-      weekdayHours: 1.5,
-      weekendHours: 2,
-      weeklyHours: 6.5,
-      slots,
-    },
-    createdAt: iso(addDays(startDate, -1)),
-  })
-
-  // 4. SessionLogged events — only for dates up to today
-  //    Weeks 1-2: user is slightly slow (1.1-1.3x planned time)
-  //    Weeks 3-4: pace shift — user gets faster (0.7-0.9x planned time)
-  //    Some sessions skipped (~15% chance)
-  const pastSlots = slots.filter((s) => s.date <= dateStr(today))
-
-  for (const slot of pastSlots) {
-    const roll = rand()
-    if (roll < 0.12) continue // 12% skip rate
-
-    const slotDate = new Date(slot.date + 'T00:00:00')
-    const weeksSinceStart = Math.floor(
-      (slotDate.getTime() - startDate.getTime()) / (7 * 86400000),
-    )
-
-    // Pace shift: weeks 0-1 slower, weeks 2-3 faster
-    let paceMultiplier: number
-    if (weeksSinceStart < 2) {
-      paceMultiplier = 1.1 + rand() * 0.3 // 1.1 - 1.4x (slower)
-    } else {
-      paceMultiplier = 0.65 + rand() * 0.25 // 0.65 - 0.9x (faster)
-    }
-
-    const activeMinutes = Math.round(slot.plannedMinutes * paceMultiplier)
-    const sessionId = uuid()
-
-    // Random start time: morning (8-11), afternoon (13-16), evening (18-20)
-    const timeSlots = [
-      { hour: 8, label: 'morning' },
-      { hour: 9, label: 'morning' },
-      { hour: 10, label: 'morning' },
-      { hour: 14, label: 'afternoon' },
-      { hour: 15, label: 'afternoon' },
-      { hour: 19, label: 'evening' },
-    ]
-    const timeSlot = timeSlots[Math.floor(rand() * timeSlots.length)]
-    const startHour = timeSlot.hour
-    const startMin = Math.floor(rand() * 60)
-
-    const startedAt = new Date(slotDate)
-    startedAt.setHours(startHour, startMin, 0, 0)
-    const endedAt = new Date(startedAt.getTime() + activeMinutes * 60000)
-
-    events.push({
-      kind: 'SessionLogged',
-      payload: {
-        sessionId,
-        materialId: slot.candidateMaterialIds[0],
-        sessionTitle: slot.sessionTitle,
-        slotDate: slot.date,
-        weekIndex: slot.weekIndex,
-        plannedMinutes: slot.plannedMinutes,
-        startedAt: iso(startedAt),
-        endedAt: iso(endedAt),
-        activeMinutes,
-        pauseCount: randBetween(0, 3),
-        totalPauseMinutes: randBetween(0, 8),
-        pomodorosCompleted: Math.floor(activeMinutes / 25),
-        resolution: 'completed',
-        source: 'active',
-        duration: activeMinutes,
-        description: slot.sessionTitle,
-        date: slot.date,
-        role: slot.role,
+  events.push(
+    roadmapEvent(
+      {
+        start: activeStart,
+        deadline: activeDeadline,
+        materials: activeMaterials,
+        purpose: 'Learn modern React + TypeScript',
       },
-      createdAt: iso(endedAt),
-    })
-  }
-
-  // Sort all events by createdAt
-  events.sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      activeCreatedAt,
+    ),
   )
 
+  const activeBookings = bookingsForWindow(activeStart, activeDeadline, activeMaterials)
+  for (const booking of activeBookings) {
+    events.push(bookingEvent(booking, activeCreatedAt))
+  }
+
+  const materialById = new Map(activeMaterials.map((material) => [material.id, material]))
+  let loggedCount = 0
+
+  for (const booking of activeBookings) {
+    if (booking.date >= todayStr) continue
+    if (rand() < 0.15) continue
+
+    const pace = booking.weekIndex < 2 ? 1.05 + rand() * 0.2 : 0.85 + rand() * 0.2
+    const activeMinutes = Math.max(20, Math.round(booking.estimatedDuration * pace))
+    events.push(loggedSessionEvent(booking, materialById.get(booking.materialId)!, activeMinutes))
+    loggedCount += 1
+  }
+
+  events.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
   await eventStore.bulkAppend(events)
 
-  const sessionCount = events.filter((e) => e.kind === 'SessionLogged').length
   console.log(
-    `[seed] Done! Created ${events.length} events (${sessionCount} sessions across ${pastSlots.length} planned slots)`,
-  )
-  console.log(
-    `[seed] Roadmap: ${dateStr(startDate)} → ${dateStr(deadline)} (${totalWeeks} weeks)`,
-  )
-  console.log(
-    `[seed] Pace shift: weeks 1-2 slower (1.1-1.4x), weeks 3-4 faster (0.65-0.9x)`,
+    `[seed] Done - active roadmap ${dateStr(activeStart)} to ${dateStr(activeDeadline)}; ` +
+      `${activeBookings.length} bookings, ${loggedCount} logged sessions; ${events.length} events total.`,
   )
 }
 
