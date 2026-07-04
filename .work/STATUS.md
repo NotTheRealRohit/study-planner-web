@@ -30,7 +30,7 @@ update_protocol: >
 
 ## Active
 
-- **[APP][INFRA] Dev seeder rebuild for the no-slot booking model (demo-ready).** 🟡 Phase 2 implemented in `6c883fa`; awaiting reviewer verification.
+- **[APP][INFRA] Dev seeder rebuild for the no-slot booking model (demo-ready).** 🟡 Phase 2 implemented in `edd31ba`; awaiting reviewer verification.
   Step 0 planning docs are already committed in `1532a5c`.
   Phase 1 replaced the legacy slot-packed active-roadmap seed with the no-slot active roadmap model: `RoadmapCreated{materialIds}`, separate `SessionBooked`, booking-linked `SessionLogged`, and 3-letter `selectedStudyDays`.
   Phase 2 added two past no-slot roadmaps: one completed Foundations of Machine Learning plan and one abandoned System Design Interview Prep plan.

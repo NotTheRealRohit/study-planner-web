@@ -2,7 +2,7 @@
 _Plan: `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-04T07:59_
 
 ## Now
-Phase 2 is complete in `6c883fa` and awaiting reviewer verification.
+Phase 2 is complete in `edd31ba` and awaiting reviewer verification.
 `seedTestData.ts` now inserts one completed past roadmap and one abandoned past roadmap before the active roadmap.
 Phase 1 remains recorded as implemented in `ebf6bbf`, with the reviewer section still blank.
 
@@ -67,4 +67,4 @@ Do not change production roadmap, progress, chart, or page logic.
 - Phase 2 prereq drift resolved: the semantic placeholder was present despite exact grep case and punctuation drift, and the user had explicitly requested Phase 2.
 - Phase 2 static verification resolved: grep guard returned `2`, typecheck passed, and lint exited 0 with the same four pre-existing warnings.
 - Phase 2 live smoke resolved: `/study/roadmaps` showed exactly two history rows, one abandoned and one completed, with zero browser console errors.
-- Phase 2 commit resolved: `6c883fa`.
+- Phase 2 commit resolved: `edd31ba`.

@@ -67,7 +67,7 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 ### Implementer report (Codex/Sonnet fills)
 
 - Files changed: `apps/app/src/dev/seedTestData.ts`.
-- Commit SHA: `6c883fa`.
+- Commit SHA: `edd31ba`.
 - What was done: added one completed past roadmap and one abandoned past roadmap before the active roadmap in the dev seed.
 - What was done: each past roadmap emits `MaterialAdded`, no-slot `RoadmapCreated`, window `SessionBooked` events, and one matching terminal event.
 - What was done: updated the seed console summary to report two past roadmaps.
