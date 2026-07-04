@@ -24,11 +24,22 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Implementer report (Codex/Sonnet fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+- Files changed: `apps/app/src/dev/seedTestData.ts`, `apps/app/src/dev/DevSeeder.tsx`.
+- Commit SHA: `ebf6bbf`.
+- What was done: rewrote the dev seed to emit a no-slot active roadmap with `materialIds`, `SessionBooked` bookings, booking-linked `SessionLogged` events, 3-letter `selectedStudyDays`, and one `OnboardingCompleted` event.
+- What was done: updated the dev console helper text to describe the new demo seed shape.
+- Deviation: omitted Phase 2-only terminal-event payload imports until Phase 2 because Phase 1 does not use them and `noUnusedLocals` is enabled.
+- Deviation: used plain hyphens in new console helper text to comply with project punctuation instructions.
+- Deviation: used UTC day-key helpers in the seed because app routes compute today with `new Date().toISOString().slice(0, 10)`.
+- Deviation: this fixed the first live smoke result where the plan's local-midnight helper left a Saturday booking keyed to the prior UTC date and Home rendered a rest day.
+- Self-check vs criteria: `grep -c "slots" apps/app/src/dev/seedTestData.ts` returned `0`.
+- Self-check vs criteria: `grep -c "SessionBooked\|materialIds\|bookingId" apps/app/src/dev/seedTestData.ts` returned `8`.
+- Self-check vs criteria: `pnpm --filter @study-tracker/app typecheck` passed.
+- Self-check vs criteria: `pnpm --filter @study-tracker/app lint` exited 0 with 4 pre-existing `no-explicit-any` warnings in session YouTube files.
+- Self-check vs criteria: full-app status was healthy for intelligence and app.
+- Self-check vs criteria: live Chromium smoke passed after waiting for initial cloud restore before `__wipe()` and `__seed()`.
+- Self-check vs criteria: Home showed projection, this-week, recent activity, and the seeded "Start session" card with no console errors.
+- Self-check vs criteria: Week showed the provisional finish and burn-up chart labels instead of the fallback, with no console errors.
 
 ### Reviewer findings (Cowork fills)
 

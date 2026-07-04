@@ -230,7 +230,7 @@ Read path (unchanged, production): `findActiveRoadmap` → folds active `Session
 
 ### Phase 1: Rewrite `seedTestData.ts` to the no-slot model — active roadmap only
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress - implemented in `ebf6bbf`, awaiting reviewer verification
 **Depends on:** none — can start immediately
 **Estimated scope:** ~1 file rewritten (~200 lines), 1 console string.
 
@@ -529,7 +529,12 @@ Then a live smoke check (see `.claude/rules/playwright-full-app-lifecycle.md`): 
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Implemented in `ebf6bbf`.
+- The implementation keeps Phase 1 scoped to `seedTestData.ts` and `DevSeeder.tsx`.
+- Deviation: Phase 1 omits `RoadmapMarkedCompletePayload` and `RoadmapMarkedAbandonedPayload` imports until Phase 2 because `apps/app/tsconfig.json` has `noUnusedLocals: true`.
+- Deviation: new console text uses plain hyphens instead of em dashes to follow the project instruction.
+- Deviation: seed date helpers use UTC day keys because the app's live `todayISO()` also uses `new Date().toISOString().slice(0, 10)`.
+- The UTC helper deviation fixed a live smoke issue where a Saturday seed initially rendered Home as a rest day.
 
 ---
 
