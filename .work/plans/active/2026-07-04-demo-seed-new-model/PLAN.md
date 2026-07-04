@@ -639,7 +639,7 @@ Then reseed live (`__wipe()` then `__seed()`) and confirm `/study/roadmaps` Hist
 
 ### Phase 3: Live demo verification + tune pace so the projection lands "a few days early"
 
-**Status:** 🟡 In progress - live verification started 2026-07-04
+**Status:** ✅ Complete - 07c8f2e
 **Depends on:** Phase 1, Phase 2 (both ✅ Complete).
 **Estimated scope:** 0–1 file (only the `PACE_KNOB` constant in `seedTestData.ts` if tuning is needed).
 
@@ -694,7 +694,13 @@ Verification-only; if `PACE_KNOB` was changed, `git revert` that commit to resto
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Implemented in `07c8f2e`.
+- Live verification must wait for the sync indicator to show `Synced` before running `__wipe()` and `__seed()`.
+- Without that wait, initial cloud restore can overwrite the local-only seed on reload and make pre-existing cloud roadmaps appear active.
+- Pace tuning changed the active logged-session skip threshold from the literal `0.15` to named `PAST_SESSION_SKIP_PROBABILITY = 0.01`, yielding one deterministic missed past booking and a `41%` active hero.
+- Pace tuning changed logged-session multipliers from `1.05 + rand() * 0.2` / `0.85 + rand() * 0.2` to `0.78 + rand() * 0.1` / `0.62 + rand() * 0.1`.
+- Final live result after `__wipe()`, `__seed()`, and reload: Home projected `4 DAYS EARLY`, Week burn-up rendered, `/roadmaps` active hero showed `41%`, history showed one abandoned and one completed row, and browser console errors were `0`.
+- Screenshots are attached in `screenshots/phase3-home.png`, `screenshots/phase3-week.png`, and `screenshots/phase3-roadmaps.png`.
 
 ---
 

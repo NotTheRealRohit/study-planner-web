@@ -46,6 +46,7 @@ function dateStr(d: Date): string {
 
 const STUDY_DAY_NUMS = new Set([1, 3, 5, 6])
 const STUDY_DAYS: DayOfWeek[] = ['Mon', 'Wed', 'Fri', 'Sat']
+const PAST_SESSION_SKIP_PROBABILITY = 0.01
 
 function plannedMinutesForDate(d: Date): number {
   const day = d.getUTCDay()
@@ -360,9 +361,9 @@ export async function seedTestData(eventStore: EventStore): Promise<void> {
 
   for (const booking of activeBookings) {
     if (booking.date >= todayStr) continue
-    if (rand() < 0.15) continue
+    if (rand() < PAST_SESSION_SKIP_PROBABILITY) continue
 
-    const pace = booking.weekIndex < 2 ? 1.05 + rand() * 0.2 : 0.85 + rand() * 0.2
+    const pace = booking.weekIndex < 2 ? 0.78 + rand() * 0.1 : 0.62 + rand() * 0.1
     const activeMinutes = Math.max(20, Math.round(booking.estimatedDuration * pace))
     events.push(loggedSessionEvent(booking, materialById.get(booking.materialId)!, activeMinutes))
     loggedCount += 1

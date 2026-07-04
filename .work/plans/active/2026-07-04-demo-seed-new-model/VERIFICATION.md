@@ -110,12 +110,19 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Implementer report (Codex/Sonnet fills)
 
-- Files changed (if any — expected: only `PACE_KNOB` pacing constants, or none):
-- Commit SHA:
-- Live results (Home / Week / Roadmaps):
-- Pace tuning applied (before → after), projected finish vs deadline:
-- Screenshots:
-- Deviations + why:
+- Files changed: `apps/app/src/dev/seedTestData.ts`, `.work/plans/active/2026-07-04-demo-seed-new-model/PLAN.md`, `.work/plans/active/2026-07-04-demo-seed-new-model/VERIFICATION.md`, `.work/plans/active/2026-07-04-demo-seed-new-model/SCRATCHPAD.md`, `.work/STATUS.md`, and the three Phase 3 screenshots under `screenshots/`.
+- Commit SHA: `07c8f2e`.
+- Live results - Home: after waiting for sync restore, running `__wipe()` / `__seed()`, and reloading, Home showed the active study session card for today, `3 hr 5 min` this week, recent activity, and `Projected finish · provisional` = `Aug 3-Aug 6` / `4 DAYS EARLY`.
+- Live results - Week: daily-minutes bars rendered, provisional finish rendered, burn-up chart rendered instead of the fallback, and past-week navigation changed the page state.
+- Live results - Roadmaps: active hero showed `Learn modern React + TypeScript`, `41%` complete, `15` sessions, and `17h 56m` logged; history showed exactly one `abandoned` row and one `completed` row.
+- Pace tuning applied: skip threshold changed from the Phase 1 literal `0.15` to `PAST_SESSION_SKIP_PROBABILITY = 0.01`.
+- Pace tuning applied: logged-session pace changed from `1.05 + rand() * 0.2` for weeks 0-1 and `0.85 + rand() * 0.2` afterwards to `0.78 + rand() * 0.1` for weeks 0-1 and `0.62 + rand() * 0.1` afterwards.
+- Pace tuning result: initial live check with the untuned seed showed `/roadmaps` active hero `30%`; skip tuning fixed the hero to `41%`; pace tuning moved projection from `20 DAYS EARLY` through a late overshoot to the final `4 DAYS EARLY` result.
+- Screenshots: [`screenshots/phase3-home.png`](screenshots/phase3-home.png), [`screenshots/phase3-week.png`](screenshots/phase3-week.png), [`screenshots/phase3-roadmaps.png`](screenshots/phase3-roadmaps.png).
+- Deviations + why: the live browser script must wait for the `Synced` indicator before seeding because seeded events are local-only and a still-running initial cloud restore can replace them on reload.
+- Deviations + why: Playwright Chromium needed escalated execution on this macOS sandbox after the sandboxed launch failed with a Mach port permission error.
+- Verification commands: `./full-app status full` healthy; `curl -i http://localhost:5173/study/sign-in` returned 200; `curl -i http://127.0.0.1:8000/health` returned 200; `pnpm --filter @study-tracker/app typecheck` passed; `pnpm --filter @study-tracker/app lint` exited 0 with the same four pre-existing YouTube-session `no-explicit-any` warnings.
+- Console errors: `0` during the final seed and Home / Week / Roadmaps navigation.
 
 ### Reviewer findings (Cowork fills)
 
