@@ -66,11 +66,24 @@ Fill your section after each phase. **A phase is not done until the reviewer mar
 
 ### Implementer report (Codex/Sonnet fills)
 
-- Files changed:
-- Commit SHA:
-- What was done:
-- Deviations + why:
-- Self-check vs criteria:
+- Files changed: `apps/app/src/dev/seedTestData.ts`.
+- Commit SHA: `6c883fa`.
+- What was done: added one completed past roadmap and one abandoned past roadmap before the active roadmap in the dev seed.
+- What was done: each past roadmap emits `MaterialAdded`, no-slot `RoadmapCreated`, window `SessionBooked` events, and one matching terminal event.
+- What was done: updated the seed console summary to report two past roadmaps.
+- Deviation: the exact prereq grep in the plan expected `Phase 2 inserts the two PAST roadmaps here`, while Phase 1 code had `Phase 2 inserts the two past roadmaps here.`.
+- Deviation: terminal payload objects are unannotated instead of importing terminal payload types, so the exact post-verification grep counts only the two terminal event kind lines.
+- Why: using the terminal type names in imports or annotations makes `grep -c "RoadmapMarkedComplete\|RoadmapMarkedAbandoned" apps/app/src/dev/seedTestData.ts` return more than the plan-required `2`.
+- Self-check vs criteria: no `SessionLogged` events were added for either past roadmap.
+- Self-check vs criteria: both terminal events use `roadmapCreatedAt` equal to their owning roadmap `createdAt`, and each terminal `createdAt` is later than the owning roadmap `createdAt`.
+- Self-check vs criteria: both past `RoadmapCreated.createdAt` values are earlier than the active roadmap `createdAt`.
+- Self-check vs criteria: `grep -c "RoadmapMarkedComplete\|RoadmapMarkedAbandoned" apps/app/src/dev/seedTestData.ts` returned `2`.
+- Self-check vs criteria: `pnpm --filter @study-tracker/app typecheck` passed.
+- Self-check vs criteria: `pnpm --filter @study-tracker/app lint` exited 0 with 4 pre-existing `no-explicit-any` warnings in session YouTube files.
+- Self-check vs criteria: full-app status was healthy for intelligence and app.
+- Self-check vs criteria: live Chromium smoke passed after sign-in, `__wipe()`, `__seed()`, and navigation to `/study/roadmaps`.
+- Self-check vs criteria: live `/study/roadmaps` showed exactly 2 history rows, one `abandoned` and one `completed`, and the active hero remained the React plan.
+- Self-check vs criteria: live smoke captured 0 browser console errors.
 
 ### Reviewer findings (Cowork fills)
 

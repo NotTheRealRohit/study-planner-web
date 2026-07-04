@@ -540,7 +540,7 @@ Then a live smoke check (see `.claude/rules/playwright-full-app-lifecycle.md`): 
 
 ### Phase 2: Add the two past roadmaps (completed + abandoned)
 
-**Status:** 🟡 In progress
+**Status:** ✅ Complete - 6c883fa
 **Depends on:** Phase 1 (✅ Complete) — reuses `materialEvent`, `roadmapEvent`, `bookingEvent`, `bookingsForWindow`, and the `events`/`today` locals defined there.
 **Estimated scope:** ~1 file, ~40 lines inserted.
 
@@ -627,7 +627,13 @@ Then reseed live (`__wipe()` then `__seed()`) and confirm `/study/roadmaps` Hist
 
 #### Notes (filled in during implementation)
 
-<empty>
+- Implemented in `6c883fa`.
+- Deviation: the exact Phase 2 prereq grep in the plan did not match Phase 1's placeholder text because the code used lowercase `past` and a trailing period.
+- The semantic placeholder was present at `apps/app/src/dev/seedTestData.ts:216`, so Phase 2 proceeded by explicit user request.
+- Deviation: terminal payload objects were left unannotated instead of importing `RoadmapMarkedCompletePayload` and `RoadmapMarkedAbandonedPayload`.
+- Reason: the plan's own post-verification grep expects `2`, and spelling the terminal type names in imports or annotations makes that exact guard count more than the two emitted terminal event kinds.
+- The emitted payload fields still match the exported terminal payload contract: `roadmapCreatedAt`, `resolvedAt`, and optional `reason`.
+- Verification passed: grep guard returned `2`, app typecheck passed, app lint exited 0 with the four pre-existing YouTube-session warnings, and live Chromium smoke showed two history rows with one `abandoned` and one `completed`.
 
 ---
 

@@ -213,7 +213,115 @@ export async function seedTestData(eventStore: EventStore): Promise<void> {
   const todayStr = dateStr(today)
   const events: OmitId[] = []
 
-  // Phase 2 inserts the two past roadmaps here.
+  // ---------------- PAST ROADMAP #1 - completed ----------------
+  {
+    const start = addDays(today, -140)
+    const deadline = addDays(today, -95)
+    const createdAt = iso(addDays(start, -1))
+    const materials: SeedMaterial[] = [
+      {
+        id: uuid(),
+        title: 'Foundations of Machine Learning',
+        duration: 900,
+        role: 'anchor',
+        kind: 'youtube',
+      },
+      {
+        id: uuid(),
+        title: 'Linear Algebra Refresher',
+        duration: 480,
+        role: 'foundation',
+        kind: 'article',
+      },
+    ]
+
+    for (const material of materials) {
+      events.push(materialEvent(material, createdAt))
+    }
+
+    events.push(
+      roadmapEvent(
+        {
+          start,
+          deadline,
+          materials,
+          purpose: 'Foundations of Machine Learning',
+        },
+        createdAt,
+      ),
+    )
+
+    for (const booking of bookingsForWindow(start, deadline, materials)) {
+      events.push(bookingEvent(booking, createdAt))
+    }
+
+    const resolvedAt = iso(addDays(deadline, -1))
+    const terminal = {
+      roadmapCreatedAt: createdAt,
+      resolvedAt,
+      reason: 'Finished the syllabus',
+    }
+    events.push({
+      kind: 'RoadmapMarkedComplete',
+      payload: terminal as unknown as Record<string, unknown>,
+      createdAt: resolvedAt,
+    })
+  }
+
+  // ---------------- PAST ROADMAP #2 - abandoned ----------------
+  {
+    const start = addDays(today, -84)
+    const deadline = addDays(today, -28)
+    const createdAt = iso(addDays(start, -1))
+    const materials: SeedMaterial[] = [
+      {
+        id: uuid(),
+        title: 'System Design Interview Prep',
+        duration: 720,
+        role: 'anchor',
+        kind: 'youtube',
+      },
+      {
+        id: uuid(),
+        title: 'Distributed Systems Notes',
+        duration: 420,
+        role: 'foundation',
+        kind: 'article',
+      },
+    ]
+
+    for (const material of materials) {
+      events.push(materialEvent(material, createdAt))
+    }
+
+    events.push(
+      roadmapEvent(
+        {
+          start,
+          deadline,
+          materials,
+          purpose: 'System Design Interview Prep',
+        },
+        createdAt,
+      ),
+    )
+
+    for (const booking of bookingsForWindow(start, deadline, materials)) {
+      events.push(bookingEvent(booking, createdAt))
+    }
+
+    const resolvedAt = iso(addDays(start, 30))
+    const terminal = {
+      roadmapCreatedAt: createdAt,
+      resolvedAt,
+      reason: 'Shifted focus to the current plan',
+    }
+    events.push({
+      kind: 'RoadmapMarkedAbandoned',
+      payload: terminal as unknown as Record<string, unknown>,
+      createdAt: resolvedAt,
+    })
+  }
 
   const activeStart = addDays(today, -28)
   const activeDeadline = addDays(today, 35)
@@ -265,7 +373,9 @@ export async function seedTestData(eventStore: EventStore): Promise<void> {
 
   console.log(
     `[seed] Done - active roadmap ${dateStr(activeStart)} to ${dateStr(activeDeadline)}; ` +
-      `${activeBookings.length} bookings, ${loggedCount} logged sessions; ${events.length} events total.`,
+      `${activeBookings.length} active bookings, ${loggedCount} logged sessions; ` +
+      '2 past roadmaps (1 completed, 1 abandoned); ' +
+      `${events.length} events total.`,
   )
 }
 
