@@ -540,7 +540,7 @@ Then a live smoke check (see `.claude/rules/playwright-full-app-lifecycle.md`): 
 
 ### Phase 2: Add the two past roadmaps (completed + abandoned)
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress
 **Depends on:** Phase 1 (✅ Complete) — reuses `materialEvent`, `roadmapEvent`, `bookingEvent`, `bookingsForWindow`, and the `events`/`today` locals defined there.
 **Estimated scope:** ~1 file, ~40 lines inserted.
 
