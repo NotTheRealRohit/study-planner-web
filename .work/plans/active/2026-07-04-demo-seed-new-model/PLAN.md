@@ -639,7 +639,7 @@ Then reseed live (`__wipe()` then `__seed()`) and confirm `/study/roadmaps` Hist
 
 ### Phase 3: Live demo verification + tune pace so the projection lands "a few days early"
 
-**Status:** ☐ Not started
+**Status:** 🟡 In progress - live verification started 2026-07-04
 **Depends on:** Phase 1, Phase 2 (both ✅ Complete).
 **Estimated scope:** 0–1 file (only the `PACE_KNOB` constant in `seedTestData.ts` if tuning is needed).
 
