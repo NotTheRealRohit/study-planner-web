@@ -144,6 +144,10 @@ Read the relevant rule before changing that area, and cite it by name in plans.
 | `docker-colima-setup` | Docker/Colima builds, ***REMOVED***, port forwarding |
 | `latex-report-build` | "latexmk not found"; TinyTeX PATH for the dissertation |
 | `flow-diagram-tikz-gen` | Building vector-PDF architecture diagrams via standalone TikZ |
+| `ieee-conference-class-setup` | Wrong `IEEEtran` class options; conference-mode command lockouts |
+| `ieee-conference-authoring` | Author-block/section formatting mistakes in IEEE conference mode |
+| `ieee-conference-equations` | `eqnarray` misuse; `subequations` equation-counter skips |
+| `ieee-conference-figures-tables-citations` | Label-before-caption; wrong caption placement; uncompressed citations |
 
 ## Environment Variables
 
