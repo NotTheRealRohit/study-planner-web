@@ -69,7 +69,7 @@ The status markers are a fast read, but they are not the source of truth. The ph
 - **Phase 8's visual contract is the approved mock** [`mocks/proposed/bug6-branded-loading.html`](./mocks/proposed/bug6-branded-loading.html) (baseline + 3 candidates C1/C2/C3, real CSS + real DOM, phone + desktop viewports, long-wait-state toggle). Rohit picked **Option C1** (D-09) — build to that.
 - **Project rules** live in `.agents/rules/*.agents.md` (Codex) / `.claude/rules/*.md` (Sonnet); cite the relevant one per phase.
 - **E2E tests: author only, do not run** (environment constraint — see repo `CLAUDE.md`). Vitest unit tests DO run.
-- **These are five independent bug fixes.** Phases have **no cross-dependencies** — each can be picked up and shipped on its own. Ordered easiest→most-involved, not by dependency.
+- **These are independent post-ship items** (BUG-1..BUG-8 across Phases 1–8, plus one feature — suggested upcoming sessions — in Phase 9). Phases have **no cross-dependencies** — each can be picked up and shipped on its own. Ordered by when they were added, not by dependency. (The soft 7-phase cap is intentionally exceeded because this doc is being used as a running post-ship-fix collection for one subsystem; each phase remains a self-contained slice.)
 
 ---
 
@@ -227,6 +227,19 @@ Also decided in the same session, as direct sub-parts of D-09:
 **Reversibility:** easy — pure CSS, no data/API shape involved.
 **Visual contract (approved):** [`mocks/proposed/bug8-bubble-truncation.html`](./mocks/proposed/bug8-bubble-truncation.html) — real CSS (refreshed from current source) + real DOM, baseline and all four candidates rendered live in 390px iframes.
 
+### D-11: FEAT — suggested upcoming sessions (derived, not persisted)
+
+**Status:** ✅ Agreed
+**Context:** The roadmap calendar renders only persisted `SessionBooked` events. `generateBookings` is book-to-exhaustion, so with a small backlog only a few bookings exist and upcoming planned study-days look empty — there's no visible path to the deadline and nothing re-projects as time passes.
+**Decision:** Add a **read-time "suggested sessions" layer**. Re-run the engine's `generateBookings` over **remaining** material (from `buildMaterialLedger`, `remainingEstimatedMinutes` per not-done material) starting `today`→`deadline`; the engine already **caps each session at that day's capacity and spreads the leftover across consecutive study days**. Render the results as a distinct **`suggested`** bubble on future study days that have **no confirmed booking**. Nothing is persisted; clicking a suggestion **accepts** it → emits a real `SessionBooked` (app-layer `crypto.randomUUID()` id), after which it's an ordinary booking (and the suggestion for that day disappears because the day now has a confirmed booking). Active roadmap only; never in the read-only history view.
+**Rationale:** Derived suggestions self-adjust as material is logged and need no event rewrites on replan; they fit the "blank capacity, choose material at start" model (D upstream); reusing the deterministic engine layout means suggestions agree with onboarding's booking math. Cap-and-spread avoids showing an impossible single leftover-sized block.
+**Alternatives considered:**
+- Persist suggested `SessionBooked` events up front for every study day → rejected: they wouldn't shrink as material is completed, and every replan would rewrite them.
+- One suggested session sized to the *entire* material leftover → rejected: can exceed a day's capacity; the calendar should show the realistic per-day spread.
+**User pushback:** Rohit picked derived + cap-and-spread.
+> Rohit: "Agreed"
+**Reversibility:** easy — additive read-time layer + one new bubble status; delete the derivation + status to revert. No event-model change.
+
 ## Architecture overview
 
 Five isolated client-side fixes, no shared runtime coupling:
@@ -242,6 +255,10 @@ BUG-5  packages/progress/src/progress.ts (planned baseline) + apps/app/src/compo
 BUG-7  apps/app/src/roadmap/DaySheet.tsx                     — scroll the sheet into view on open
 BUG-8  apps/app/src/roadmap/roadmap.css                      — narrow-width onboarding bubble treatment (Option C, D-10)
 BUG-6  apps/app/src/sync/{types.ts,SyncEngine.ts,SyncProvider.tsx} + packages/design-tokens/src/components.css  — withhold children on initial cloud-restore + branded loading screen (D-09)
+
+-- feature (Phase 9, D-11) --
+FEAT   apps/app/src/roadmap/{suggestedBookings.ts (new),calendarModel.ts,statusStyles.ts,CalendarCell.tsx,RoadmapCalendar.tsx,roadmap.css}
+       — derived "suggested upcoming sessions" over remaining material (generateBookings from today→deadline), rendered on empty future study days; click = accept → SessionBooked
 ```
 
 Data facts to rely on (verified in code, do not re-derive):
@@ -281,6 +298,13 @@ Data facts to rely on (verified in code, do not re-derive):
 | `apps/app/src/sync/SyncProvider.tsx` | modify | 8 | Withhold `children` while restore is pending; configurable safety timeout (D-09); render the Option C1 branded loading screen (`BootScreen`) instead of a placeholder |
 | `apps/app/src/sync/SyncProvider.test.tsx` | modify | 8 | Cover blocked→rendered transition (now asserting `BootScreen` content), prop-driven safety-timeout fallback (no fake timers needed), `resolveInitialRestoreSafetyTimeoutMs` default/override/fallback |
 | `packages/design-tokens/src/components.css` | modify | 8 | New `.boot-*` branded-loading-screen CSS (D-09, Option C1) |
+| `apps/app/src/roadmap/suggestedBookings.ts` | new | 9 | Derive suggested sessions from remaining material via `generateBookings` (D-11) |
+| `apps/app/src/roadmap/calendarModel.ts` | modify | 9 | Add `suggested` bubble status + builder + `bindCells` suggested arg |
+| `apps/app/src/roadmap/statusStyles.ts` | modify | 9 | `suggested` chip style + legend entry |
+| `apps/app/src/roadmap/CalendarCell.tsx` | modify | 9 | Render suggested bubble; click = accept |
+| `apps/app/src/roadmap/RoadmapCalendar.tsx` | modify | 9 | Derive suggestions + accept handler (emits `SessionBooked`) |
+| `apps/app/src/roadmap/roadmap.css` | modify | 9 | `.roadmap-chip-suggested` ghost style |
+| `apps/app/src/roadmap/suggestedBookings.test.ts` | new | 9 | Distribution, collision-skip, empty-when-nothing-remaining |
 | `CLAUDE.md` | modify | 8 | Document `VITE_INITIAL_RESTORE_TIMEOUT_MS` in Environment Variables |
 | `apps/app/.env.example` | modify | 8 | Add `VITE_INITIAL_RESTORE_TIMEOUT_MS` template entry (commented, matching `VITE_INTELLIGENCE_URL`'s style) |
 
@@ -1321,6 +1345,102 @@ Revert `apps/app/src/sync/types.ts`, `SyncEngine.ts`, and `SyncProvider.tsx` to 
 - Reduced-motion verification passed: boot mark, dot, and caption animations computed to `none`, with the mark fully drawn/static.
 - Deviations: the provider transition test uses the real `restoreFromCloud()` path with a prototype spy rather than a fully mocked deferred restore, because a full mock would not exercise the engine state notification that clears the provider gate.
 - Deviations: boot subcaption uses a plain hyphen instead of the mock's em dash, and the new boot CSS uses `letter-spacing: 0`, to comply with active repo/frontend instructions.
+
+---
+
+### Phase 9: Suggested upcoming sessions on the roadmap calendar (FEAT, D-11)
+
+**Status:** ☐ Not started
+**Depends on:** none — can start immediately (independent of Phases 1–8; Phase 4's study-day tint is complementary but not required)
+**Estimated scope:** ~6 files, ~140 lines. Implements D-11.
+
+#### Codebase state assumed at start
+- `apps/app/src/roadmap/RoadmapCalendar.tsx`: has `selectedRoadmap` (`RoadmapLifecycleEntry`), `roadmap` (`RoadmapInput`, exposes `startDate, deadline, selectedStudyDays, weekdayHours, weekendHours`), `today`, `readOnly`, `materialLedger` (`MaterialLedgerEntry[]` with `remainingEstimatedMinutes/done/started/materialId/title`), `bookings` = `deriveBookingsForRoadmap(...)`, `handleCreateBooking(draft)` (emits `SessionBooked`), and the `calendar` useMemo that calls `deriveBookingStatuses` + `bindCells`.
+- `@study-tracker/roadmap-engine` exports `generateBookings(input: BookingLayoutInput)` (pure, deterministic, book-to-exhaustion + per-day capacity via `capacityForBookingDay`) and `suggestMaterialForBooking(materials, ledger, usedMaterialIds)`.
+- `apps/app/src/roadmap/calendarModel.ts`: `CalendarBubbleStatus = 'done'|'booked'|'missed'|'unplanned'` (line 35); `bubbleForBooking`/`bubbleForActivity`; `bindCells(grid, derivedBookings, unplannedActivity, materialsById)` (line 203); `CalendarBubble.kind` is `'booking'|'activity'`.
+- `apps/app/src/roadmap/statusStyles.ts`: `STATUS_STYLES` map + `LEGEND_ITEMS`.
+- `apps/app/src/roadmap/CalendarCell.tsx`: renders `roadmap-bubble` buttons in the non-compact branch and dots in compact; `onBubbleClick(bubble)` routed to `handleCalendarBubbleSelect` in RoadmapCalendar.
+
+#### Verification (run BEFORE starting)
+```bash
+grep -n "generateBookings\|suggestMaterialForBooking" packages/roadmap-engine/src/index.ts   # exported
+grep -n "CalendarBubbleStatus" apps/app/src/roadmap/calendarModel.ts                          # ~35
+grep -n "deriveBookingsForRoadmap\|materialLedger\|handleCreateBooking" apps/app/src/roadmap/RoadmapCalendar.tsx
+pnpm --filter @study-tracker/app test -- RoadmapCalendar   # baseline green
+```
+
+#### Steps
+1. **New `apps/app/src/roadmap/suggestedBookings.ts`** — pure derivation (D-11):
+   ```ts
+   import { generateBookings, suggestMaterialForBooking, type Booking, type Material } from '@study-tracker/roadmap-engine'
+   import type { RoadmapInput } from '@study-tracker/progress'          // or the shared RoadmapInput type used by RoadmapCalendar
+   import type { MaterialLedgerEntry } from '@study-tracker/progress'
+
+   export interface SuggestedBooking { id: string; date: string; estimatedDuration: number; materialId?: string }
+
+   // Suggested = book-to-exhaustion over REMAINING material, today→deadline, minus days that already have a confirmed booking.
+   export function deriveSuggestedBookings(args: {
+     roadmap: Pick<RoadmapInput, 'startDate'|'deadline'|'selectedStudyDays'|'weekdayHours'|'weekendHours'>
+     ledger: MaterialLedgerEntry[]
+     confirmedBookings: Booking[]
+     today: string
+   }): SuggestedBooking[] {
+     const { roadmap, ledger, confirmedBookings, today } = args
+     if (!roadmap.selectedStudyDays?.length) return []
+     const remainingMaterials: Material[] = ledger
+       .filter((m) => !m.done && m.remainingEstimatedMinutes > 0)
+       .map((m, i) => ({ id: m.materialId, title: m.title, totalMinutes: m.remainingEstimatedMinutes, role: 'foundation', additionOrder: i }))
+     if (remainingMaterials.length === 0) return []
+     const { bookings } = generateBookings({
+       startDate: today, deadline: roadmap.deadline,
+       selectedStudyDays: roadmap.selectedStudyDays,
+       weekdayHours: roadmap.weekdayHours, weekendHours: roadmap.weekendHours,
+       materials: remainingMaterials,
+     })
+     const confirmedDates = new Set(confirmedBookings.map((b) => b.date))
+     const ledgerForSuggest = ledger.map((m) => ({ materialId: m.materialId, done: m.done, started: m.started }))
+     const used: string[] = []
+     return bookings
+       .filter((b) => b.date >= today && !confirmedDates.has(b.date))
+       .map((b, i) => {
+         const materialId = suggestMaterialForBooking(remainingMaterials, ledgerForSuggest, used)
+         if (materialId) used.push(materialId)
+         return { id: `suggested:${b.date}:${i}`, date: b.date, estimatedDuration: b.estimatedDuration, materialId }
+       })
+   }
+   ```
+   Confirm the exact `Material.role` union and `RoadmapInput`/`MaterialLedgerEntry` import paths against the packages; adjust if the app re-exports them elsewhere.
+2. **`calendarModel.ts`:** add `'suggested'` to `CalendarBubbleStatus` (line 35); add a `bubbleForSuggested(s, materialsById)` builder (id `suggested:${s.id}`, `status:'suggested'`, `kind:'suggested'`, `label = materialTitle ?? 'Suggested session'`, `minutes/plannedMinutes = s.estimatedDuration`, `materialId`); extend `bindCells` with a new `suggested: SuggestedBooking[] = []` param that pushes suggested bubbles **only onto dates that have no existing bubble** (so a confirmed booking or logged activity always wins). Add `'suggested'` to `CalendarBubble['kind']`.
+3. **`statusStyles.ts`:** add a `suggested` entry to `STATUS_STYLES` — outlined/dashed **ghost** chip in moss (`chipClass: 'roadmap-chip-suggested'`, `icon: 'ti-plus'` or `'ti-clock'`), visually lighter than `booked`. Add a **"Suggested"** entry to `LEGEND_ITEMS` (or a separate legend constant if you don't want it to render as a status filter).
+4. **`roadmap.css`:** add `.roadmap-chip-suggested` — dashed border in `color-mix(in srgb, var(--moss) 45%, transparent)`, text `var(--moss-soft)`, transparent/tinted fill; clearly distinct from the solid `booked` outline. Keep it legible in the compact dot-stack (a moss dot).
+5. **`CalendarCell.tsx`:** render suggested bubbles like bookings but with the suggested style and a `title="Suggested session — tap to book"`; in compact mode include them in the dot-stack. No new interaction wiring here beyond passing the bubble to `onBubbleClick`.
+6. **`RoadmapCalendar.tsx`:**
+   - Compute `const suggested = useMemo(() => (!readOnly && roadmap) ? deriveSuggestedBookings({ roadmap, ledger: materialLedger, confirmedBookings: bookings, today }) : [], [readOnly, roadmap, materialLedger, bookings, today])`.
+   - Pass `suggested` into `bindCells(grid, derived.bookings, derived.unplanned, materialsById, suggested)`.
+   - In `handleCalendarBubbleSelect`, branch on `bubble.status === 'suggested'` → `void handleAcceptSuggestion(bubble)` instead of opening a detail/editor.
+   - Add `handleAcceptSuggestion(bubble)` → `logEvent('SessionBooked', { roadmapCreatedAt: selectedRoadmap.roadmapCreatedAt, bookingId: crypto.randomUUID(), date: bubble.date, estimatedDuration: bubble.plannedMinutes, ...(bubble.materialId ? { materialId: bubble.materialId } : {}) })`. (Mirrors `handleCreateBooking`.)
+   - Ensure the mobile `DaySheet` path also accepts a suggested row (its `onSelectBubble` → same branch). Read-only view passes no suggestions (guarded above).
+7. Honour `.agents/rules/roadmap-engine.agents.md` (engine stays pure/deterministic — suggestions are derived in the app layer; the `suggested:*` ids are display-only and never persisted; the accepted booking gets a fresh `crypto.randomUUID()`).
+
+#### Tests
+- `apps/app/src/roadmap/suggestedBookings.test.ts` (new): remaining 5h with 2h/day cap on Mon/Wed/Fri from today → suggestions of 120/120/60 on the next three study days; a day with a confirmed booking is skipped; `done`/zero-remaining materials produce no suggestions; empty `selectedStudyDays` → `[]`.
+- `calendarModel.test.ts`: `bindCells` places a suggested bubble only on an otherwise-empty date; a confirmed booking on the same date suppresses the suggestion.
+- `RoadmapCalendar.test.tsx`: suggested bubbles render for an active roadmap with remaining material; clicking one emits `SessionBooked` (with the suggested date/duration/material) and no other event; `readOnly` renders zero suggestions.
+- Author (not run) a Playwright case: open `/roadmap` with remaining material → suggested sessions visible on upcoming study days → click one → it becomes a confirmed booking.
+- Run: `pnpm --filter @study-tracker/app test -- suggestedBookings calendarModel RoadmapCalendar`
+
+#### Verification (DONE)
+```bash
+grep -n "deriveSuggestedBookings" apps/app/src/roadmap/suggestedBookings.ts apps/app/src/roadmap/RoadmapCalendar.tsx
+grep -n "roadmap-chip-suggested\|'suggested'" apps/app/src/roadmap/statusStyles.ts apps/app/src/roadmap/calendarModel.ts
+pnpm --filter @study-tracker/app typecheck && pnpm --filter @study-tracker/app test -- suggestedBookings calendarModel RoadmapCalendar
+```
+
+#### Rollback
+Delete `suggestedBookings.ts`, revert the `suggested` status/style/bindCells arg, and the RoadmapCalendar derive+accept wiring. No persisted data to unwind (suggestions were never events).
+
+#### Notes (filled in during implementation)
+*(empty)*
 
 ---
 

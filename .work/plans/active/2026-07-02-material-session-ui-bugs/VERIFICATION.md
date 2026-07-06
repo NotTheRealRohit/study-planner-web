@@ -388,3 +388,21 @@ Phases 7 and 8 remain not started.
 - Commit SHA: `f6313f8`.
 
 **Reviewer findings:** _(pending)_
+
+---
+
+## Phase 9 — Suggested upcoming sessions (FEAT, D-11) · Status: ☐ Not started
+
+**Acceptance criteria**
+- [ ] New pure `apps/app/src/roadmap/suggestedBookings.ts` `deriveSuggestedBookings({roadmap, ledger, confirmedBookings, today})` runs the engine's `generateBookings` over **remaining** material (`remainingEstimatedMinutes`, not-done) from `today`→`deadline`, and returns suggestions **only** for future study-days with **no confirmed booking**; empty `selectedStudyDays` or nothing-remaining → `[]` (D-11).
+- [ ] Suggested length = per-day capacity, leftover **spread across consecutive study days** (engine cap-and-spread), NOT one leftover-sized block.
+- [ ] `calendarModel` gains a `suggested` bubble status + builder; `bindCells` places a suggested bubble only on an otherwise-empty date (confirmed booking / logged activity always wins).
+- [ ] `statusStyles` has a `suggested` ghost style (`roadmap-chip-suggested`) + a "Suggested" legend entry; `roadmap.css` styles it distinctly from `booked` (dashed/moss ghost), legible as a compact dot.
+- [ ] Clicking a suggested bubble **accepts** it → emits exactly one `SessionBooked` (fresh `crypto.randomUUID()` id, suggested date/duration/material), after which it renders as a confirmed booking and the suggestion for that day disappears; no suggestion is ever persisted.
+- [ ] Suggestions render for the **active** roadmap only; `readOnly` history shows none.
+- [ ] Unit tests cover distribution (e.g. 5h @ 2h cap → 120/120/60), collision-skip, empty cases, and accept→`SessionBooked`. Playwright authored (not run).
+- [ ] `pnpm --filter @study-tracker/app typecheck` + `test -- suggestedBookings calendarModel RoadmapCalendar` green.
+
+**Implementer report:** _(pending)_
+
+**Reviewer findings:** _(pending)_
