@@ -110,7 +110,7 @@ Focused Vitest coverage protects the pure helpers and component behavior, while 
 
 ## Phase 1: Refactor the chart without changing its default appearance
 
-**Status:** Complete - pending implementation commit
+**Status:** Complete - `eeaee51`
 **Depends on:** none
 
 ### Codebase state assumed at start
@@ -148,7 +148,7 @@ pnpm --filter @study-tracker/app typecheck
 
 ## Phase 2: Build the viewport-fit inspection modal
 
-**Status:** Not started
+**Status:** In progress
 **Depends on:** Phase 1
 
 ### Codebase state assumed at start
