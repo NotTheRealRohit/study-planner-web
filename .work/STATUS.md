@@ -1,7 +1,7 @@
 ---
 title: study-planner-web — STATUS (read-first index)
 status: active living document
-last_updated: 2026-07-04
+last_updated: 2026-07-18
 location_note: >
   This is .work/STATUS.md — the single read-first index, living at the root of .work/ (inside the
   repo, tracked on purpose so git clean can't delete it). Paths below are relative to .work/ (non-.work
@@ -30,6 +30,19 @@ update_protocol: >
 
 ## Active
 
+- **[APP] Interactive Week burn-up chart modal.** 🟡 Decision 01 selected the full Progress Lab workspace: chart ranges, model layers, pace scenarios, and a replanning entry point inside the click-open modal.
+  The functional mocks were corrected against the live `BurnUpChart.tsx` and supplied screenshot so the default modal preserves the original scale, geometry, layers, card chrome, and Marginalia treatment.
+  Decision 02 selected the always-on right rail so controls and chart feedback stay visible together.
+  Decision 03 selected a whole-card hover and keyboard-focus cue that leaves the existing card quiet at rest.
+  The modal now uses a viewport-fit, no-scroll layout: the chart flexes to remaining height, compact controls move below it, and short viewports receive denser spacing without hiding controls.
+  A reported interaction bug was corrected: opener-only zoom styling no longer leaks into the modal, every actual dot is now a pointer and keyboard checkpoint with a responsive summary card, and the scenario action keeps bottom clearance through the short-height breakpoint.
+  Decision 04 selected fixed range presets for Full plan, 30 days, and This week.
+  A follow-up axis correction now gives every observed checkpoint an aligned X-axis mark: wide views label all June observations, compact long-range views keep labelled start and Today anchors with rust minor ticks, and This week labels every checkpoint.
+  The Y-axis retains the complete `0m` to `9h 30m` cumulative-hour scale.
+  Browser and screenshot review passed at 1440x900, 1024x600, and 390x844 with no X-label collisions or internal modal/control-rail overflow; the Today marker's pointer-event layering was also corrected so the final checkpoint remains clickable.
+  The canonical implementation plan and verification log were committed in `845499b`.
+  Phase 1 is verified locally: reusable chart helpers, deterministic observed-date ticks, the semantic whole-card opener, 13 focused tests, clean app typecheck, and a live collision-free default-card screenshot are complete.
+  **Next:** record the Phase 1 implementation SHA and build the viewport-fit portal modal in Phase 2. -> plan [`plans/active/2026-07-18-week-progress-lab/PLAN.md`](plans/active/2026-07-18-week-progress-lab/PLAN.md) · log [`VERIFICATION.md`](plans/active/2026-07-18-week-progress-lab/VERIFICATION.md) · mock [`active/week-chart-modal/mocks/`](active/week-chart-modal/mocks/DECISIONS.md)
 - **[APP][INFRA] Standard E2E "app-explore" base — reusable Playwright fixtures + flagship walkthrough.** ☐ Planned 2026-07-04 (Cowork), not yet implemented. Builds `e2e/support/` (auth + app-ready fixtures, `seedEvents`/`readEvents`, central selector registry) + one flagship `e2e/app-explore.spec.ts` driving the full journey (sign-in → onboarding/draft-roadmap → add materials → home → start session → log ad-hoc → open roadmaps → book session), so new tests are written on top instead of re-inlining boilerplate. Auth defaults to a hermetic throwaway Supabase user (live opt-in via `E2E_EXPLORE_MODE=live`); bans `waitForTimeout` (canonical `waitForAppReady` instead). Grounded 2026-07-04: `e2e/` has zero shared helpers; `userDbName` is byte-identical across 2 specs; `session-log.spec.ts` clicks a non-existent `'Sign in'` button (real label `'Continue'`) and swallows failures in `try/catch` — Phase 4 refactors it onto the base as adoption proof. 5 vertical-slice phases; migrating the other specs deferred (OQ-04). **Next:** native side commits the plan docs (Step 0), then Codex implements Phase 1. → [`plans/active/2026-07-04-e2e-explore-base/PLAN.md`](plans/active/2026-07-04-e2e-explore-base/PLAN.md) · log [`VERIFICATION.md`](plans/active/2026-07-04-e2e-explore-base/VERIFICATION.md)
 - **[APP][INFRA] Dev seeder rebuild for the no-slot booking model (demo-ready).** ✅ Reviewer blocker fix implemented in `337976b`.
   Step 0 planning docs are already committed in `1532a5c`.

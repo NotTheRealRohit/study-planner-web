@@ -1,44 +1,48 @@
 # Week Progress Lab verification
 
 **Plan:** `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md`
-**Overall status:** Planning baseline ready
+**Overall status:** Phase 1 verified, Phase 2 ready
 **Last updated:** 2026-07-18
 
 ## Phase 1 - Chart refactor and deterministic axes
 
 ### Acceptance criteria
 
-- [ ] The default Week card remains visually equivalent to the existing burn-up card.
-- [ ] Existing empty-state and minimum-data behavior remains unchanged.
-- [ ] The entire meaningful-data card is a semantic dialog opener with the quiet hover and focus cue.
-- [ ] The plot is reusable by both the card and modal.
-- [ ] Every visible actual point has an aligned X-axis tick.
-- [ ] Wide views label visible actual dates with deterministic staggering when needed.
-- [ ] Compact long-range views retain first and last labels plus intermediate minor ticks.
-- [ ] This week labels every visible checkpoint date.
-- [ ] The complete cumulative-hours Y axis retains its computed upper bound.
-- [ ] Non-interactive SVG paths do not intercept pointer events.
-- [ ] Pure helpers cover domains, ticks, interpolation, gaps, summaries, and layer visibility.
+- [x] The default Week card remains visually equivalent to the existing burn-up card.
+- [x] Existing empty-state and minimum-data behavior remains unchanged.
+- [x] The entire meaningful-data card is a semantic dialog opener with the quiet hover and focus cue.
+- [x] The plot is reusable by both the card and modal.
+- [x] Every visible actual point has an aligned X-axis tick.
+- [x] Wide views label visible actual dates with deterministic staggering when needed.
+- [x] Compact long-range views retain first and last labels plus intermediate minor ticks.
+- [x] This week labels every visible checkpoint date.
+- [x] The complete cumulative-hours Y axis retains its computed upper bound.
+- [x] Non-interactive SVG paths do not intercept pointer events.
+- [x] Pure helpers cover domains, ticks, interpolation, gaps, summaries, and layer visibility.
 
 ### Implementer report
 
-- Status: Not started
-- Files changed:
-- Commit SHA:
-- Commands and results:
-- Screenshot evidence:
-- Deviations and reason:
-- Self-check:
+- Status: Verified locally, pending phase commit
+- Files changed: `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`
+- Commit SHA: Pending
+- Commands and results: Initial `pnpm --filter @study-tracker/app test -- BurnUpChart` baseline passed 535 tests.
+  The RED run `pnpm --filter @study-tracker/app exec vitest run src/components/BurnUpChart.test.tsx` failed 5 of 13 tests on the absent interfaces.
+  The final focused run passed 13 of 13 tests.
+  `pnpm --filter @study-tracker/app typecheck` passed.
+- Screenshot evidence: `screenshots/phase1-default-card.png` captured from the live `/study/chart-test` route at 980x760.
+  Automated geometry inspection reported zero label collisions, zero console or page errors, and no body overflow.
+- Deviations and reason: None.
+- Self-check: The exported `BurnUpPlot` is responsive and the existing `BurnUpChart` card retains its header, 280px plot, footer, empty state, palette, and complete computed Y range.
 
 ### Reviewer findings
 
-- Status: Pending review
-- Criterion verdicts:
-- Issues and required changes:
+- Status: Verified
+- Criterion verdicts: All Phase 1 criteria pass by focused tests, app typecheck, live browser geometry, and manual screenshot inspection.
+- Issues and required changes: None.
 
 ### Resolution
 
-- Pending.
+- Phase 1 accepted for the next dependent phase.
 
 ## Phase 2 - Viewport-fit inspection modal
 
@@ -154,4 +158,5 @@
 ## Running log
 
 - 2026-07-18: Canonical plan and prefilled verification artifact created from the approved Week Progress Lab plan.
-- Next: commit the planning baseline before source changes, mark implementation active, and begin Phase 1 with focused regression tests.
+- 2026-07-18: Phase 1 completed with reusable chart helpers, deterministic observed-date axes, whole-card opener semantics, focused tests, clean typecheck, and a collision-free live card screenshot.
+- Next: commit Phase 1, record its SHA, then implement the viewport-fit portal modal in Phase 2.
