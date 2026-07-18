@@ -1,7 +1,7 @@
 # Week Progress Lab verification
 
 **Plan:** `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md`
-**Overall status:** Phases 1-3 verified, Phase 4 in progress
+**Overall status:** Complete - all four phases verified
 **Last updated:** 2026-07-18
 
 ## Phase 1 - Chart refactor and deterministic axes
@@ -126,39 +126,39 @@
 
 ### Acceptance criteria
 
-- [ ] `Week.tsx` owns modal state, opener focus restoration, week bounds, historical mode, and active-roadmap scenario inputs.
-- [ ] Current-week component tests cover modal inspection and scenario behavior.
-- [ ] Historical component tests cover Week end and inspection-only behavior.
-- [ ] The focused E2E spec uses the existing authenticated dev seeder.
-- [ ] 1440x900 desktop screenshot is manually inspected.
-- [ ] 1024x600 short-viewport screenshot is manually inspected.
-- [ ] 390x844 phone screenshot is manually inspected.
-- [ ] Complete X and Y axes are readable at all required viewports.
-- [ ] Pace scenario and Replan prefill finish are identical.
-- [ ] Escape and backdrop dismissal restore focus to the opener.
-- [ ] Document, overlay, dialog, chart region, and control rail have no overflow.
-- [ ] The browser reports no console or page errors.
-- [ ] All focused, app-wide, and repo-wide verification commands pass or have an explicitly documented environment blocker.
+- [x] `Week.tsx` owns modal state, opener focus restoration, week bounds, historical mode, and active-roadmap scenario inputs.
+- [x] Current-week component tests cover modal inspection and scenario behavior.
+- [x] Historical component tests cover Week end and inspection-only behavior.
+- [x] The focused E2E spec uses the existing authenticated dev seeder.
+- [x] 1440x900 desktop screenshot is manually inspected.
+- [x] 1024x600 short-viewport screenshot is manually inspected.
+- [x] 390x844 phone screenshot is manually inspected.
+- [x] Complete X and Y axes are readable at all required viewports.
+- [x] Pace scenario and Replan prefill finish are identical.
+- [x] Escape and backdrop dismissal restore focus to the opener.
+- [x] Document, overlay, dialog, chart region, and control rail have no overflow.
+- [x] The browser reports no console or page errors.
+- [x] All focused, app-wide, and repo-wide verification commands pass.
 
 ### Implementer report
 
-- Status: Not started
-- Files changed:
-- Commit SHA:
-- Commands and results:
-- Screenshot evidence:
-- Deviations and reason:
-- Self-check:
+- Status: Verified
+- Files changed: `Week.tsx`, `Week.test.tsx`, `BurnUpChart.tsx`, `ProgressLabModal.tsx`, `ProgressLabModal.css`, `ProgressLabModal.test.tsx`, `e2e/week-progress-lab.spec.ts`, `loadYouTubeApi.ts`, and `YouTubePlayerAdapter.test.ts`.
+- Commit SHA: `f0cc209`
+- Commands and results: The requested app test command passed all 555 tests in 62 files; app and repository typechecks passed; app and repository lint passed with zero warnings; the focused authenticated Playwright spec passed.
+- Screenshot evidence: `screenshots/final-desktop.png`, `screenshots/final-short.png`, and `screenshots/final-phone.png`.
+- Deviations and reason: The E2E historical check uses seed Week 2 because seed Week 1 contains only one eligible checkpoint and correctly retains the existing minimum-data fallback.
+- Self-check: All Phase 4 criteria pass by component tests, the seeded current and historical E2E flow, automated overflow and SVG-label bounds, Replan finish parity, and manual screenshot inspection.
 
 ### Reviewer findings
 
-- Status: Pending review
-- Criterion verdicts:
-- Issues and required changes:
+- Status: Verified
+- Criterion verdicts: All Phase 4 criteria pass.
+- Issues and required changes: None.
 
 ### Resolution
 
-- Pending.
+- Phase 4 and the complete plan are accepted.
 
 ## Running log
 
@@ -166,4 +166,5 @@
 - 2026-07-18: Phase 1 completed with reusable chart helpers, deterministic observed-date axes, whole-card opener semantics, focused tests, clean typecheck, and a collision-free live card screenshot.
 - 2026-07-18: Phase 2 completed with the body portal, fixed ranges, optional layers, keyboard and pointer checkpoint summaries, focus and dismissal behavior, scroll lock, responsive CSS, 18 focused passing tests, and zero-overflow browser evidence at all required viewports.
 - 2026-07-18: Phase 3 completed in `3998be6` with a shared capacity model, validated pace increments, current-week scenario controls, historical suppression, Replan query hydration, and exact finish parity.
-- Next: integrate the modal into Week, add focused E2E coverage, and perform the required three-viewport visual acceptance pass.
+- 2026-07-18: Phase 4 completed in `f0cc209` with Week integration, current and historical component coverage, seeded E2E acceptance, three manually inspected screenshots, zero-overflow geometry, full-axis label bounds, focus restoration, Replan parity, 555 passing app tests, and clean repository checks.
+- Complete: all four phases are verified.

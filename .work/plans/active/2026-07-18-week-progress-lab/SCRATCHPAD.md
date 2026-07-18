@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-18-week-progress-lab
 
-_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T18:30+05:30_
+_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T23:00+05:30_
 
 ## Now
 
-Phase 3 is verified and committed as `3998be6`.
-Phase 4 Week integration and browser acceptance are in progress.
+All four phases are verified.
+Phase 4 is committed as `f0cc209`, and only the final verification record remains to commit.
 
 ## Alignment
 
@@ -14,7 +14,7 @@ The required planning baseline was committed before any source change as `845499
 
 ## Open
 
-- Confirm the portal and responsive SVG geometry with the required browser viewports in Phase 4.
+- None.
 
 ## Blockers
 
@@ -46,9 +46,11 @@ The required planning baseline was committed before any source change as `845499
 - [x] Extract Replan's capacity calculation.
 - [x] Add the current-week scenario rail and Replan query action.
 - [x] Verify exact modal and Replan finish parity.
-- [ ] Integrate current and historical Week behavior.
-- [ ] Add and run the focused Week E2E specification.
-- [ ] Capture and inspect the three required real-route viewports.
+- [x] Integrate current and historical Week behavior.
+- [x] Add and run the focused Week E2E specification.
+- [x] Capture and inspect the three required real-route viewports.
+- [x] Run the requested 555-test app suite.
+- [x] Run clean app and repository typechecks and lint.
 
 ## In-flight edits
 
@@ -58,7 +60,9 @@ The required planning baseline was committed before any source change as `845499
 - `ProgressLabModal.tsx`, its scoped CSS, and five behavior tests are complete.
 - Phase 2 `.work` evidence records implementation SHA `a932df1`.
 - Phase 3 is committed as `3998be6` with 36 focused tests passing.
-- Phase 4 source edits have not started.
+- Phase 4 is committed as `f0cc209`.
+- The final desktop, short, and phone screenshots are committed beside the plan.
+- The seeded E2E spec passes with zero console and page errors.
 
 ## Decisions in force
 
@@ -80,3 +84,4 @@ The required planning baseline was committed before any source change as `845499
   Setting the chart SVG to `display: block` removed it, and all measured regions now report zero overflow.
 - Phase 2 was committed as `a932df1` with only the modal, CSS, tests, screenshots, and this task's `.work` records staged.
 - Phase 3 was committed as `3998be6` with only the shared capacity implementation, modal scenario behavior, Replan hydration, tests, and this task's `.work` records staged.
+- Phase 4 was committed as `f0cc209` with the Week integration, the real-route E2E spec, three final screenshots, the backdrop focus fix, the phone deck refinement, complete axis-label bounds, and zero-warning YouTube shim typing.
