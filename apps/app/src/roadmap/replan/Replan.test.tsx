@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { Event } from '../../events/EventStore'
 import type { RoadmapCreatedPayload } from '../../sync/types'
 import { Replan } from '../../pages/Replan'
+import { computeCapacityScenario } from './capacityScenario'
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -109,6 +110,10 @@ describe('Replan', () => {
     mockState.commitReplan.mockResolvedValue(undefined)
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   function renderReplan(search = '') {
     return render(renderReplanTree(search))
   }
@@ -174,6 +179,32 @@ describe('Replan', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Increase hours per day' }))
 
     await waitFor(() => expect(finish.textContent).not.toBe(before))
+  })
+
+  it('hydrates the supported pace query and matches the shared scenario finish exactly', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-07-06T12:00:00.000Z'))
+    const expected = computeCapacityScenario({
+      remainingEstimatedMinutes: 180,
+      sessions: [],
+      today: '2026-07-06',
+      hoursPerStudyDay: 1,
+      selectedStudyDays: ['Mon', 'Wed'],
+      paceDeltaMinutes: 30,
+      actualCumulativeMinutes: 0,
+      finalPlannedCumulativeMinutes: 180,
+    })
+
+    renderReplan('?paceDeltaMinutes=30')
+
+    await waitFor(() => expect(screen.getByTestId('hours-per-day-value')).toHaveTextContent('1.5h'))
+    expect(screen.getByLabelText('Projected finish')).toHaveTextContent('Jul 8')
+    expect(expected.finishDate).toBe('2026-07-08')
+  })
+
+  it('falls back to the current hours for an invalid pace query', async () => {
+    renderReplan('?paceDeltaMinutes=17')
+    await waitFor(() => expect(screen.getByTestId('hours-per-day-value')).toHaveTextContent('1h'))
   })
 
   it('Keep current navigates without committing', () => {

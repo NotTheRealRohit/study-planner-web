@@ -521,6 +521,7 @@ function BurnUpPlotInner({
 
         {scenarioParsed.length >= 2 && (
           <LinePath
+            data-testid="capacity-scenario-line"
             data={scenarioParsed}
             x={(point) => xScale(point.date)}
             y={(point) => yScale(point.minutes)}

@@ -8,7 +8,14 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { Link } from 'react-router-dom'
 import type { BurnUpData } from '@study-tracker/progress'
+import {
+  computeCapacityScenario,
+  parsePaceDeltaMinutes,
+  type CapacityScenarioInput,
+  type PaceDeltaMinutes,
+} from '../roadmap/replan/capacityScenario'
 import {
   BurnUpPlot,
   buildCheckpointSummary,
@@ -29,6 +36,7 @@ export interface ProgressLabModalProps {
   weekEndISO: string
   historical?: boolean
   openerRef?: RefObject<HTMLButtonElement | null>
+  capacityScenarioInput?: Omit<CapacityScenarioInput, 'paceDeltaMinutes'>
 }
 
 const RANGE_OPTIONS: { value: ProgressLabRange; label: string }[] = [
@@ -66,6 +74,18 @@ function deficitText(data: BurnUpData, historical: boolean): string {
   return `${signedMinutes(data.deficit)} ${relation} plan ${reference}`
 }
 
+function scenarioDifferenceLabel(
+  baselineFinish: string | null,
+  scenarioFinish: string | null,
+): string {
+  if (!baselineFinish || !scenarioFinish) return 'Finish date unavailable'
+  const days = differenceInCalendarDays(parseISO(baselineFinish), parseISO(scenarioFinish))
+  if (days === 0) return 'Same capacity-model finish'
+  return days > 0
+    ? `${days} day${days === 1 ? '' : 's'} sooner`
+    : `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} later`
+}
+
 export function ProgressLabModal({
   open,
   onClose,
@@ -76,6 +96,7 @@ export function ProgressLabModal({
   weekEndISO,
   historical = false,
   openerRef,
+  capacityScenarioInput,
 }: ProgressLabModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -86,6 +107,7 @@ export function ProgressLabModal({
     confidence: true,
   })
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string | null>(null)
+  const [paceDeltaMinutes, setPaceDeltaMinutes] = useState<PaceDeltaMinutes>(0)
 
   const dateDomain = useMemo(
     () => buildProgressLabDateDomain(
@@ -103,12 +125,25 @@ export function ProgressLabModal({
       : null,
     [data.actual, data.planned, selectedCheckpoint],
   )
+  const baselineScenario = useMemo(
+    () => capacityScenarioInput
+      ? computeCapacityScenario({ ...capacityScenarioInput, paceDeltaMinutes: 0 })
+      : null,
+    [capacityScenarioInput],
+  )
+  const paceScenario = useMemo(
+    () => capacityScenarioInput
+      ? computeCapacityScenario({ ...capacityScenarioInput, paceDeltaMinutes })
+      : null,
+    [capacityScenarioInput, paceDeltaMinutes],
+  )
 
   useEffect(() => {
     if (!open) return
     setRange('full')
     setLayers({ planned: true, projection: true, confidence: true })
     setSelectedCheckpoint(null)
+    setPaceDeltaMinutes(0)
   }, [open])
 
   useEffect(() => {
@@ -234,6 +269,7 @@ export function ProgressLabModal({
                   referenceLabel={referenceLabel}
                   selectedCheckpoint={selectedCheckpoint}
                   onCheckpointSelect={setSelectedCheckpoint}
+                  scenarioPoints={paceDeltaMinutes > 0 ? paceScenario?.points : undefined}
                   style={{ height: '100%', minHeight: 0 }}
                 />
 
@@ -298,6 +334,64 @@ export function ProgressLabModal({
                 </div>
               ))}
             </section>
+
+            {!historical && (
+              <section className="progress-lab-section progress-lab-pace-section">
+                <div className="progress-lab-eyebrow">Try a pace</div>
+                <h3>
+                  {paceDeltaMinutes === 0 ? 'Current study pace' : `+${paceDeltaMinutes} min per study day`}
+                </h3>
+                <p>
+                  Preview a capacity finish without changing your roadmap.
+                </p>
+                <input
+                  className="progress-lab-slider"
+                  type="range"
+                  min="0"
+                  max="60"
+                  step="15"
+                  value={paceDeltaMinutes}
+                  aria-label="Extra minutes per study day"
+                  disabled={!capacityScenarioInput}
+                  onChange={(event) => setPaceDeltaMinutes(parsePaceDeltaMinutes(event.target.value))}
+                />
+                <div className="progress-lab-slider-labels" aria-hidden="true">
+                  <span>Current</span>
+                  <span>+60 min</span>
+                </div>
+
+                {capacityScenarioInput && paceScenario ? (
+                  <div className="progress-lab-scenario-result" aria-live="polite">
+                    <div className="progress-lab-eyebrow">Scenario finish</div>
+                    <strong>
+                      {paceScenario.finishDate
+                        ? format(parseISO(paceScenario.finishDate), 'MMM d, yyyy')
+                        : 'Unavailable'}
+                    </strong>
+                    <span>
+                      {scenarioDifferenceLabel(baselineScenario?.finishDate ?? null, paceScenario.finishDate)}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="progress-lab-unavailable">
+                    Pace scenario is unavailable until roadmap capacity is ready.
+                  </p>
+                )}
+
+                {capacityScenarioInput ? (
+                  <Link
+                    className="progress-lab-primary"
+                    to={`/replan?paceDeltaMinutes=${paceDeltaMinutes}`}
+                  >
+                    Replan with this pace
+                  </Link>
+                ) : (
+                  <button className="progress-lab-primary" type="button" disabled>
+                    Replan with this pace
+                  </button>
+                )}
+              </section>
+            )}
           </aside>
         </div>
       </article>

@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-18-week-progress-lab
 
-_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T15:12+05:30_
+_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T15:20+05:30_
 
 ## Now
 
-Phase 2 is verified and ready for its scoped implementation commit.
-The immediate next task is to record that SHA, mark Phase 3 in progress, and add failing shared-capacity tests.
+Phase 2 is committed as `a932df1` and Phase 3 is in progress.
+The immediate task is to add failing shared-capacity, pace-query, and modal-scenario tests.
 
 ## Alignment
 
@@ -40,8 +40,12 @@ The required planning baseline was committed before any source change as `845499
 - [x] Implement the portal dialog and responsive CSS.
 - [x] Verify focus, dismissal, checkpoint selection, and range behavior.
 - [x] Capture and inspect all three required Phase 2 viewports.
-- [ ] Record the Phase 2 commit SHA.
-- [ ] Mark Phase 3 in progress.
+- [x] Record the Phase 2 commit SHA.
+- [x] Mark Phase 3 in progress.
+- [ ] Add failing capacity scenario tests.
+- [ ] Extract Replan's capacity calculation.
+- [ ] Add the current-week scenario rail and Replan query action.
+- [ ] Verify exact modal and Replan finish parity.
 
 ## In-flight edits
 
@@ -49,7 +53,8 @@ The required planning baseline was committed before any source change as `845499
 - `BurnUpChart.test.tsx` has 13 passing focused tests.
 - Phase 1 `.work` evidence records implementation SHA `eeaee51`.
 - `ProgressLabModal.tsx`, its scoped CSS, and five behavior tests are complete.
-- Phase 2 `.work` evidence is complete but the implementation SHA is pending.
+- Phase 2 `.work` evidence records implementation SHA `a932df1`.
+- Phase 3 has no source edits yet.
 
 ## Decisions in force
 
@@ -69,3 +74,4 @@ The required planning baseline was committed before any source change as `845499
 - Phase 1 was committed as `eeaee51` with only this task's source, tests, screenshot, and `.work` files staged.
 - Phase 2 browser inspection found a 6px inline-SVG scroll-height artifact in the chart stage.
   Setting the chart SVG to `display: block` removed it, and all measured regions now report zero overflow.
+- Phase 2 was committed as `a932df1` with only the modal, CSS, tests, screenshots, and this task's `.work` records staged.

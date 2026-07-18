@@ -4,10 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   buildMaterialLedger,
-  calibrationDenominator,
-  isCalibrationSession,
   projectFinish,
-  type SessionEvent,
 } from '@study-tracker/progress'
 import type { DayOfWeek } from '@study-tracker/roadmap-engine'
 import { useEventStore } from '../events/useEventStore'
@@ -23,6 +20,10 @@ import {
 } from '../progress/mapEvents'
 import type { MaterialKind } from '../session/types'
 import { commitReplan } from '../roadmap/replan/commitReplan'
+import {
+  computeCapacityScenario,
+  parsePaceDeltaMinutes,
+} from '../roadmap/replan/capacityScenario'
 import { materialIcon } from '../roadmap/booking/types'
 import '../roadmap/roadmap.css'
 
@@ -40,15 +41,6 @@ function fmtDate(iso: string): string {
 
 function addWeeks(iso: string, weeks: number): string {
   return format(addDays(parseISO(iso), weeks * 7), 'yyyy-MM-dd')
-}
-
-function addDaysISO(iso: string, days: number): string {
-  return format(addDays(parseISO(iso), days), 'yyyy-MM-dd')
-}
-
-function dayOfWeekForISO(iso: string): DayOfWeek {
-  const index = parseISO(iso).getDay()
-  return (['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const)[index]
 }
 
 function fmtMin(minutes: number): string {
@@ -100,44 +92,6 @@ function computeFinish(
   }).finishDate
 }
 
-function demonstratedThroughputFactor(sessions: SessionEvent[]): number {
-  const ratios: number[] = []
-  for (const session of sessions) {
-    if (!isCalibrationSession(session)) continue
-    const denominator = calibrationDenominator(session)
-    if (!denominator || session.activeMinutes == null) continue
-    ratios.push(session.activeMinutes / denominator)
-  }
-  if (ratios.length === 0) return 1
-  return ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length
-}
-
-function computeCapacityAwareFinish(args: {
-  remainingEstimatedMin: number
-  sessions: SessionEvent[]
-  today: string
-  hoursPerDay: number
-  selectedDays: DayOfWeek[]
-}): string | null {
-  if (args.remainingEstimatedMin <= 0) return args.today
-  if (args.hoursPerDay <= 0 || args.selectedDays.length === 0) return null
-
-  const daySet = new Set(args.selectedDays)
-  const requiredActiveMinutes =
-    args.remainingEstimatedMin * Math.max(0.1, demonstratedThroughputFactor(args.sessions))
-  const dailyCapacity = args.hoursPerDay * 60
-  let accumulated = 0
-
-  for (let offset = 0; offset <= 3650; offset += 1) {
-    const date = addDaysISO(args.today, offset)
-    if (!daySet.has(dayOfWeekForISO(date))) continue
-    accumulated += dailyCapacity
-    if (accumulated >= requiredActiveMinutes) return date
-  }
-
-  return null
-}
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -152,6 +106,9 @@ export function Replan() {
   const [error, setError] = useState<string | null>(null)
 
   const intent = new URLSearchParams(location.search).get('intent')
+  const paceDeltaMinutes = parsePaceDeltaMinutes(
+    new URLSearchParams(location.search).get('paceDeltaMinutes'),
+  )
 
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore])
   const loadedEvents = useMemo(() => events ?? [], [events])
@@ -227,11 +184,11 @@ export function Replan() {
     const roadmapId = replanData.activeEntry.roadmapCreatedAt
     if (capacityInitializedFor === roadmapId) return
 
-    setHoursPerDay(replanData.currentHoursPerDay)
+    setHoursPerDay(replanData.currentHoursPerDay + paceDeltaMinutes / 60)
     setSelectedDays(replanData.currentStudyDays.length > 0 ? replanData.currentStudyDays : ['Mon'])
     setMaterialOverrides({})
     setCapacityInitializedFor(roadmapId)
-  }, [capacityInitializedFor, replanData])
+  }, [capacityInitializedFor, paceDeltaMinutes, replanData])
 
   const currentDeadline = replanData?.currentDeadline ?? today
   const newDeadline = addWeeks(currentDeadline, extendWeeks)
@@ -264,13 +221,16 @@ export function Replan() {
   // Live outcome: adjusted remaining + new deadline
   const newFinish = useMemo(() => {
     if (!replanData) return null
-    return computeCapacityAwareFinish({
-      remainingEstimatedMin: adjustedRemaining,
+    return computeCapacityScenario({
+      remainingEstimatedMinutes: adjustedRemaining,
       sessions: mapSessions(loadedEvents),
       today,
-      hoursPerDay,
-      selectedDays,
-    })
+      hoursPerStudyDay: hoursPerDay,
+      selectedStudyDays: selectedDays,
+      paceDeltaMinutes: 0,
+      actualCumulativeMinutes: replanData.consumedActualMin,
+      finalPlannedCumulativeMinutes: replanData.consumedActualMin + adjustedRemaining,
+    }).finishDate
   }, [replanData, adjustedRemaining, loadedEvents, today, hoursPerDay, selectedDays])
 
   const currentDelta = currentFinish

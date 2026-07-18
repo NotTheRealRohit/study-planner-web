@@ -1,6 +1,7 @@
 import { useRef, useState, type ComponentProps, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import type { BurnUpData } from '@study-tracker/progress'
 import { ProgressLabModal } from './ProgressLabModal'
 
@@ -37,19 +38,21 @@ function data(): BurnUpData {
 
 function renderModal(overrides: Partial<ComponentProps<typeof ProgressLabModal>> = {}) {
   const onClose = vi.fn()
-  render(
-    <ProgressLabModal
-      open
-      onClose={onClose}
-      data={data()}
-      referenceDateISO="2026-07-15"
-      referenceLabel="Today"
-      weekStartISO="2026-07-13"
-      weekEndISO="2026-07-19"
-      {...overrides}
-    />,
+  const view = render(
+    <MemoryRouter>
+      <ProgressLabModal
+        open
+        onClose={onClose}
+        data={data()}
+        referenceDateISO="2026-07-15"
+        referenceLabel="Today"
+        weekStartISO="2026-07-13"
+        weekEndISO="2026-07-19"
+        {...overrides}
+      />
+    </MemoryRouter>,
   )
-  return { onClose }
+  return { ...view, onClose }
 }
 
 describe('ProgressLabModal', () => {
@@ -116,6 +119,48 @@ describe('ProgressLabModal', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('shows the current finish at zero and draws a linked moss scenario only after pace changes', () => {
+    renderModal({
+      capacityScenarioInput: {
+        remainingEstimatedMinutes: 340,
+        sessions: [],
+        today: '2026-07-15',
+        hoursPerStudyDay: 1,
+        selectedStudyDays: ['Wed', 'Fri'],
+        actualCumulativeMinutes: 260,
+        finalPlannedCumulativeMinutes: 600,
+      },
+    })
+
+    const slider = screen.getByRole('slider', { name: 'Extra minutes per study day' })
+    expect(slider).toHaveValue('0')
+    expect(screen.getByText('Scenario finish')).toBeInTheDocument()
+    expect(screen.queryByTestId('capacity-scenario-line')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Replan with this pace' })).toHaveAttribute(
+      'href',
+      '/replan?paceDeltaMinutes=0',
+    )
+
+    fireEvent.change(slider, { target: { value: '15' } })
+    expect(screen.getByTestId('capacity-scenario-line')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Replan with this pace' })).toHaveAttribute(
+      'href',
+      '/replan?paceDeltaMinutes=15',
+    )
+  })
+
+  it('disables unavailable scenarios and hides them completely for historical weeks', () => {
+    const view = renderModal()
+    expect(screen.getByRole('slider', { name: 'Extra minutes per study day' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Replan with this pace' })).toBeDisabled()
+    expect(screen.getByText('Pace scenario is unavailable until roadmap capacity is ready.')).toBeInTheDocument()
+
+    view.unmount()
+    renderModal({ historical: true })
+    expect(screen.queryByRole('slider', { name: 'Extra minutes per study day' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Try a pace')).not.toBeInTheDocument()
+  })
+
   it('traps focus and restores the opener after backdrop dismissal', async () => {
     function Harness() {
       const [open, setOpen] = useState(true)
@@ -137,7 +182,7 @@ describe('ProgressLabModal', () => {
       )
     }
 
-    render(<Harness />)
+    render(<MemoryRouter><Harness /></MemoryRouter>)
     const close = screen.getByRole('button', { name: 'Close Progress Lab' })
     await waitFor(() => expect(close).toHaveFocus())
 
