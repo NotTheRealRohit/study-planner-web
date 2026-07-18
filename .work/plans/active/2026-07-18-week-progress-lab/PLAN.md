@@ -188,7 +188,7 @@ pnpm --filter @study-tracker/app lint
 
 ## Phase 3: Share the pace scenario with Replan
 
-**Status:** In progress
+**Status:** Complete - `3998be6`
 **Depends on:** Phase 2
 
 ### Codebase state assumed at start
@@ -229,7 +229,7 @@ pnpm --filter @study-tracker/app lint
 
 ## Phase 4: Integrate and visually verify
 
-**Status:** Not started
+**Status:** In progress
 **Depends on:** Phase 3
 
 ### Codebase state assumed at start

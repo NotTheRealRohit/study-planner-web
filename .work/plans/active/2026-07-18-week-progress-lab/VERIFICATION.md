@@ -1,7 +1,7 @@
 # Week Progress Lab verification
 
 **Plan:** `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md`
-**Overall status:** Phases 1-2 verified, Phase 3 ready
+**Overall status:** Phases 1-3 verified, Phase 4 in progress
 **Last updated:** 2026-07-18
 
 ## Phase 1 - Chart refactor and deterministic axes
@@ -88,39 +88,39 @@
 
 ### Acceptance criteria
 
-- [ ] The demonstrated-throughput and capacity-finish logic is shared from `capacityScenario.ts`.
-- [ ] The shared model uses active roadmap study days, `weekdayHours`, remaining material minutes, demonstrated throughput, and the selected pace delta.
-- [ ] The result includes finish date and normalized cumulative chart points.
-- [ ] Zero pace shows current capacity finish without a moss scenario line.
-- [ ] Supported deltas are exactly `0`, `15`, `30`, `45`, and `60`.
-- [ ] The moss scenario begins at Today's actual cumulative value and reaches final planned cumulative value on the shared finish date.
-- [ ] Missing capacity inputs disable the scenario UI without breaking chart inspection.
-- [ ] Historical mode hides every scenario affordance.
-- [ ] The modal navigates to `/replan?paceDeltaMinutes=N` without `/study`.
-- [ ] Invalid Replan query values fall back to zero.
-- [ ] One-time Replan hydration adds the query delta to the current per-study-day hours.
-- [ ] The initial Replan finish exactly matches the modal scenario finish.
-- [ ] The modal writes no roadmap events.
+- [x] The demonstrated-throughput and capacity-finish logic is shared from `capacityScenario.ts`.
+- [x] The shared model uses active roadmap study days, `weekdayHours`, remaining material minutes, demonstrated throughput, and the selected pace delta.
+- [x] The result includes finish date and normalized cumulative chart points.
+- [x] Zero pace shows current capacity finish without a moss scenario line.
+- [x] Supported deltas are exactly `0`, `15`, `30`, `45`, and `60`.
+- [x] The moss scenario begins at Today's actual cumulative value and reaches final planned cumulative value on the shared finish date.
+- [x] Missing capacity inputs disable the scenario UI without breaking chart inspection.
+- [x] Historical mode hides every scenario affordance.
+- [x] The modal navigates to `/replan?paceDeltaMinutes=N` without `/study`.
+- [x] Invalid Replan query values fall back to zero.
+- [x] One-time Replan hydration adds the query delta to the current per-study-day hours.
+- [x] The initial Replan finish exactly matches the modal scenario finish.
+- [x] The modal writes no roadmap events.
 
 ### Implementer report
 
-- Status: Not started
-- Files changed:
-- Commit SHA:
-- Commands and results:
-- Screenshot evidence:
-- Deviations and reason:
-- Self-check:
+- Status: Verified
+- Files changed: `BurnUpChart.tsx`, `ProgressLabModal.tsx`, `ProgressLabModal.css`, `ProgressLabModal.test.tsx`, `Replan.tsx`, `Replan.test.tsx`, `capacityScenario.ts`, and `capacityScenario.test.ts`.
+- Commit SHA: `3998be6`
+- Commands and results: 36 focused tests passed across the chart, modal, Replan, and capacity model; app typecheck passed; app lint exited 0 with four pre-existing YouTube adapter warnings.
+- Screenshot evidence: Deferred to the real Week route in Phase 4 after the isolated Chromium harness exposed a Vite module-mount limitation.
+- Deviations and reason: The planned visual evidence is consolidated into Phase 4 so it exercises the real route and current roadmap inputs.
+- Self-check: All Phase 3 criteria pass through focused tests and shared-helper parity assertions.
 
 ### Reviewer findings
 
-- Status: Pending review
-- Criterion verdicts:
-- Issues and required changes:
+- Status: Verified
+- Criterion verdicts: All Phase 3 criteria pass.
+- Issues and required changes: None.
 
 ### Resolution
 
-- Pending.
+- Phase 3 accepted for Week integration.
 
 ## Phase 4 - Week integration and visual acceptance
 
@@ -165,4 +165,5 @@
 - 2026-07-18: Canonical plan and prefilled verification artifact created from the approved Week Progress Lab plan.
 - 2026-07-18: Phase 1 completed with reusable chart helpers, deterministic observed-date axes, whole-card opener semantics, focused tests, clean typecheck, and a collision-free live card screenshot.
 - 2026-07-18: Phase 2 completed with the body portal, fixed ranges, optional layers, keyboard and pointer checkpoint summaries, focus and dismissal behavior, scroll lock, responsive CSS, 18 focused passing tests, and zero-overflow browser evidence at all required viewports.
-- Next: commit Phase 2, record its SHA, then extract the shared capacity scenario and hydrate Replan from the validated query in Phase 3.
+- 2026-07-18: Phase 3 completed in `3998be6` with a shared capacity model, validated pace increments, current-week scenario controls, historical suppression, Replan query hydration, and exact finish parity.
+- Next: integrate the modal into Week, add focused E2E coverage, and perform the required three-viewport visual acceptance pass.

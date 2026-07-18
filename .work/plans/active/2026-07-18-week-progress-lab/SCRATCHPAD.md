@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-18-week-progress-lab
 
-_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T15:20+05:30_
+_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T18:30+05:30_
 
 ## Now
 
-Phase 2 is committed as `a932df1` and Phase 3 is in progress.
-The immediate task is to add failing shared-capacity, pace-query, and modal-scenario tests.
+Phase 3 is verified and committed as `3998be6`.
+Phase 4 Week integration and browser acceptance are in progress.
 
 ## Alignment
 
@@ -22,7 +22,7 @@ The required planning baseline was committed before any source change as `845499
 
 ## Deferrals
 
-- Browser screenshots and full E2E verification are deferred to Phase 4 after all interactions are wired.
+- None.
 
 ## Checklist
 
@@ -42,10 +42,13 @@ The required planning baseline was committed before any source change as `845499
 - [x] Capture and inspect all three required Phase 2 viewports.
 - [x] Record the Phase 2 commit SHA.
 - [x] Mark Phase 3 in progress.
-- [ ] Add failing capacity scenario tests.
-- [ ] Extract Replan's capacity calculation.
-- [ ] Add the current-week scenario rail and Replan query action.
-- [ ] Verify exact modal and Replan finish parity.
+- [x] Add failing capacity scenario tests.
+- [x] Extract Replan's capacity calculation.
+- [x] Add the current-week scenario rail and Replan query action.
+- [x] Verify exact modal and Replan finish parity.
+- [ ] Integrate current and historical Week behavior.
+- [ ] Add and run the focused Week E2E specification.
+- [ ] Capture and inspect the three required real-route viewports.
 
 ## In-flight edits
 
@@ -54,7 +57,8 @@ The required planning baseline was committed before any source change as `845499
 - Phase 1 `.work` evidence records implementation SHA `eeaee51`.
 - `ProgressLabModal.tsx`, its scoped CSS, and five behavior tests are complete.
 - Phase 2 `.work` evidence records implementation SHA `a932df1`.
-- Phase 3 has no source edits yet.
+- Phase 3 is committed as `3998be6` with 36 focused tests passing.
+- Phase 4 source edits have not started.
 
 ## Decisions in force
 
@@ -75,3 +79,4 @@ The required planning baseline was committed before any source change as `845499
 - Phase 2 browser inspection found a 6px inline-SVG scroll-height artifact in the chart stage.
   Setting the chart SVG to `display: block` removed it, and all measured regions now report zero overflow.
 - Phase 2 was committed as `a932df1` with only the modal, CSS, tests, screenshots, and this task's `.work` records staged.
+- Phase 3 was committed as `3998be6` with only the shared capacity implementation, modal scenario behavior, Replan hydration, tests, and this task's `.work` records staged.
