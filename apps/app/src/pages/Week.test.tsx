@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { Week } from './Week'
 import type { ProgressSnapshot, CalibrationState } from '@study-tracker/progress'
@@ -7,6 +7,7 @@ import type { ProgressSnapshot, CalibrationState } from '@study-tracker/progress
 let mockProgress: ProgressSnapshot | null = null
 let mockCalibration: CalibrationState | null = null
 let mockCalibrationStatus: 'loading' | 'ready' | 'stale' | 'error' = 'ready'
+let mockEvents: Array<{ kind: string; payload: Record<string, unknown>; createdAt: string }> = []
 
 vi.mock('../progress', () => ({
   useCalibrationState: () => ({ calibration: mockCalibration, status: mockCalibrationStatus }),
@@ -20,18 +21,17 @@ vi.mock('../events/useEventStore', () => ({
 }))
 
 vi.mock('dexie-react-hooks', () => ({
-  useLiveQuery: (querier: () => unknown) => {
-    if (typeof querier === 'function') return []
-    return []
-  },
+  useLiveQuery: () => mockEvents,
 }))
 
-const { mockFindActiveRoadmap } = vi.hoisted(() => ({
+const { mockFindActiveRoadmap, mockMapSessions } = vi.hoisted(() => ({
   mockFindActiveRoadmap: vi.fn().mockReturnValue(null),
+  mockMapSessions: vi.fn().mockReturnValue([]),
 }))
 
 vi.mock('../progress/mapEvents', () => ({
   findActiveRoadmap: mockFindActiveRoadmap,
+  mapSessions: mockMapSessions,
 }))
 
 function makeProgress(overrides: Partial<ProgressSnapshot> = {}): ProgressSnapshot {
@@ -105,11 +105,56 @@ function mockShortRoadmapAfterPlanEnd() {
   })
 }
 
+function mockCurrentRoadmap() {
+  mockFindActiveRoadmap.mockReturnValue({
+    startDate: '2026-04-06',
+    deadline: '2026-06-07',
+    weeks: 9,
+    weeklyHours: 4,
+    selectedStudyDays: ['Mon', 'Wed', 'Fri'],
+    weekdayHours: 1,
+    weekendHours: 0,
+    materialTotalMinutes: 600,
+    materialRemainingMinutes: 340,
+    slots: [],
+  })
+}
+
+function makeProgressWithChart(): ProgressSnapshot {
+  return makeProgress({
+    burnUp: {
+      planned: [
+        { date: '2026-04-06', minutes: 60 },
+        { date: '2026-04-08', minutes: 120 },
+        { date: '2026-04-10', minutes: 180 },
+        { date: '2026-05-03', minutes: 300 },
+        { date: '2026-06-07', minutes: 600 },
+      ],
+      actual: [
+        { date: '2026-04-06', minutes: 30 },
+        { date: '2026-04-08', minutes: 90 },
+        { date: '2026-04-10', minutes: 150 },
+        { date: '2026-05-03', minutes: 260 },
+      ],
+      gpCurve: [
+        { date: '2026-05-03', mean: 260, lower: 220, upper: 300 },
+        { date: '2026-06-07', mean: 540, lower: 420, upper: 650 },
+      ],
+      today: '2026-05-03',
+      deficit: -40,
+      dayNumber: 28,
+      totalDays: 63,
+    },
+  })
+}
+
 describe('Week', () => {
   beforeEach(() => {
     mockFindActiveRoadmap.mockReturnValue(null)
     mockCalibration = null
     mockCalibrationStatus = 'ready'
+    mockEvents = []
+    mockMapSessions.mockReturnValue([])
   })
 
   afterEach(() => {
@@ -278,5 +323,50 @@ describe('Week', () => {
     )
 
     expect(screen.queryByText('Past')).not.toBeInTheDocument()
+  })
+
+  it('opens the current Week Progress Lab with capacity scenario inputs', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-03T12:00:00.000Z'))
+    mockProgress = makeProgressWithChart()
+    mockCurrentRoadmap()
+
+    render(
+      <MemoryRouter initialEntries={['/week']}>
+        <Week />
+      </MemoryRouter>,
+    )
+
+    const opener = screen.getByRole('button', { name: 'Open Progress Lab' })
+    expect(opener).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(opener)
+
+    expect(screen.getByRole('dialog', { name: 'Study trajectory and pace scenario' })).toBeInTheDocument()
+    expect(opener).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('slider', { name: 'Extra minutes per study day' })).toBeEnabled()
+    expect(screen.getByRole('link', { name: 'Replan with this pace' })).toHaveAttribute(
+      'href',
+      '/replan?paceDeltaMinutes=0',
+    )
+  })
+
+  it('opens historical Week inspection with Week end and no pace controls', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-03T12:00:00.000Z'))
+    mockProgress = makeProgressWithChart()
+    mockCurrentRoadmap()
+
+    render(
+      <MemoryRouter initialEntries={['/week?w=1']}>
+        <Week />
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open Progress Lab' }))
+
+    expect(screen.getByText(/Progress Lab · Historical week/)).toBeInTheDocument()
+    expect(screen.getByText(/at week end/)).toBeInTheDocument()
+    expect(screen.queryByRole('slider', { name: 'Extra minutes per study day' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Replan with this pace' })).not.toBeInTheDocument()
   })
 })

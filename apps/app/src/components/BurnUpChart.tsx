@@ -338,7 +338,7 @@ function clipPlannedPoints(points: CumulativePoint[], domain: [Date, Date]): Cum
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-const MARGIN = { top: 12, right: 20, left: 48 };
+const MARGIN = { top: 12, right: 20, left: 58 };
 
 interface InnerProps {
   data: BurnUpData;

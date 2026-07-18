@@ -211,7 +211,7 @@ export function ProgressLabModal({
       aria-modal="true"
       aria-labelledby="progress-lab-title"
       aria-describedby="progress-lab-description"
-      onMouseDown={handleBackdrop}
+      onClick={handleBackdrop}
     >
       <article className="progress-lab-shell">
         <header className="progress-lab-header">

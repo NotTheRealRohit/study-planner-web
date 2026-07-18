@@ -16,15 +16,15 @@ export function loadYouTubeApi(): Promise<void> {
 
     const existing = document.getElementById('youtube-iframe-api');
     if (existing) {
-      const prev = (window as any).onYouTubeIframeAPIReady;
-      (window as any).onYouTubeIframeAPIReady = () => {
+      const prev = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
         prev?.();
         resolve();
       };
       return;
     }
 
-    (window as any).onYouTubeIframeAPIReady = () => resolve();
+    window.onYouTubeIframeAPIReady = () => resolve();
 
     const script = document.createElement('script');
     script.id = 'youtube-iframe-api';

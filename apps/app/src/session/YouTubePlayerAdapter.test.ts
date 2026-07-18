@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { YouTubePlayerAdapter, type YouTubePlayerAdapterDeps, type YouTubePlayerState } from './YouTubePlayerAdapter';
 
 let capturedOptions: YTPlayerOptions | null = null;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let fakePlayerInstance: Record<string, any>;
+let fakePlayerInstance: Record<string, unknown>;
 
 function installFakeYT() {
   fakePlayerInstance = {
@@ -15,14 +14,18 @@ function installFakeYT() {
     destroy: vi.fn(),
   };
 
-  (globalThis as any).YT = {
-    Player: class FakePlayer {
-      constructor(_el: string, opts: YTPlayerOptions) {
-        capturedOptions = opts;
-        Object.assign(this, fakePlayerInstance);
-      }
+  Object.defineProperty(globalThis, 'YT', {
+    configurable: true,
+    writable: true,
+    value: {
+      Player: class FakePlayer {
+        constructor(_el: string, opts: YTPlayerOptions) {
+          capturedOptions = opts;
+          Object.assign(this, fakePlayerInstance);
+        }
+      },
     },
-  };
+  });
 }
 
 function makeDeps(overrides?: Partial<YouTubePlayerAdapterDeps>): YouTubePlayerAdapterDeps {

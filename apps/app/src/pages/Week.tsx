@@ -1,16 +1,18 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useCalibrationState, useProgressSnapshot } from '../progress';
 import { useEventStore } from '../events/useEventStore';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { findActiveRoadmap } from '../progress/mapEvents';
+import { findActiveRoadmap, mapSessions } from '../progress/mapEvents';
 import { startOfISOWeek, addDays, addWeeks, differenceInCalendarISOWeeks, format, parseISO } from 'date-fns';
 import Card from '../components/Card';
 import Tag from '../components/Tag';
 import { BurnUpChart } from '../components/BurnUpChart';
+import { ProgressLabModal } from '../components/ProgressLabModal';
 import { DailyMinutesChart } from '../components/DailyMinutesChart';
 import { ServiceStatusBanner } from '../components/ServiceStatusBanner';
 import type { Verdict } from '@study-tracker/progress';
+import type { DayOfWeek } from '@study-tracker/roadmap-engine';
 
 function verdictDisplay(verdict: Verdict): { title: string; subtitle: string; color: string } {
   switch (verdict) {
@@ -27,13 +29,15 @@ export function Week() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { calibration, status } = useCalibrationState();
   const eventStore = useEventStore();
+  const [progressLabOpen, setProgressLabOpen] = useState(false);
+  const progressLabOpenerRef = useRef<HTMLButtonElement>(null);
 
   const events = useLiveQuery(() => eventStore.getAll(), [eventStore]) ?? [];
+  const activeRoadmap = useMemo(() => findActiveRoadmap(events), [events]);
 
   const roadmapBounds = useMemo(() => {
-    const roadmap = findActiveRoadmap(events);
-    if (!roadmap) return null;
-    const planStart = parseISO(roadmap.startDate);
+    if (!activeRoadmap) return null;
+    const planStart = parseISO(activeRoadmap.startDate);
     const planStartWeek = startOfISOWeek(planStart);
     const today = new Date();
     const currentWeekIndex = Math.max(
@@ -41,7 +45,7 @@ export function Week() {
       differenceInCalendarISOWeeks(today, planStartWeek),
     );
     return { planStartWeek, currentWeekIndex };
-  }, [events]);
+  }, [activeRoadmap]);
 
   const wParam = searchParams.get('w');
   const selectedWeekIndex = useMemo(() => {
@@ -63,6 +67,22 @@ export function Week() {
   }, [isPastWeek, roadmapBounds, selectedWeekIndex]);
 
   const progress = useProgressSnapshot(calibration, referenceDate);
+
+  const selectedWeekBounds = useMemo(() => {
+    if (roadmapBounds) {
+      const start = addWeeks(roadmapBounds.planStartWeek, selectedWeekIndex);
+      return {
+        startISO: format(start, 'yyyy-MM-dd'),
+        endISO: format(addDays(start, 6), 'yyyy-MM-dd'),
+      };
+    }
+    if (!progress) return null;
+    const start = parseISO(progress.weeklyStats.weekStartDate);
+    return {
+      startISO: progress.weeklyStats.weekStartDate,
+      endISO: format(addDays(start, 6), 'yyyy-MM-dd'),
+    };
+  }, [progress, roadmapBounds, selectedWeekIndex]);
 
   const exceptionalDates = useMemo(() => {
     const exceptionalSessionIds = new Set<string>();
@@ -93,6 +113,52 @@ export function Week() {
       gpCurve: progress.burnUp.gpCurve.filter(p => p.date <= weekEnd),
     };
   }, [progress, isPastWeek, roadmapBounds, selectedWeekIndex]);
+
+  const progressLabBurnUp = useMemo(() => {
+    if (!progress) return null;
+    if (!isPastWeek || !referenceDate) return progress.burnUp;
+    return {
+      ...progress.burnUp,
+      actual: progress.burnUp.actual.filter((point) => point.date <= referenceDate),
+      today: referenceDate,
+    };
+  }, [isPastWeek, progress, referenceDate]);
+
+  const capacityScenarioInput = useMemo(() => {
+    if (!progress || !activeRoadmap || isPastWeek) return undefined;
+    const hoursPerStudyDay = activeRoadmap.weekdayHours;
+    const selectedStudyDays = activeRoadmap.selectedStudyDays as DayOfWeek[] | undefined;
+    if (
+      typeof activeRoadmap.materialRemainingMinutes !== 'number' ||
+      typeof hoursPerStudyDay !== 'number' ||
+      hoursPerStudyDay <= 0 ||
+      !selectedStudyDays ||
+      selectedStudyDays.length === 0
+    ) return undefined;
+
+    const actualCumulativeMinutes = progress.burnUp.actual.reduce(
+      (maximum, point) => Math.max(maximum, point.minutes),
+      0,
+    );
+    const finalPlannedCumulativeMinutes = progress.burnUp.planned.reduce(
+      (maximum, point) => Math.max(maximum, point.minutes),
+      actualCumulativeMinutes,
+    );
+
+    return {
+      remainingEstimatedMinutes: activeRoadmap.materialRemainingMinutes,
+      sessions: mapSessions(events),
+      today: progress.burnUp.today,
+      hoursPerStudyDay,
+      selectedStudyDays,
+      actualCumulativeMinutes,
+      finalPlannedCumulativeMinutes,
+    };
+  }, [activeRoadmap, events, isPastWeek, progress]);
+
+  useEffect(() => {
+    setProgressLabOpen(false);
+  }, [selectedWeekIndex]);
 
   if (status === 'loading' && !calibration) {
     return (
@@ -131,6 +197,7 @@ export function Week() {
   const navigateWeek = (delta: number) => {
     const newWeek = selectedWeekIndex + delta;
     if (!roadmapBounds) return;
+    setProgressLabOpen(false);
     if (newWeek >= roadmapBounds.currentWeekIndex) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -267,7 +334,12 @@ export function Week() {
           )}
 
           {chartBurnUp.actual.length >= 3 && chartBurnUp.actual.some(p => p.minutes > 0) ? (
-            <BurnUpChart data={chartBurnUp} />
+            <BurnUpChart
+              data={chartBurnUp}
+              expanded={progressLabOpen}
+              onOpen={() => setProgressLabOpen(true)}
+              openerRef={progressLabOpenerRef}
+            />
           ) : (
             <div
               style={{
@@ -286,6 +358,21 @@ export function Week() {
           )}
         </div>
       </div>
+
+      {progressLabBurnUp && selectedWeekBounds && (
+        <ProgressLabModal
+          open={progressLabOpen}
+          onClose={() => setProgressLabOpen(false)}
+          data={progressLabBurnUp}
+          referenceDateISO={referenceDate ?? progressLabBurnUp.today}
+          referenceLabel={isPastWeek ? 'Week end' : 'Today'}
+          weekStartISO={selectedWeekBounds.startISO}
+          weekEndISO={selectedWeekBounds.endISO}
+          historical={isPastWeek}
+          openerRef={progressLabOpenerRef}
+          capacityScenarioInput={capacityScenarioInput}
+        />
+      )}
     </div>
   );
 }

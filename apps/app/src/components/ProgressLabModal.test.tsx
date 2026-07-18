@@ -189,7 +189,7 @@ describe('ProgressLabModal', () => {
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(screen.getByRole('button', { name: 'Confidence band' })).toHaveFocus()
 
-    fireEvent.mouseDown(screen.getByTestId('progress-lab-backdrop'))
+    fireEvent.click(screen.getByTestId('progress-lab-backdrop'))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Open lab' })).toHaveFocus())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(document.body.style.overflow).toBe('')
