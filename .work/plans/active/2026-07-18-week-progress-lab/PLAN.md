@@ -148,7 +148,7 @@ pnpm --filter @study-tracker/app typecheck
 
 ## Phase 2: Build the viewport-fit inspection modal
 
-**Status:** In progress
+**Status:** Complete - pending implementation commit
 **Depends on:** Phase 1
 
 ### Codebase state assumed at start

@@ -1,7 +1,7 @@
 # Week Progress Lab verification
 
 **Plan:** `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md`
-**Overall status:** Phase 1 verified, Phase 2 ready
+**Overall status:** Phases 1-2 verified, Phase 3 ready
 **Last updated:** 2026-07-18
 
 ## Phase 1 - Chart refactor and deterministic axes
@@ -22,9 +22,9 @@
 
 ### Implementer report
 
-- Status: Verified locally, pending phase commit
+- Status: Verified
 - Files changed: `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`
-- Commit SHA: Pending
+- Commit SHA: `eeaee51`
 - Commands and results: Initial `pnpm --filter @study-tracker/app test -- BurnUpChart` baseline passed 535 tests.
   The RED run `pnpm --filter @study-tracker/app exec vitest run src/components/BurnUpChart.test.tsx` failed 5 of 13 tests on the absent interfaces.
   The final focused run passed 13 of 13 tests.
@@ -48,36 +48,41 @@
 
 ### Acceptance criteria
 
-- [ ] The modal renders through a `document.body` portal with an accessible title and description.
-- [ ] Full plan, 30 days, and This week ranges use the locked domains.
-- [ ] Planned, GP projection, and confidence controls are independent pressed-state controls.
-- [ ] Actual progress and the reference marker cannot be disabled.
-- [ ] Visible checkpoints work with pointer, Enter, and Space.
-- [ ] Selection adds a ring and a deterministic date, actual, plan, signed-gap, and interpretation summary.
-- [ ] Selection clears when a new range excludes the selected point.
-- [ ] Close, backdrop, Escape, focus trap, scroll lock, and opener focus restoration work.
-- [ ] Reduced-motion preferences are respected.
-- [ ] Desktop, compact-width, and short-height layouts fit without document, overlay, dialog, chart-region, or rail scrolling.
+- [x] The modal renders through a `document.body` portal with an accessible title and description.
+- [x] Full plan, 30 days, and This week ranges use the locked domains.
+- [x] Planned, GP projection, and confidence controls are independent pressed-state controls.
+- [x] Actual progress and the reference marker cannot be disabled.
+- [x] Visible checkpoints work with pointer, Enter, and Space.
+- [x] Selection adds a ring and a deterministic date, actual, plan, signed-gap, and interpretation summary.
+- [x] Selection clears when a new range excludes the selected point.
+- [x] Close, backdrop, Escape, focus trap, scroll lock, and opener focus restoration work.
+- [x] Reduced-motion preferences are respected.
+- [x] Desktop, compact-width, and short-height layouts fit without document, overlay, dialog, chart-region, or rail scrolling.
 
 ### Implementer report
 
-- Status: Not started
-- Files changed:
-- Commit SHA:
-- Commands and results:
-- Screenshot evidence:
-- Deviations and reason:
-- Self-check:
+- Status: Verified locally, pending phase commit
+- Files changed: `apps/app/src/components/ProgressLabModal.tsx`, `apps/app/src/components/ProgressLabModal.css`, `apps/app/src/components/ProgressLabModal.test.tsx`
+- Commit SHA: Pending
+- Commands and results: The initial focused run failed because `ProgressLabModal.tsx` did not exist.
+  The final focused run passed 18 of 18 BurnUpChart and ProgressLab tests.
+  `pnpm --filter @study-tracker/app typecheck` passed.
+  `pnpm --filter @study-tracker/app lint` exited zero with the same four pre-existing YouTube adapter warnings.
+- Screenshot evidence: `screenshots/phase2-desktop.png`, `screenshots/phase2-short.png`, and `screenshots/phase2-phone.png` were captured from a live Vite portal mount at 1440x900, 1024x600, and 390x844.
+  Automated geometry reported zero overflow for the document, overlay, shell, body, chart stage, and rail at every viewport.
+  Browser console and page errors were zero.
+- Deviations and reason: The portal was mounted directly through Vite for Phase 2 visual isolation because Week integration is intentionally deferred to Phase 4.
+- Self-check: The UI follows the approved Marginalia mock, keeps the desktop rail visible, moves controls below the chart at compact widths, and compresses safely for short heights.
 
 ### Reviewer findings
 
-- Status: Pending review
-- Criterion verdicts:
-- Issues and required changes:
+- Status: Verified
+- Criterion verdicts: All Phase 2 criteria pass by focused tests, typecheck, lint, three live screenshots, automated overflow geometry, and manual visual inspection.
+- Issues and required changes: None.
 
 ### Resolution
 
-- Pending.
+- Phase 2 accepted for the next dependent phase.
 
 ## Phase 3 - Shared capacity scenario and Replan hydration
 
@@ -159,4 +164,5 @@
 
 - 2026-07-18: Canonical plan and prefilled verification artifact created from the approved Week Progress Lab plan.
 - 2026-07-18: Phase 1 completed with reusable chart helpers, deterministic observed-date axes, whole-card opener semantics, focused tests, clean typecheck, and a collision-free live card screenshot.
-- Next: commit Phase 1, record its SHA, then implement the viewport-fit portal modal in Phase 2.
+- 2026-07-18: Phase 2 completed with the body portal, fixed ranges, optional layers, keyboard and pointer checkpoint summaries, focus and dismissal behavior, scroll lock, responsive CSS, 18 focused passing tests, and zero-overflow browser evidence at all required viewports.
+- Next: commit Phase 2, record its SHA, then extract the shared capacity scenario and hydrate Replan from the validated query in Phase 3.

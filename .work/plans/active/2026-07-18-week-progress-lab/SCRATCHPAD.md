@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-18-week-progress-lab
 
-_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T14:35+05:30_
+_Plan: `.work/plans/active/2026-07-18-week-progress-lab/PLAN.md` · Log: `VERIFICATION.md` · Updated: 2026-07-18T15:12+05:30_
 
 ## Now
 
-Phase 1 is verified and ready for its scoped implementation commit.
-The immediate next task is to record that SHA, mark Phase 2 in progress, and add the first failing modal interaction test.
+Phase 2 is verified and ready for its scoped implementation commit.
+The immediate next task is to record that SHA, mark Phase 3 in progress, and add failing shared-capacity tests.
 
 ## Alignment
 
@@ -34,14 +34,22 @@ The required planning baseline was committed before any source change as `845499
 - [x] Refactor the reusable plot and card opener.
 - [x] Run focused Phase 1 verification.
 - [x] Capture and inspect the default card with zero X-label collisions.
-- [ ] Record the Phase 1 commit SHA.
-- [ ] Mark Phase 2 in progress.
+- [x] Record the Phase 1 commit SHA.
+- [x] Mark Phase 2 in progress.
+- [x] Add failing modal interaction tests.
+- [x] Implement the portal dialog and responsive CSS.
+- [x] Verify focus, dismissal, checkpoint selection, and range behavior.
+- [x] Capture and inspect all three required Phase 2 viewports.
+- [ ] Record the Phase 2 commit SHA.
+- [ ] Mark Phase 3 in progress.
 
 ## In-flight edits
 
 - `BurnUpChart.tsx` now exports the reusable plot and pure chart helpers.
 - `BurnUpChart.test.tsx` has 13 passing focused tests.
-- Phase 1 `.work` evidence is complete but the implementation SHA is pending.
+- Phase 1 `.work` evidence records implementation SHA `eeaee51`.
+- `ProgressLabModal.tsx`, its scoped CSS, and five behavior tests are complete.
+- Phase 2 `.work` evidence is complete but the implementation SHA is pending.
 
 ## Decisions in force
 
@@ -58,3 +66,6 @@ The required planning baseline was committed before any source change as `845499
 - Existing unrelated dirty work can be preserved with narrowly scoped staging.
 - Phase 1 browser geometry initially exposed crowded labels.
   A greedy four-row label placement pass removed every detected collision without hiding observed ticks.
+- Phase 1 was committed as `eeaee51` with only this task's source, tests, screenshot, and `.work` files staged.
+- Phase 2 browser inspection found a 6px inline-SVG scroll-height artifact in the chart stage.
+  Setting the chart SVG to `display: block` removed it, and all measured regions now report zero overflow.
