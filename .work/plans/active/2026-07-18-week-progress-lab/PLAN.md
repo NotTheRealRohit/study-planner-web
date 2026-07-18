@@ -148,7 +148,7 @@ pnpm --filter @study-tracker/app typecheck
 
 ## Phase 2: Build the viewport-fit inspection modal
 
-**Status:** Complete - pending implementation commit
+**Status:** Complete - `a932df1`
 **Depends on:** Phase 1
 
 ### Codebase state assumed at start
@@ -188,7 +188,7 @@ pnpm --filter @study-tracker/app lint
 
 ## Phase 3: Share the pace scenario with Replan
 
-**Status:** Not started
+**Status:** In progress
 **Depends on:** Phase 2
 
 ### Codebase state assumed at start
