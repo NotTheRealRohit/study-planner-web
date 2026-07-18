@@ -110,7 +110,7 @@ Focused Vitest coverage protects the pure helpers and component behavior, while 
 
 ## Phase 1: Refactor the chart without changing its default appearance
 
-**Status:** Not started
+**Status:** In progress
 **Depends on:** none
 
 ### Codebase state assumed at start
