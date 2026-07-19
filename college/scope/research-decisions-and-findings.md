@@ -63,8 +63,8 @@ related:
   on `numpy`; `intelligence` on FastAPI. **No conda, no torch anywhere.** `uv.lock` present.
   Ruff configured (E,F,I,UP; line-length 100).
 - **Report:** LaTeX via **TinyTeX** at `college/mydeliverables/1st-Review/report/main.tex`,
-  manual `thebibliography`, vector-PDF figures (see `.cursor/rules/latex-report-build.md` and
-  `flow-diagram-tikz-gen.md`).
+  manual `thebibliography`, vector-PDF figures (see `.agents/rules/60-latex-report-build.agents.md`
+  and `.agents/rules/61-tikz-flow-diagrams.agents.md`).
 - **`/research` does not exist yet.** Existing Python: `packages/py-progress`,
   `packages/py-roadmap-engine`, `services/intelligence`.
 

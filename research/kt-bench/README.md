@@ -23,8 +23,8 @@ python3 -m venv .venv
 ```
 
 If a package download fails on the corporate network, ***REMOVED***
-pattern documented in `.agents/rules/docker-colima-setup.agents.md` and
-`.agents/rules/pnpm-build-registry.agents.md`; keep any machine-specific config
+pattern documented in `.agents/rules/51-docker-colima.agents.md` and
+`.agents/rules/50-pnpm-build-registry.agents.md`; keep any machine-specific config
 outside this repo.
 
 ## Workflow
