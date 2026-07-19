@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-19-progress-lab-pace-indicators
 
-_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:43+0530_
+_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:51+0530_
 
 ## Now
 
-Phase 2 is implemented and self-verified.
-Phase 3 is next, beginning with the modal narrative contract and current-versus-historical wiring tests.
+Phase 3 is implemented and self-verified.
+Phase 4 is next, beginning with the seeded Playwright flow and task-local screenshots.
 
 ## Alignment
 
@@ -40,13 +40,16 @@ All four implementation phases remain in plan order, with reviewer sections left
   - [x] Add a blank-plot hover overlay behind checkpoint hit targets.
   - [x] Render guides, axis pills, series dots, and a bounded readout.
   - [x] Clear hover on mouse leave without changing checkpoint keyboard behavior.
-- [ ] Implement and self-verify Phase 3 finish narrative and Week wiring.
+- [x] Implement and self-verify Phase 3 finish narrative and Week wiring.
+  - [x] Render distinct Plan, Forecast, and Your pace sentences with explicit unavailable states.
+  - [x] Keep Current pace forecast-only and show +N capacity finish against the deadline.
+  - [x] Wire deadline and total to current and historical Week views while withholding historical forecast data.
 - [ ] Implement and self-verify Phase 4 E2E coverage and screenshots.
 - [ ] Run final full verification and protected-file checks.
 
 ## In-flight edits
 
-- Phase 2 chart source, tests, and journal updates are ready for the feature commit.
+- Phase 3 source, tests, and journal updates are ready for the feature commit.
 - `college/mydeliverables/phase1-ESA/design/phase1-esa-deck.html` is an unrelated user change and must remain unstaged.
 
 ## Decisions in force
@@ -72,3 +75,6 @@ All four implementation phases remain in plan order, with reviewer sections left
 - Phase 1 committed at `27e6104`.
 - Phase 2 passed 36 focused tests across the chart and protected Replan surfaces, plus app typecheck.
   Protected source and test diffs remained empty.
+- Phase 2 committed at `2406381`.
+- Phase 3 passed 58 focused tests across the chart, modal, Week, and protected Replan surfaces.
+  App typecheck and lint passed, and protected source and test diffs remained empty.

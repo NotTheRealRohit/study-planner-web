@@ -303,7 +303,7 @@
 .progress-lab-legend {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: var(--space-4, 16px);
   color: var(--text-tertiary, #8b7b6b);
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 9px;
@@ -314,7 +314,7 @@
 .progress-lab-legend span {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: var(--space-1, 4px);
 }
 
 .progress-lab-legend i {
@@ -334,6 +334,18 @@
   background: transparent;
 }
 
+.progress-lab-legend i.forecast {
+  height: 0;
+  border-top: 2px dashed var(--rust, #a0432a);
+  background: transparent;
+}
+
+.progress-lab-legend i.scenario {
+  height: 0;
+  border-top: 2px dashed var(--moss, #4a6b3a);
+  background: transparent;
+}
+
 .progress-lab-legend i.behind {
   width: 14px;
   height: 10px;
@@ -345,7 +357,7 @@
   min-width: 0;
   min-height: 0;
   padding: 20px;
-  overflow: hidden;
+  overflow: auto;
   background: #f8f2e8;
 }
 
@@ -411,6 +423,49 @@
   line-height: 1.4;
 }
 
+.progress-lab-finish-narrative {
+  display: grid;
+  gap: var(--space-3, 12px);
+  margin-top: var(--space-3, 12px);
+}
+
+.progress-lab-finish-narrative p {
+  padding: 9px var(--space-3, 12px);
+  border-left: 2px solid var(--border-default, #d9cdb8);
+  border-radius: 0 var(--radius-sm, 6px) var(--radius-sm, 6px) 0;
+  background: rgba(251, 247, 238, 0.72);
+}
+
+.progress-lab-finish-narrative strong {
+  color: var(--text-primary, #2a1f18);
+  font-family: var(--font-display, 'Fraunces', Georgia, serif);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.progress-lab-finish-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1, 4px);
+  margin-bottom: var(--space-1, 4px);
+  color: var(--text-primary, #2a1f18);
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.progress-lab-estimate {
+  padding: 2px 5px;
+  border: 1px solid var(--border-default, #d9cdb8);
+  border-radius: 999px;
+  color: var(--rust, #a0432a);
+  background: var(--surface-card, #fbf7ee);
+  font-size: 7px;
+  letter-spacing: 0.06em;
+}
+
 .progress-lab-slider {
   width: 100%;
   margin: 12px 0 2px;
@@ -436,36 +491,6 @@
   font-family: var(--font-mono, 'JetBrains Mono', monospace);
   font-size: 8px;
   text-transform: uppercase;
-}
-
-.progress-lab-scenario-result {
-  display: grid;
-  gap: 2px;
-  margin-top: 11px;
-  padding: 10px;
-  border: 1px solid rgba(74, 107, 58, 0.28);
-  border-radius: var(--radius-md, 10px);
-  background: rgba(74, 107, 58, 0.07);
-}
-
-.progress-lab-scenario-result strong {
-  color: var(--moss, #4a6b3a);
-  font-family: var(--font-display, 'Fraunces', Georgia, serif);
-  font-size: 22px;
-  font-weight: 500;
-}
-
-.progress-lab-scenario-result span {
-  color: var(--text-secondary, #5c4d40);
-  font-size: 10px;
-}
-
-.progress-lab-unavailable {
-  min-height: 42px;
-  margin-top: 10px !important;
-  padding: 9px;
-  border-radius: var(--radius-sm, 6px);
-  background: rgba(139, 123, 107, 0.09);
 }
 
 .progress-lab-primary {
@@ -534,6 +559,7 @@
 
   .progress-lab-pace-section {
     display: grid;
+    grid-column: 1 / -1;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 3px 12px;
     align-content: start;
@@ -547,20 +573,12 @@
     grid-column: 1;
   }
 
-  .progress-lab-pace-section > .progress-lab-scenario-result,
-  .progress-lab-pace-section > .progress-lab-unavailable,
   .progress-lab-pace-section > .progress-lab-primary {
     grid-column: 2;
   }
 
-  .progress-lab-pace-section > .progress-lab-scenario-result,
-  .progress-lab-pace-section > .progress-lab-unavailable {
-    grid-row: 1 / span 4;
-    margin-top: 0 !important;
-  }
-
   .progress-lab-pace-section > .progress-lab-primary {
-    grid-row: 5 / span 2;
+    grid-row: 1 / span 5;
     align-self: end;
     margin-top: 0;
   }
@@ -673,11 +691,6 @@
     display: block;
   }
 
-  .progress-lab-pace-section > .progress-lab-scenario-result,
-  .progress-lab-pace-section > .progress-lab-unavailable {
-    margin-top: 7px !important;
-  }
-
   .progress-lab-pace-section > .progress-lab-primary {
     margin-top: 6px;
   }
@@ -734,6 +747,15 @@
 
   .progress-lab-rail {
     padding: 7px 10px;
+  }
+
+  .progress-lab-finish-narrative {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .progress-lab-finish-narrative p {
+    padding: 6px 8px;
   }
 
   .progress-lab-section {

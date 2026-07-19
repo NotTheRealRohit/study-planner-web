@@ -166,7 +166,7 @@ automatically. No shared edits; the two can proceed in parallel.
 
 ### Steps
 1. Add optional props to `BurnUpPlot`/`BurnUpPlotInner`: `deadlineISO?`, `forecastFinishISO?`,
-   `forecastBasis?: 'gp'|'analytic'`, `scenarioFinishISO?`, `totalPlannedMinutes?`.
+   `scenarioFinishISO?`, `totalPlannedMinutes?`.
 2. Extend the full-range domain so it includes `deadlineISO`, `forecastFinishISO`, and
    `scenarioFinishISO` as candidate dates (thread them through `allBurnUpDates` /
    `buildBurnUpDateDomain` / `buildProgressLabDateDomain`, `BurnUpChart.tsx:103-146`), with a
@@ -229,13 +229,14 @@ pnpm --filter @study-tracker/app typecheck
 
 ## Phase 3 - Narrative three-finish panel + wiring
 
-**Status:** ☐ Not started · **Depends on:** Phase 1 (plot accepts finish props)
+**Status:** 🟡 Implemented and self-verified - awaiting reviewer verification · **Depends on:** Phase 1 (plot accepts finish props)
 
 ### Steps
-1. In `Week.tsx`, pass to `ProgressLabModal` (current week only): `forecastFinishISO =
-   progress.projection.finishDate`, `forecastBasis = progress.projection.basis`, `deadlineISO`
-   (`progressLabBurnUp.deadline ?? activeRoadmap.deadline`), `totalPlannedMinutes =
-   progress.totalPlannedMinutes`. For `isPastWeek`, pass them `undefined`.
+1. In `Week.tsx`, pass to `ProgressLabModal`: `deadlineISO`
+   (`progressLabBurnUp.deadline ?? activeRoadmap.deadline`) and `totalPlannedMinutes =
+   progress.totalPlannedMinutes` for current and historical views.
+   Pass `forecastFinishISO = progress.projection.finishDate` and `forecastBasis =
+   progress.projection.basis` for the current week only.
 2. In `ProgressLabModal.tsx`, replace the single `Scenario finish` block (`:363-379`) with the
    narrative panel: Plan (deadline) · Forecast (`forecastFinishISO`, append "· estimate" when
    `forecastBasis==='analytic'`) · Pace scenario line driven by the slider. Reuse
@@ -253,7 +254,7 @@ pnpm --filter @study-tracker/app typecheck
 - `basis==='analytic'` renders the "estimate" tag; `'gp'` does not.
 - At Current pace: no scenario line prop; forecast wording shown.
 - Historical: no slider, no forecast/scenario; Plan flag + crosshair remain.
-- Week passes the four new props for the current week and `undefined` when `isPastWeek`.
+- Week passes deadline and total for both views, with forecast finish and basis withheld when `isPastWeek`.
 
 ### Verification
 ```bash

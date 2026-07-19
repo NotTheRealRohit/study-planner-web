@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { differenceInCalendarDays, format, parseISO } from 'date-fns'
+import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns'
 import { Link } from 'react-router-dom'
 import type { BurnUpData } from '@study-tracker/progress'
 import {
@@ -37,6 +37,10 @@ export interface ProgressLabModalProps {
   historical?: boolean
   openerRef?: RefObject<HTMLButtonElement | null>
   capacityScenarioInput?: Omit<CapacityScenarioInput, 'paceDeltaMinutes'>
+  deadlineISO?: string
+  forecastFinishISO?: string
+  forecastBasis?: 'gp' | 'analytic'
+  totalPlannedMinutes?: number
 }
 
 const RANGE_OPTIONS: { value: ProgressLabRange; label: string }[] = [
@@ -74,16 +78,30 @@ function deficitText(data: BurnUpData, historical: boolean): string {
   return `${signedMinutes(data.deficit)} ${relation} plan ${reference}`
 }
 
-function scenarioDifferenceLabel(
-  baselineFinish: string | null,
-  scenarioFinish: string | null,
+function validISODate(dateISO: string | null | undefined): Date | null {
+  if (!dateISO) return null
+  const date = parseISO(dateISO)
+  return isValid(date) ? date : null
+}
+
+function formattedFinish(dateISO: string | null | undefined): string | null {
+  const date = validISODate(dateISO)
+  return date ? format(date, 'MMM d, yyyy') : null
+}
+
+function deadlineDifferenceLabel(
+  deadlineISO: string | null | undefined,
+  finishISO: string | null | undefined,
 ): string {
-  if (!baselineFinish || !scenarioFinish) return 'Finish date unavailable'
-  const days = differenceInCalendarDays(parseISO(baselineFinish), parseISO(scenarioFinish))
-  if (days === 0) return 'Same capacity-model finish'
+  const deadline = validISODate(deadlineISO)
+  const finish = validISODate(finishISO)
+  if (!deadline || !finish) return 'Deadline comparison unavailable'
+  const days = differenceInCalendarDays(deadline, finish)
+  if (days === 0) return 'On the deadline'
+  const count = Math.abs(days)
   return days > 0
-    ? `${days} day${days === 1 ? '' : 's'} sooner`
-    : `${Math.abs(days)} day${Math.abs(days) === 1 ? '' : 's'} later`
+    ? `${count} day${count === 1 ? '' : 's'} early vs deadline`
+    : `${count} day${count === 1 ? '' : 's'} late vs deadline`
 }
 
 export function ProgressLabModal({
@@ -97,6 +115,10 @@ export function ProgressLabModal({
   historical = false,
   openerRef,
   capacityScenarioInput,
+  deadlineISO,
+  forecastFinishISO,
+  forecastBasis,
+  totalPlannedMinutes,
 }: ProgressLabModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -109,6 +131,16 @@ export function ProgressLabModal({
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string | null>(null)
   const [paceDeltaMinutes, setPaceDeltaMinutes] = useState<PaceDeltaMinutes>(0)
 
+  const paceScenario = useMemo(
+    () => capacityScenarioInput
+      ? computeCapacityScenario({ ...capacityScenarioInput, paceDeltaMinutes })
+      : null,
+    [capacityScenarioInput, paceDeltaMinutes],
+  )
+  const visibleForecastFinishISO = historical ? undefined : forecastFinishISO
+  const scenarioFinishISO = !historical && paceDeltaMinutes > 0
+    ? paceScenario?.finishDate ?? undefined
+    : undefined
   const dateDomain = useMemo(
     () => buildProgressLabDateDomain(
       data,
@@ -116,26 +148,24 @@ export function ProgressLabModal({
       referenceDateISO,
       weekStartISO,
       weekEndISO,
+      { deadlineISO, forecastFinishISO: visibleForecastFinishISO, scenarioFinishISO },
     ),
-    [data, range, referenceDateISO, weekEndISO, weekStartISO],
+    [
+      data,
+      deadlineISO,
+      range,
+      referenceDateISO,
+      scenarioFinishISO,
+      visibleForecastFinishISO,
+      weekEndISO,
+      weekStartISO,
+    ],
   )
   const selectedSummary = useMemo(
     () => selectedCheckpoint
       ? buildCheckpointSummary(data.actual, data.planned, selectedCheckpoint)
       : null,
     [data.actual, data.planned, selectedCheckpoint],
-  )
-  const baselineScenario = useMemo(
-    () => capacityScenarioInput
-      ? computeCapacityScenario({ ...capacityScenarioInput, paceDeltaMinutes: 0 })
-      : null,
-    [capacityScenarioInput],
-  )
-  const paceScenario = useMemo(
-    () => capacityScenarioInput
-      ? computeCapacityScenario({ ...capacityScenarioInput, paceDeltaMinutes })
-      : null,
-    [capacityScenarioInput, paceDeltaMinutes],
   )
 
   useEffect(() => {
@@ -201,6 +231,10 @@ export function ProgressLabModal({
     if (event.target === event.currentTarget) onClose()
   }
   const isBehind = data.deficit < 0
+  const planFinish = formattedFinish(deadlineISO)
+  const forecastFinish = formattedFinish(visibleForecastFinishISO)
+  const scenarioFinish = formattedFinish(scenarioFinishISO)
+  const hasPlannedTotal = Number.isFinite(totalPlannedMinutes) && (totalPlannedMinutes ?? 0) > 0
 
   return createPortal(
     <div
@@ -269,7 +303,11 @@ export function ProgressLabModal({
                   referenceLabel={referenceLabel}
                   selectedCheckpoint={selectedCheckpoint}
                   onCheckpointSelect={setSelectedCheckpoint}
-                  scenarioPoints={paceDeltaMinutes > 0 ? paceScenario?.points : undefined}
+                  deadlineISO={deadlineISO}
+                  forecastFinishISO={visibleForecastFinishISO}
+                  scenarioFinishISO={scenarioFinishISO}
+                  totalPlannedMinutes={totalPlannedMinutes}
+                  scenarioPoints={scenarioFinishISO ? paceScenario?.points : undefined}
                   style={{ height: '100%', minHeight: 0 }}
                 />
 
@@ -307,6 +345,8 @@ export function ProgressLabModal({
                 <div className="progress-lab-legend" aria-label="Chart legend">
                   <span><i className={isBehind ? 'actual is-behind' : 'actual is-ahead'} />Actual</span>
                   <span><i className="planned" />Planned</span>
+                  <span><i className="forecast" />GP forecast</span>
+                  {scenarioFinishISO && <span><i className="scenario" />Your pace</span>}
                   {isBehind && <span><i className="behind" />Behind</span>}
                 </div>
               </div>
@@ -335,6 +375,54 @@ export function ProgressLabModal({
               ))}
             </section>
 
+            <section className="progress-lab-section progress-lab-finish-section">
+              <div className="progress-lab-eyebrow">Finish outlook</div>
+              <div className="progress-lab-finish-narrative" aria-live="polite">
+                <p data-testid="finish-narrative-plan">
+                  <span className="progress-lab-finish-label">Plan</span>
+                  {!planFinish
+                    ? 'Plan finish is unavailable because the roadmap deadline is missing.'
+                    : !hasPlannedTotal
+                      ? 'Plan finish is unavailable because the planned total is missing.'
+                      : <>Stick to your planned slots and you finish <strong>{planFinish}</strong> - your deadline.</>}
+                </p>
+
+                {!historical && (
+                  <p data-testid="finish-narrative-forecast">
+                    <span className="progress-lab-finish-label">
+                      Forecast
+                      {forecastBasis === 'analytic' && (
+                        <span className="progress-lab-estimate">estimate</span>
+                      )}
+                    </span>
+                    {!forecastFinish
+                      ? 'Forecast is unavailable until a projection finish is ready.'
+                      : <>
+                          At your recent pace, your current trajectory finishes <strong>{forecastFinish}</strong>,{' '}
+                          {deadlineDifferenceLabel(deadlineISO, visibleForecastFinishISO)}.
+                        </>}
+                  </p>
+                )}
+
+                {!historical && (
+                  <p data-testid="finish-narrative-scenario">
+                    <span className="progress-lab-finish-label">Your pace</span>
+                    {!capacityScenarioInput || !paceScenario
+                      ? 'Pace scenario is unavailable until roadmap capacity is ready.'
+                      : paceDeltaMinutes === 0
+                        ? 'Choose extra minutes to compare a faster commitment.'
+                        : !scenarioFinish
+                          ? 'The selected pace does not have a finish date yet.'
+                          : <>
+                              Commit to +{paceDeltaMinutes} min per study day and you finish{' '}
+                              <strong>{scenarioFinish}</strong> -{' '}
+                              {deadlineDifferenceLabel(deadlineISO, scenarioFinishISO)}.
+                            </>}
+                  </p>
+                )}
+              </div>
+            </section>
+
             {!historical && (
               <section className="progress-lab-section progress-lab-pace-section">
                 <div className="progress-lab-eyebrow">Try a pace</div>
@@ -359,24 +447,6 @@ export function ProgressLabModal({
                   <span>Current</span>
                   <span>+60 min</span>
                 </div>
-
-                {capacityScenarioInput && paceScenario ? (
-                  <div className="progress-lab-scenario-result" aria-live="polite">
-                    <div className="progress-lab-eyebrow">Scenario finish</div>
-                    <strong>
-                      {paceScenario.finishDate
-                        ? format(parseISO(paceScenario.finishDate), 'MMM d, yyyy')
-                        : 'Unavailable'}
-                    </strong>
-                    <span>
-                      {scenarioDifferenceLabel(baselineScenario?.finishDate ?? null, paceScenario.finishDate)}
-                    </span>
-                  </div>
-                ) : (
-                  <p className="progress-lab-unavailable">
-                    Pace scenario is unavailable until roadmap capacity is ready.
-                  </p>
-                )}
 
                 {capacityScenarioInput ? (
                   <Link

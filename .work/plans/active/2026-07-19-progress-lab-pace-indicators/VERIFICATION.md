@@ -1,7 +1,7 @@
 # Progress Lab pace-indicators verification
 
 **Plan:** `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md`
-**Overall status:** 🟡 Implementation in progress - Phases 1-2 self-verified
+**Overall status:** 🟡 Implementation in progress - Phases 1-3 self-verified
 **Last updated:** 2026-07-19
 
 > Reviewer pre-fills acceptance criteria from the plan. Implementer (Codex/Sonnet) fills the
@@ -13,7 +13,7 @@
 ## Phase 1 - End dates: goal line, finish flags, domain, clipping
 
 ### Acceptance criteria
-- [ ] `BurnUpPlot` accepts optional `deadlineISO`, `forecastFinishISO`, `forecastBasis`, `scenarioFinishISO`, `totalPlannedMinutes`.
+- [ ] `BurnUpPlot` accepts optional `deadlineISO`, `forecastFinishISO`, `scenarioFinishISO`, `totalPlannedMinutes`.
 - [ ] Full-range domain includes every supplied finish date; right edge ≥ the latest finish (month/week ranges unchanged).
 - [ ] Planned staircase and scenario line are clipped at the total (no point/segment beyond the finish x).
 - [ ] Goal line renders at `totalPlannedMinutes` with the `PLAN COMPLETE · <total>` label and a done-zone tint above it.
@@ -56,7 +56,7 @@
 
 - Status: ✅ Implemented and self-verified - awaiting reviewer verification.
 - Files changed: `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`, plus this task's plan, verification log, status row, and scratchpad.
-- Commit SHA: this phase commit, `feat(progress-lab): add chart crosshair`.
+- Commit SHA: `2406381` (`feat(progress-lab): add chart crosshair`).
 - Commands + results: direct Vitest paths for `BurnUpChart.test.tsx`, `capacityScenario.test.ts`, and protected `Replan.test.tsx` passed 36 tests across 3 files.
   App typecheck passed.
 - Deviations + why: none.
@@ -75,13 +75,21 @@
 - [ ] `forecastBasis==='analytic'` shows the "estimate" tag; `'gp'` does not.
 - [ ] At Current pace: no scenario line; narrative reads "current trajectory → forecast" (no misleading capacity date).
 - [ ] Pace slider + `Replan with this pace` link unchanged (still `/replan?paceDeltaMinutes=N`, no `/study` prefix).
-- [ ] Week passes `forecastFinishISO`/`forecastBasis`/`deadlineISO`/`totalPlannedMinutes` for the current week, `undefined` when `isPastWeek`.
+- [ ] Week passes deadline and total for both views, while forecast finish and basis are withheld when `isPastWeek`.
 - [ ] Historical mode hides slider + forecast/scenario narrative + scenario/forecast flags; keeps goal line, Plan flag, crosshair.
 - [ ] Narrative + legend styles use design tokens (`form-design-spacing`).
 - [ ] `capacityScenario.ts` / `Replan.tsx` diffs empty; their suites green.
 
 ### Implementer report
-- Status: ☐ · Files changed: · Commit SHA: · Commands + results: · Deviations + why: · Self-check:
+
+- Status: ✅ Implemented and self-verified - awaiting reviewer verification.
+- Files changed: `apps/app/src/components/ProgressLabModal.tsx`, `apps/app/src/components/ProgressLabModal.css`, `apps/app/src/components/ProgressLabModal.test.tsx`, `apps/app/src/pages/Week.tsx`, `apps/app/src/pages/Week.test.tsx`, plus this task's plan, verification log, status row, and scratchpad.
+- Commit SHA: this phase commit, `feat(progress-lab): add finish narrative`.
+- Commands + results: direct Vitest paths for `BurnUpChart.test.tsx`, `ProgressLabModal.test.tsx`, `Week.test.tsx`, `capacityScenario.test.ts`, and protected `Replan.test.tsx` passed 58 tests across 5 files.
+  App typecheck and app lint passed.
+- Deviations + why: historical mode receives deadline and total so its goal line and Plan flag remain visible; only forecast and scenario values are withheld.
+  `forecastBasis` remains modal-only and is never passed to `BurnUpPlot`.
+- Self-check: the rail states distinct Plan, Forecast, and Your pace outcomes; only analytic projections carry the estimate tag; Current pace is described as the current trajectory with no scenario line or flag; +N keeps unchanged capacity math and deadline comparison; the Replan link stays basename-safe; unavailable inputs are explicit; current and historical Week wiring is covered; protected source and test diffs are empty.
 
 ### Reviewer findings
 - Status: ☐ · Per-criterion verdict: · Issues / required changes:

@@ -371,6 +371,10 @@ export function Week() {
           historical={isPastWeek}
           openerRef={progressLabOpenerRef}
           capacityScenarioInput={capacityScenarioInput}
+          deadlineISO={progressLabBurnUp.deadline ?? activeRoadmap?.deadline}
+          forecastFinishISO={isPastWeek ? undefined : progress.projection.finishDate ?? undefined}
+          forecastBasis={isPastWeek ? undefined : progress.projection.basis}
+          totalPlannedMinutes={progress.totalPlannedMinutes}
         />
       )}
     </div>
