@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-19-progress-lab-pace-indicators
 
-_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:22+0530_
+_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:25+0530_
 
 ## Now
 
-Initial documentation checkpoint before source implementation.
-Normalize task-authored dash typography, commit the task plan artifacts, then stabilize the pre-existing date-sensitive Home test.
+Phase 1 is next.
+Begin with focused BurnUpChart test-first cycles for finish-aware domains, trajectory clipping, goal line, flags, and legend entries.
 
 ## Alignment
 
@@ -28,8 +28,8 @@ All four implementation phases remain in plan order, with reviewer sections left
 
 ## Checklist
 
-- [ ] Commit initial task documentation and completed mock.
-- [ ] Make the Home projected-finish test deterministic and prove the complete app suite is green.
+- [x] Commit initial task documentation and completed mock.
+- [x] Make the Home projected-finish test deterministic and prove the complete app suite is green.
 - [ ] Implement and self-verify Phase 1 finish markers and goal line.
 - [ ] Implement and self-verify Phase 2 crosshair.
 - [ ] Implement and self-verify Phase 3 finish narrative and Week wiring.
@@ -38,7 +38,7 @@ All four implementation phases remain in plan order, with reviewer sections left
 
 ## In-flight edits
 
-- `.work/STATUS.md`, the task plan artifacts, mock decision log, and `mocks/final.html` are prepared but uncommitted.
+- `apps/app/src/pages/Home.test.tsx` has the focused clock stabilization and is ready for its test-stability commit.
 - `college/mydeliverables/phase1-ESA/design/phase1-esa-deck.html` is an unrelated user change and must remain unstaged.
 
 ## Decisions in force
@@ -56,3 +56,6 @@ All four implementation phases remain in plan order, with reviewer sections left
 
 - The expected dirty tree was confirmed.
   Task documentation is the intended initial commit, and the dissertation deck remains unrelated.
+- Documentation baseline committed at `959ccb9`.
+- The Home test failure was reproduced on 2026-07-19 because the projected finish rendered as `Tomorrow`.
+  A local frozen clock restored the intended `Jul 20` assertion, and the complete app suite passed 555 tests.
