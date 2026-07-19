@@ -1,7 +1,7 @@
 # Progress Lab pace-indicators verification
 
 **Plan:** `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md`
-**Overall status:** 🟡 Implementation in progress - Phases 1-3 self-verified
+**Overall status:** 🟡 Implemented and self-verified - awaiting reviewer verification
 **Last updated:** 2026-07-19
 
 > Reviewer pre-fills acceptance criteria from the plan. Implementer (Codex/Sonnet) fills the
@@ -84,7 +84,7 @@
 
 - Status: ✅ Implemented and self-verified - awaiting reviewer verification.
 - Files changed: `apps/app/src/components/ProgressLabModal.tsx`, `apps/app/src/components/ProgressLabModal.css`, `apps/app/src/components/ProgressLabModal.test.tsx`, `apps/app/src/pages/Week.tsx`, `apps/app/src/pages/Week.test.tsx`, plus this task's plan, verification log, status row, and scratchpad.
-- Commit SHA: this phase commit, `feat(progress-lab): add finish narrative`.
+- Commit SHA: `5427a14` (`feat(progress-lab): add finish narrative`).
 - Commands + results: direct Vitest paths for `BurnUpChart.test.tsx`, `ProgressLabModal.test.tsx`, `Week.test.tsx`, `capacityScenario.test.ts`, and protected `Replan.test.tsx` passed 58 tests across 5 files.
   App typecheck and app lint passed.
 - Deviations + why: historical mode receives deadline and total so its goal line and Plan flag remain visible; only forecast and scenario values are withheld.
@@ -106,7 +106,22 @@
 - [ ] `pnpm typecheck` + `pnpm lint` (repo-wide) clean; app suites green.
 
 ### Implementer report
-- Status: ☐ · Files changed: · Commit SHA: · Commands + results: · Screenshot evidence: · Deviations + why: · Self-check:
+
+- Status: ✅ Implemented and self-verified - awaiting reviewer verification.
+- Files changed: `e2e/week-progress-lab.spec.ts`, `apps/app/src/components/ProgressLabModal.css`, `apps/app/src/components/ProgressLabModal.tsx`, three task-local screenshots, plus this task's plan, verification log, status row, and scratchpad.
+- Commit SHA: this phase commit, `test(progress-lab): verify pace indicators end to end`.
+- Commands + results: the complete app suite passed 563 tests across 62 files.
+  Repository typecheck passed across the roadmap engine, progress package, React app, and Astro marketing app.
+  Repository lint passed across all configured workspaces.
+  The seeded `week-progress-lab.spec.ts` app project passed with the managed full-app runtime healthy, including current and historical crosshair behavior, the slider transition, Replan parity, overflow checks, focus restoration, and zero console or page errors.
+  A diff from documentation baseline `959ccb9` confirmed the capacity scenario implementation and tests plus both Replan test surfaces are byte-identical.
+- Screenshot evidence: `screenshots/progress-lab-1440x900.png`, `screenshots/progress-lab-1024x600.png`, and `screenshots/progress-lab-390x844.png`.
+  Manual original-resolution inspection confirmed no clipping, scroll overflow, crowded unreadable flags, out-of-bounds axes, rail collapse, or modal overflow.
+- Deviations + why: local DNS resolved the Supabase host to a Zscaler bad-certificate endpoint.
+  The spec now supports an optional `E2E_SUPABASE_IP` secure direct-host path for test-user creation and Chromium host resolution, preserving certificate validation instead of disabling TLS.
+  Mobile-only rail and footer spacing was compacted with design tokens after the real screenshot exposed a compressed chart.
+- Self-check: the E2E asserts the goal line, Plan and Forecast flags, current narrative, blank-plot crosshair, slider-to-scenario transition, Your pace flag, narrative finish, Replan parity, historical Plan-only mode, checkpoint and layer interactions, focus and dismissal, three viewport bounds, and clean browser errors.
+  Protected source and tests remain unchanged, all three screenshots were inspected, and reviewer fields remain unclaimed.
 
 ### Reviewer findings
 - Status: ☐ · Per-criterion verdict: · Issues / required changes:

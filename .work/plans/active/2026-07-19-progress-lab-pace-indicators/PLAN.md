@@ -2,7 +2,7 @@
 
 **Slug:** `2026-07-19-progress-lab-pace-indicators`
 **Date written:** 2026-07-19
-**Plan status:** Ready for implementation
+**Plan status:** Implemented and self-verified - awaiting reviewer verification
 **Primary executor:** Codex (gpt-5.5); Claude Code (Sonnet) secondary
 **Visual source of truth:** `.work/active/progress-lab-pace-indicators/mocks/final.html`
 **Decision source:** `.work/active/progress-lab-pace-indicators/mocks/DECISIONS.md`
@@ -242,8 +242,8 @@ pnpm --filter @study-tracker/app typecheck
    `forecastBasis==='analytic'`) · Pace scenario line driven by the slider. Reuse
    `scenarioDifferenceLabel`/`differenceInCalendarDays` for the "N days early/late vs deadline".
 3. Keep the pace slider and `Replan with this pace` link exactly as-is (`:347-392`).
-4. At `paceDeltaMinutes === 0`: no scenario line (already gated at `:272`), and the narrative
-   scenario line reads "current trajectory → forecast" (D-05).
+4. At `paceDeltaMinutes === 0`: no scenario line (already gated at `:272`), and the Forecast
+   sentence names the projection as the current trajectory (D-05).
 5. Thread `deadlineISO`/`forecastFinishISO`/`scenarioFinishISO`(= `paceScenario?.finishDate`
    when `>0`)/`totalPlannedMinutes` into `BurnUpPlot` (Phase 1 props).
 6. Historical mode hides the pace slider + Forecast/Your-pace narrative + scenario flags (D-06).
@@ -265,7 +265,7 @@ pnpm --filter @study-tracker/app lint
 
 ## Phase 4 - Integration, regression proof, visual verification
 
-**Status:** ☐ Not started · **Depends on:** Phase 3
+**Status:** 🟡 Implemented and self-verified - awaiting reviewer verification · **Depends on:** Phase 3
 
 ### Steps
 1. Extend `e2e/week-progress-lab.spec.ts` (authenticated seeded flow): open the modal, assert

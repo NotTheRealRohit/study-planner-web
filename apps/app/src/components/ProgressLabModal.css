@@ -198,6 +198,7 @@
 
 .progress-lab-chart-stage svg {
   display: block;
+  overflow: hidden;
 }
 
 .progress-lab-checkpoint {
@@ -362,9 +363,15 @@
 }
 
 .progress-lab-section {
-  padding-bottom: 19px;
-  margin-bottom: 19px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
   border-bottom: 1px solid var(--border-default, #d9cdb8);
+}
+
+.progress-lab-section:last-child {
+  padding-bottom: 0;
+  margin-bottom: 0;
+  border-bottom: 0;
 }
 
 .progress-lab-layer-row {
@@ -425,8 +432,8 @@
 
 .progress-lab-finish-narrative {
   display: grid;
-  gap: var(--space-3, 12px);
-  margin-top: var(--space-3, 12px);
+  gap: var(--space-2, 8px);
+  margin-top: var(--space-2, 8px);
 }
 
 .progress-lab-finish-narrative p {
@@ -642,17 +649,26 @@
   }
 
   .progress-lab-burn-footer {
-    align-items: center;
-    font-size: 18px;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 14px;
+    line-height: 1.05;
+  }
+
+  .progress-lab-burn-footer > div:first-child {
+    max-width: 100px;
   }
 
   .progress-lab-legend {
-    gap: 7px;
-    font-size: 8px;
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    justify-content: end;
+    gap: 4px 7px;
+    font-size: 7px;
   }
 
   .progress-lab-legend i {
-    width: 15px;
+    width: 12px;
   }
 
   .progress-lab-checkpoint {
@@ -687,15 +703,23 @@
     padding: 8px 10px;
   }
 
-  .progress-lab-pace-section {
-    display: block;
+  .progress-lab-finish-narrative {
+    gap: var(--space-1, 4px);
+    margin-top: var(--space-1, 4px);
   }
 
-  .progress-lab-pace-section > .progress-lab-primary {
-    margin-top: 6px;
+  .progress-lab-finish-narrative p {
+    padding: 5px 7px;
+    font-size: 10px;
+    line-height: 1.28;
+  }
+
+  .progress-lab-finish-narrative strong {
+    font-size: 11px;
   }
 
   .progress-lab-layer-row {
+    padding: 2px 0;
     font-size: 11px;
   }
 
@@ -750,12 +774,12 @@
   }
 
   .progress-lab-finish-narrative {
-    gap: 6px;
-    margin-top: 6px;
+    gap: var(--space-1, 4px);
+    margin-top: var(--space-1, 4px);
   }
 
   .progress-lab-finish-narrative p {
-    padding: 6px 8px;
+    padding: var(--space-1, 4px) var(--space-2, 8px);
   }
 
   .progress-lab-section {

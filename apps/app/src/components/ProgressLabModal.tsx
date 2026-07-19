@@ -308,7 +308,7 @@ export function ProgressLabModal({
                   scenarioFinishISO={scenarioFinishISO}
                   totalPlannedMinutes={totalPlannedMinutes}
                   scenarioPoints={scenarioFinishISO ? paceScenario?.points : undefined}
-                  style={{ height: '100%', minHeight: 0 }}
+                  style={{ height: '100%', minHeight: 0, overflow: 'hidden' }}
                 />
 
                 {selectedSummary && (
