@@ -33,8 +33,6 @@ __pycache__/
 research/datasets/**
 !research/datasets/**/
 !research/datasets/**/manifest.json
-!research/datasets/NeurIPS 2020.zip
-!research/datasets/ACcoding.zip
 !research/datasets/acoding/ACcoding.zip
 research/results/
 research/kt-bench/.venv/
