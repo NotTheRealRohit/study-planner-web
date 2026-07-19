@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-19-progress-lab-pace-indicators
 
-_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:33+0530_
+_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:43+0530_
 
 ## Now
 
-Phase 1 is implemented and self-verified.
-Phase 2 is next, beginning with pure step and linear interpolation helpers before the mouse-only chart overlay.
+Phase 2 is implemented and self-verified.
+Phase 3 is next, beginning with the modal narrative contract and current-versus-historical wiring tests.
 
 ## Alignment
 
@@ -35,14 +35,18 @@ All four implementation phases remain in plan order, with reviewer sections left
   - [x] Clip planned and scenario trajectories at completion.
   - [x] Render the goal line, done zone, flags, and GP connector safely.
   - [x] Add GP forecast and Your pace legend entries.
-- [ ] Implement and self-verify Phase 2 crosshair.
+- [x] Implement and self-verify Phase 2 crosshair.
+  - [x] Add pure bounded step and linear interpolation helpers.
+  - [x] Add a blank-plot hover overlay behind checkpoint hit targets.
+  - [x] Render guides, axis pills, series dots, and a bounded readout.
+  - [x] Clear hover on mouse leave without changing checkpoint keyboard behavior.
 - [ ] Implement and self-verify Phase 3 finish narrative and Week wiring.
 - [ ] Implement and self-verify Phase 4 E2E coverage and screenshots.
 - [ ] Run final full verification and protected-file checks.
 
 ## In-flight edits
 
-- Phase 1 chart source, tests, dev harness, and journal updates are ready for the feature commit.
+- Phase 2 chart source, tests, and journal updates are ready for the feature commit.
 - `college/mydeliverables/phase1-ESA/design/phase1-esa-deck.html` is an unrelated user change and must remain unstaged.
 
 ## Decisions in force
@@ -64,4 +68,7 @@ All four implementation phases remain in plan order, with reviewer sections left
 - The Home test failure was reproduced on 2026-07-19 because the projected finish rendered as `Tomorrow`.
   A local frozen clock restored the intended `Jul 20` assertion, and the complete app suite passed 555 tests.
 - Phase 1 passed 33 focused tests across the chart and protected Replan surfaces, plus app typecheck.
+  Protected source and test diffs remained empty.
+- Phase 1 committed at `27e6104`.
+- Phase 2 passed 36 focused tests across the chart and protected Replan surfaces, plus app typecheck.
   Protected source and test diffs remained empty.

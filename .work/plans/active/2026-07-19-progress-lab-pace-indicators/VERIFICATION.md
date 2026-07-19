@@ -1,7 +1,7 @@
 # Progress Lab pace-indicators verification
 
 **Plan:** `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md`
-**Overall status:** 🟡 Implementation in progress - Phase 1 self-verified
+**Overall status:** 🟡 Implementation in progress - Phases 1-2 self-verified
 **Last updated:** 2026-07-19
 
 > Reviewer pre-fills acceptance criteria from the plan. Implementer (Codex/Sonnet) fills the
@@ -28,7 +28,7 @@
 
 - Status: ✅ Implemented and self-verified - awaiting reviewer verification.
 - Files changed: `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`, `apps/app/src/components/BurnUpChartTest.tsx`, plus this task's plan, verification log, status row, and scratchpad.
-- Commit SHA: this phase commit, `feat(progress-lab): add finish markers and goal line`.
+- Commit SHA: `27e6104` (`feat(progress-lab): add finish markers and goal line`).
 - Commands + results: direct Vitest paths for `BurnUpChart.test.tsx`, `capacityScenario.test.ts`, and protected `Replan.test.tsx` passed 33 tests across 3 files.
   App typecheck passed.
 - Deviations + why: `forecastBasis` was intentionally kept out of `BurnUpPlot` per the corrected implementation contract.
@@ -53,7 +53,14 @@
 - [ ] `capacityScenario.ts` / `Replan.tsx` diffs empty; their suites green.
 
 ### Implementer report
-- Status: ☐ · Files changed: · Commit SHA: · Commands + results: · Deviations + why: · Self-check:
+
+- Status: ✅ Implemented and self-verified - awaiting reviewer verification.
+- Files changed: `apps/app/src/components/BurnUpChart.tsx`, `apps/app/src/components/BurnUpChart.test.tsx`, plus this task's plan, verification log, status row, and scratchpad.
+- Commit SHA: this phase commit, `feat(progress-lab): add chart crosshair`.
+- Commands + results: direct Vitest paths for `BurnUpChart.test.tsx`, `capacityScenario.test.ts`, and protected `Replan.test.tsx` passed 36 tests across 3 files.
+  App typecheck passed.
+- Deviations + why: none.
+- Self-check: bounded step and linear helpers cover planned, actual, GP, and scenario values; actual is unavailable after today; the transparent hit area has `pointerEvents: all` and precedes checkpoint targets; hover renders both guides, date and hours pills, per-series dots, and an in-bounds readout; Current pace omits scenario values; mouse leave clears the crosshair; checkpoint Enter behavior remains intact; protected source and test diffs are empty.
 
 ### Reviewer findings
 - Status: ☐ · Per-criterion verdict: · Issues / required changes:

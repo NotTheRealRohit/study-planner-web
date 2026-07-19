@@ -1,4 +1,11 @@
-import { useMemo, useState, type CSSProperties, type KeyboardEvent, type Ref } from 'react';
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type Ref,
+} from 'react';
 import { scaleTime, scaleLinear } from '@visx/scale';
 import { AreaClosed, LinePath, Line } from '@visx/shape';
 import { AxisLeft } from '@visx/axis';
@@ -56,6 +63,13 @@ export interface CheckpointSummary {
 export interface ScenarioChartPoint {
   date: string;
   minutes: number;
+}
+
+interface CrosshairSeriesValue {
+  key: string;
+  label: string;
+  color: string;
+  value: number;
 }
 
 export interface FinishDateInputs {
@@ -203,6 +217,57 @@ export function plannedMinutesAtDate(planned: CumulativePoint[], dateISO: string
     result = point.minutes;
   }
   return result;
+}
+
+export function interpolateStepMinutes(
+  points: CumulativePoint[],
+  dateISO: string,
+  availableThroughISO?: string,
+): number | null {
+  if (availableThroughISO && dateISO > availableThroughISO) return null;
+  const ordered = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  if (ordered.length === 0 || dateISO < ordered[0].date || dateISO > ordered[ordered.length - 1].date) {
+    return null;
+  }
+  return plannedMinutesAtDate(ordered, dateISO);
+}
+
+function interpolateLinearValue<T extends { date: string }>(
+  points: T[],
+  dateISO: string,
+  valueFor: (point: T) => number,
+  availableThroughISO?: string,
+): number | null {
+  if (availableThroughISO && dateISO > availableThroughISO) return null;
+  const ordered = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  if (ordered.length === 0 || dateISO < ordered[0].date || dateISO > ordered[ordered.length - 1].date) {
+    return null;
+  }
+  const exact = ordered.find((point) => point.date === dateISO);
+  if (exact) return valueFor(exact);
+  const before = [...ordered].reverse().find((point) => point.date < dateISO);
+  const after = ordered.find((point) => point.date > dateISO);
+  if (!before || !after) return null;
+  const beforeTime = parseISODateUTC(before.date).getTime();
+  const afterTime = parseISODateUTC(after.date).getTime();
+  const dateTime = parseISODateUTC(dateISO).getTime();
+  const ratio = (dateTime - beforeTime) / (afterTime - beforeTime);
+  return valueFor(before) + (valueFor(after) - valueFor(before)) * ratio;
+}
+
+export function interpolateLinearMinutes(
+  points: CumulativePoint[],
+  dateISO: string,
+  availableThroughISO?: string,
+): number | null {
+  return interpolateLinearValue(points, dateISO, (point) => point.minutes, availableThroughISO);
+}
+
+export function interpolateGPMean(
+  points: BurnUpData['gpCurve'],
+  dateISO: string,
+): number | null {
+  return interpolateLinearValue(points, dateISO, (point) => point.mean);
 }
 
 export function buildCheckpointSummary(
@@ -383,19 +448,6 @@ export function clipPlannedPoints(
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function linearMinutesAtDate(points: ScenarioChartPoint[], dateISO: string): number | null {
-  const exact = points.find((point) => point.date === dateISO);
-  if (exact) return exact.minutes;
-  const before = [...points].reverse().find((point) => point.date < dateISO);
-  const after = points.find((point) => point.date > dateISO);
-  if (!before || !after) return null;
-  const beforeTime = parseISODateUTC(before.date).getTime();
-  const afterTime = parseISODateUTC(after.date).getTime();
-  const dateTime = parseISODateUTC(dateISO).getTime();
-  const ratio = (dateTime - beforeTime) / (afterTime - beforeTime);
-  return before.minutes + (after.minutes - before.minutes) * ratio;
-}
-
 export function clipScenarioPoints(
   points: ScenarioChartPoint[],
   domain: [Date, Date],
@@ -407,8 +459,8 @@ export function clipScenarioPoints(
   const validFinish = parseOptionalISODateUTC(scenarioFinishISO);
   const endISO = toISODate(validFinish && validFinish < domain[1] ? validFinish : domain[1]);
   const bounded = ordered.filter((point) => point.date >= startISO && point.date <= endISO);
-  const startMinutes = linearMinutesAtDate(ordered, startISO);
-  const endMinutes = linearMinutesAtDate(ordered, endISO);
+  const startMinutes = interpolateLinearMinutes(ordered, startISO);
+  const endMinutes = interpolateLinearMinutes(ordered, endISO);
   if (startMinutes !== null) bounded.push({ date: startISO, minutes: startMinutes });
   if (endMinutes !== null) bounded.push({ date: endISO, minutes: endMinutes });
 
@@ -462,6 +514,7 @@ function BurnUpPlotInner({
   scenarioFinishISO,
   totalPlannedMinutes,
 }: InnerProps) {
+  const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null);
   const isBehind = data.deficit < 0;
   const accentColor = isBehind ? C.rust : C.moss;
   const finishInputs = { deadlineISO, forecastFinishISO, scenarioFinishISO };
@@ -550,6 +603,37 @@ function BurnUpPlotInner({
   ].flatMap((marker) => marker.date !== null && isWithinDomain(marker.date, dateDomain)
     ? [{ ...marker, date: marker.date }]
     : []);
+  const hoverDate = hoverPoint ? startOfUTCDate(xScale.invert(hoverPoint.x)) : null;
+  const hoverDateISO = hoverDate ? toISODate(hoverDate) : null;
+  const crosshairSeries: CrosshairSeriesValue[] = [];
+  const addCrosshairSeries = (
+    key: string,
+    label: string,
+    color: string,
+    value: number | null,
+  ) => {
+    if (value !== null) crosshairSeries.push({ key, label, color, value });
+  };
+  if (hoverDateISO) {
+    if (layers.planned) {
+      addCrosshairSeries('planned', 'Planned', C.inkFaint, interpolateStepMinutes(plannedPoints, hoverDateISO));
+    }
+    addCrosshairSeries(
+      'actual',
+      'Actual',
+      accentColor,
+      interpolateLinearMinutes(actualPoints, hoverDateISO, data.today),
+    );
+    if (layers.projection) {
+      addCrosshairSeries('gp', 'GP forecast', accentColor, interpolateGPMean(gpPoints, hoverDateISO));
+    }
+    addCrosshairSeries(
+      'scenario',
+      'Your pace',
+      C.moss,
+      interpolateLinearMinutes(visibleScenario, hoverDateISO),
+    );
+  }
 
   const behindPath = useMemo(() => {
     if (!isBehind || actualParsed.length < 2) return null;
@@ -566,10 +650,28 @@ function BurnUpPlotInner({
     onCheckpointSelect?.(dateISO);
   };
 
+  const updateHoverPoint = (event: ReactMouseEvent<SVGSVGElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const x = (event.clientX - rect.left) * (width / rect.width) - MARGIN.left;
+    const y = (event.clientY - rect.top) * (height / rect.height) - MARGIN.top;
+    if (x < 0 || x > xMax || y < 0 || y > yMax) {
+      setHoverPoint(null);
+      return;
+    }
+    setHoverPoint({ x, y });
+  };
+
   if (width < 10 || height < 10) return null;
 
   return (
-    <svg width={width} height={height} aria-label="Hours studied versus plan">
+    <svg
+      width={width}
+      height={height}
+      aria-label="Hours studied versus plan"
+      onMouseMove={updateHoverPoint}
+      onMouseLeave={() => setHoverPoint(null)}
+    >
       <rect x={0} y={0} width={width} height={height} fill={C.card} />
 
       <Group left={MARGIN.left} top={MARGIN.top}>
@@ -597,6 +699,16 @@ function BurnUpPlotInner({
             pointerEvents="none"
           />
         )}
+
+        <rect
+          data-testid="crosshair-hit-area"
+          x={0}
+          y={0}
+          width={xMax}
+          height={yMax}
+          fill="transparent"
+          style={{ pointerEvents: 'all', cursor: 'crosshair' }}
+        />
 
         {behindPath && behindPath.length >= 2 && (
           <AreaClosed
@@ -891,6 +1003,142 @@ function BurnUpPlotInner({
             pointerEvents: 'none' as const,
           })}
         />
+
+        {hoverPoint && hoverDate && (
+          <g pointerEvents="none">
+            <g data-testid="crosshair-guides">
+              <line
+                x1={hoverPoint.x}
+                x2={hoverPoint.x}
+                y1={0}
+                y2={yMax}
+                stroke={C.inkSoft}
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                opacity={0.55}
+              />
+              <line
+                x1={0}
+                x2={xMax}
+                y1={hoverPoint.y}
+                y2={hoverPoint.y}
+                stroke={C.inkSoft}
+                strokeWidth={1}
+                strokeDasharray="3 3"
+                opacity={0.45}
+              />
+            </g>
+
+            {crosshairSeries.map((series) => (
+              <circle
+                key={series.key}
+                data-testid={`crosshair-dot-${series.key}`}
+                cx={hoverPoint.x}
+                cy={yScale(series.value)}
+                r={4}
+                fill={series.color}
+                stroke={C.card}
+                strokeWidth={1.5}
+              />
+            ))}
+
+            <g data-testid="crosshair-hours-pill">
+              <rect
+                x={-54}
+                y={Math.max(0, Math.min(yMax - 18, hoverPoint.y - 9))}
+                width={50}
+                height={18}
+                rx={4}
+                fill={C.ink}
+              />
+              <text
+                x={-8}
+                y={Math.max(13, Math.min(yMax - 5, hoverPoint.y + 4))}
+                textAnchor="end"
+                fill={C.card}
+                style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10 }}
+              >
+                {minutesToLabel(yScale.invert(hoverPoint.y))}
+              </text>
+            </g>
+
+            <g data-testid="crosshair-date-pill">
+              <rect
+                x={Math.max(0, Math.min(xMax - 58, hoverPoint.x - 29))}
+                y={yMax + 2}
+                width={58}
+                height={18}
+                rx={4}
+                fill={C.ink}
+              />
+              <text
+                x={Math.max(29, Math.min(xMax - 29, hoverPoint.x))}
+                y={yMax + 15}
+                textAnchor="middle"
+                fill={C.card}
+                style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10 }}
+              >
+                {format(hoverDate, 'MMM d')}
+              </text>
+            </g>
+
+            {(() => {
+              const boxWidth = 160;
+              const rowHeight = 16;
+              const boxHeight = 26 + crosshairSeries.length * rowHeight;
+              const boxX = hoverPoint.x + 12 + boxWidth <= xMax
+                ? hoverPoint.x + 12
+                : Math.max(0, hoverPoint.x - boxWidth - 12);
+              const boxY = Math.max(4, Math.min(yMax - boxHeight - 4, hoverPoint.y + 12));
+              return (
+                <g data-testid="crosshair-readout">
+                  <rect
+                    x={boxX}
+                    y={boxY}
+                    width={boxWidth}
+                    height={boxHeight}
+                    rx={8}
+                    fill="#FFFDF7"
+                    stroke={C.rule}
+                  />
+                  <text
+                    x={boxX + 11}
+                    y={boxY + 16}
+                    fill={C.inkSoft}
+                    style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10, fontWeight: 700 }}
+                  >
+                    {format(hoverDate, 'MMM d')}
+                  </text>
+                  {crosshairSeries.map((series, index) => {
+                    const rowY = boxY + 32 + index * rowHeight;
+                    return (
+                      <g key={series.key}>
+                        <circle cx={boxX + 13} cy={rowY - 4} r={4} fill={series.color} />
+                        <text
+                          x={boxX + 24}
+                          y={rowY}
+                          fill={C.inkSoft}
+                          style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10 }}
+                        >
+                          {series.label}
+                        </text>
+                        <text
+                          x={boxX + boxWidth - 10}
+                          y={rowY}
+                          textAnchor="end"
+                          fill={C.ink}
+                          style={{ fontFamily: "'JetBrains Mono', ui-monospace, monospace", fontSize: 10, fontWeight: 700 }}
+                        >
+                          {minutesToLabel(series.value)}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              );
+            })()}
+          </g>
+        )}
       </Group>
     </svg>
   );

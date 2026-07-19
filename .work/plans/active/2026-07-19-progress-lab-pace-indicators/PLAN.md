@@ -200,7 +200,7 @@ pnpm --filter @study-tracker/app typecheck
 
 ## Phase 2 - Coordinate crosshair (variation B)
 
-**Status:** ☐ Not started · **Depends on:** Phase 1
+**Status:** 🟡 Implemented and self-verified - awaiting reviewer verification · **Depends on:** Phase 1
 
 ### Steps
 1. Add a transparent overlay hit-rect over the plot area capturing `mousemove`/`mouseleave`

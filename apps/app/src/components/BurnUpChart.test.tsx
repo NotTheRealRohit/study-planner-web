@@ -13,6 +13,9 @@ import {
   clipPlannedPoints,
   clipScenarioPoints,
   hasMeaningfulBurnUpData,
+  interpolateGPMean,
+  interpolateLinearMinutes,
+  interpolateStepMinutes,
   minutesToLabel,
   plannedMinutesAtDate,
   resolveLayerVisibility,
@@ -198,6 +201,25 @@ describe('BurnUpChart helpers', () => {
     ])
   })
 
+  it('uses step and linear interpolation with explicit availability bounds', () => {
+    const cumulative = [
+      { date: '2026-07-01', minutes: 60 },
+      { date: '2026-07-05', minutes: 180 },
+    ]
+    const gpCurve = [
+      { date: '2026-07-05', mean: 180, lower: 150, upper: 210 },
+      { date: '2026-07-09', mean: 300, lower: 240, upper: 360 },
+    ]
+
+    expect(interpolateStepMinutes(cumulative, '2026-07-03')).toBe(60)
+    expect(interpolateStepMinutes(cumulative, '2026-06-30')).toBeNull()
+    expect(interpolateStepMinutes(cumulative, '2026-07-06')).toBeNull()
+    expect(interpolateLinearMinutes(cumulative, '2026-07-03')).toBe(120)
+    expect(interpolateLinearMinutes(cumulative, '2026-07-05', '2026-07-04')).toBeNull()
+    expect(interpolateGPMean(gpCurve, '2026-07-07')).toBe(240)
+    expect(interpolateGPMean(gpCurve, '2026-07-10')).toBeNull()
+  })
+
   it('gives every visible checkpoint a deterministic tick and reduces compact long-range labels', () => {
     const actual = [
       { date: '2026-07-01', minutes: 0 },
@@ -344,6 +366,93 @@ describe('BurnUpPlot finish indicators', () => {
     expect(screen.queryByTestId('burn-up-goal-line')).not.toBeInTheDocument()
     expect(screen.queryByTestId('finish-flag-plan')).not.toBeInTheDocument()
     expect(screen.queryByTestId('finish-flag-forecast')).not.toBeInTheDocument()
+  })
+
+  it('shows coordinate guides and future line values on blank-chart hover, then clears them', () => {
+    const onCheckpointSelect = vi.fn()
+    render(
+      <BurnUpPlot
+        data={plottedData}
+        deadlineISO="2026-07-12"
+        forecastFinishISO="2026-07-14"
+        scenarioFinishISO="2026-07-16"
+        totalPlannedMinutes={240}
+        onCheckpointSelect={onCheckpointSelect}
+        scenarioPoints={[
+          { date: '2026-07-08', minutes: 100 },
+          { date: '2026-07-14', minutes: 210 },
+          { date: '2026-07-16', minutes: 240 },
+        ]}
+      />,
+    )
+
+    const svg = screen.getByLabelText('Hours studied versus plan')
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 400,
+      width: 800,
+      height: 400,
+      toJSON: () => ({}),
+    })
+    const hitArea = screen.getByTestId('crosshair-hit-area')
+    const checkpoint = screen.getByTestId('checkpoint-2026-07-08')
+    expect(hitArea).toHaveStyle({ pointerEvents: 'all' })
+    expect(hitArea.compareDocumentPosition(checkpoint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.mouseMove(hitArea, { clientX: 419, clientY: 150 })
+
+    expect(screen.getByTestId('crosshair-guides')).toBeInTheDocument()
+    expect(screen.getByTestId('crosshair-date-pill')).toHaveTextContent('Jul 10')
+    expect(screen.getByTestId('crosshair-hours-pill')).toBeInTheDocument()
+    const readout = screen.getByTestId('crosshair-readout')
+    expect(readout).toHaveTextContent('GP forecast')
+    expect(readout).toHaveTextContent('Your pace')
+    expect(readout).not.toHaveTextContent('Actual')
+    expect(screen.getByTestId('crosshair-dot-gp')).toBeInTheDocument()
+    expect(screen.getByTestId('crosshair-dot-scenario')).toBeInTheDocument()
+    expect(screen.queryByTestId('crosshair-dot-actual')).not.toBeInTheDocument()
+
+    fireEvent.keyDown(checkpoint, { key: 'Enter' })
+    expect(onCheckpointSelect).toHaveBeenCalledWith('2026-07-08')
+
+    fireEvent.mouseLeave(svg)
+    expect(screen.queryByTestId('crosshair-guides')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('crosshair-readout')).not.toBeInTheDocument()
+  })
+
+  it('omits the scenario readout and dot when no pace scenario is active', () => {
+    render(
+      <BurnUpPlot
+        data={plottedData}
+        deadlineISO="2026-07-12"
+        forecastFinishISO="2026-07-14"
+        totalPlannedMinutes={240}
+      />,
+    )
+
+    const svg = screen.getByLabelText('Hours studied versus plan')
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 400,
+      width: 800,
+      height: 400,
+      toJSON: () => ({}),
+    })
+    fireEvent.mouseMove(screen.getByTestId('crosshair-hit-area'), { clientX: 374, clientY: 150 })
+
+    const readout = screen.getByTestId('crosshair-readout')
+    expect(readout).toHaveTextContent('Actual')
+    expect(readout).toHaveTextContent('GP forecast')
+    expect(readout).not.toHaveTextContent('Your pace')
+    expect(screen.queryByTestId('crosshair-dot-scenario')).not.toBeInTheDocument()
   })
 })
 
