@@ -1,11 +1,11 @@
 # Scratchpad - 2026-07-19-progress-lab-pace-indicators
 
-_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:25+0530_
+_Plan: `.work/plans/active/2026-07-19-progress-lab-pace-indicators/PLAN.md` | Log: `VERIFICATION.md` | Updated: 2026-07-19T08:33+0530_
 
 ## Now
 
-Phase 1 is next.
-Begin with focused BurnUpChart test-first cycles for finish-aware domains, trajectory clipping, goal line, flags, and legend entries.
+Phase 1 is implemented and self-verified.
+Phase 2 is next, beginning with pure step and linear interpolation helpers before the mouse-only chart overlay.
 
 ## Alignment
 
@@ -30,7 +30,11 @@ All four implementation phases remain in plan order, with reviewer sections left
 
 - [x] Commit initial task documentation and completed mock.
 - [x] Make the Home projected-finish test deterministic and prove the complete app suite is green.
-- [ ] Implement and self-verify Phase 1 finish markers and goal line.
+- [x] Implement and self-verify Phase 1 finish markers and goal line.
+  - [x] Extend only the full-plan domain for supplied finishes with right-edge padding.
+  - [x] Clip planned and scenario trajectories at completion.
+  - [x] Render the goal line, done zone, flags, and GP connector safely.
+  - [x] Add GP forecast and Your pace legend entries.
 - [ ] Implement and self-verify Phase 2 crosshair.
 - [ ] Implement and self-verify Phase 3 finish narrative and Week wiring.
 - [ ] Implement and self-verify Phase 4 E2E coverage and screenshots.
@@ -38,7 +42,7 @@ All four implementation phases remain in plan order, with reviewer sections left
 
 ## In-flight edits
 
-- `apps/app/src/pages/Home.test.tsx` has the focused clock stabilization and is ready for its test-stability commit.
+- Phase 1 chart source, tests, dev harness, and journal updates are ready for the feature commit.
 - `college/mydeliverables/phase1-ESA/design/phase1-esa-deck.html` is an unrelated user change and must remain unstaged.
 
 ## Decisions in force
@@ -59,3 +63,5 @@ All four implementation phases remain in plan order, with reviewer sections left
 - Documentation baseline committed at `959ccb9`.
 - The Home test failure was reproduced on 2026-07-19 because the projected finish rendered as `Tomorrow`.
   A local frozen clock restored the intended `Jul 20` assertion, and the complete app suite passed 555 tests.
+- Phase 1 passed 33 focused tests across the chart and protected Replan surfaces, plus app typecheck.
+  Protected source and test diffs remained empty.

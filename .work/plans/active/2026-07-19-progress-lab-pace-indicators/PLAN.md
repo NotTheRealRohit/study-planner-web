@@ -6,46 +6,46 @@
 **Primary executor:** Codex (gpt-5.5); Claude Code (Sonnet) secondary
 **Visual source of truth:** `.work/active/progress-lab-pace-indicators/mocks/final.html`
 **Decision source:** `.work/active/progress-lab-pace-indicators/mocks/DECISIONS.md`
-**Per-decision mocks:** `.work/active/progress-lab-pace-indicators/mocks/decisions/decision-02--¶04-*.html`
+**Per-decision mocks:** `.work/active/progress-lab-pace-indicators/mocks/decisions/decision-02‚Ä¶04-*.html`
 **Verification log:** `.work/plans/active/2026-07-19-progress-lab-pace-indicators/VERIFICATION.md`
 
 ## Implementation protocol (read first)
 
-1. **Step 0, before writing any source code:** commit these planning docs verbatim ---
+1. **Step 0, before writing any source code:** commit these planning docs verbatim -
    `docs(plan): add progress-lab pace-indicators plan + verification`. Cowork cannot commit
    (git is read-only there); this establishes the baseline so later diffs are meaningful.
 2. Work the four phases **in order**; each is an independently shippable vertical slice.
 3. **After each phase**, fill your section of `VERIFICATION.md` (files changed, commit SHA,
    commands run, deviations + why, self-check vs. the acceptance criteria) and expect review.
-   A phase is not done until the reviewer marks it `-úÖ Verified`; change requests may follow.
+   A phase is not done until the reviewer marks it `‚úÖ Verified`; change requests may follow.
 4. Keep unrelated working-tree changes unstaged.
 5. **Hard constraint (Option X):** do **not** modify `apps/app/src/roadmap/replan/capacityScenario.ts`
    or `apps/app/src/pages/Replan.tsx`, and do not change `computeCapacityScenario`'s `finishDate`
    math. This plan is **presentational** and consumes existing data. `capacityScenario.test.ts`
-   and `Replan.test.tsx` must remain byte-identical and green --- that is the proof the rework
+   and `Replan.test.tsx` must remain byte-identical and green - that is the proof the rework
    left Replan untouched (see D-07).
 6. Read the cited rule before touching each area: `.claude/rules/<name>.md` (Sonnet) /
    `.agents/rules/<name>.agents.md` (Codex).
 
 ## Summary
 
-The Week -Üí Progress Lab modal ships today (`2026-07-18-week-progress-lab`, -úÖ). A reported bug:
+The Week ‚Üí Progress Lab modal ships today (`2026-07-18-week-progress-lab`, ‚úÖ). A reported bug:
 the pace-slider draws an "awkward", near-vertical green line disconnected from the GP
 projection; the line is not explainable (no legend, no hover, `pointerEvents="none"`); and the
 rail shows a single "Scenario finish" that at **Current pace** is the optimistic *capacity-model*
-finish, not the model's forecast --- so it disagrees with reality without saying why. The lines
+finish, not the model's forecast - so it disagrees with reality without saying why. The lines
 also run off the right edge because two finishes fall past the chart domain.
 
 This rework, decided visually (see `DECISIONS.md`, four decisions + Option X), makes the modal
 present **three distinct, dated finishes** and turns the whole plot interactive:
 
-- **Plan** --- follow your slots -Üí the deadline.
-- **GP forecast** --- your recent pace -Üí the realistic date, sourced from
+- **Plan** - follow your slots ‚Üí the deadline.
+- **GP forecast** - your recent pace ‚Üí the realistic date, sourced from
   `ProgressSnapshot.projection.finishDate` (already computed; **no** new math).
-- **Pace scenario** --- +N min/day -Üí the capacity finish (`computeCapacityScenario(...).finishDate`,
+- **Pace scenario** - +N min/day ‚Üí the capacity finish (`computeCapacityScenario(...).finishDate`,
   **unchanged**), shown only when the slider is above Current.
 
-Plus a coordinate crosshair (hover anywhere -Üí date on X, hours on Y, each line's value), a goal
+Plus a coordinate crosshair (hover anywhere ‚Üí date on X, hours on Y, each line's value), a goal
 line with dated finish flags, an extended domain so every finish lands on-screen, and a legend
 that names every line. `capacityScenario.ts` and Replan are untouched (Option X).
 
@@ -90,7 +90,7 @@ axis** and **hours pill on the Y axis**, a dot on each visible line at the hover
 hours-pill reads the cursor's Y (pointer height); the readout reads each line's actual value at
 that date. Source: `DECISIONS.md` D-03.
 
-### D-04: Clear end dates --- goal line + dated finish flags
+### D-04: Clear end dates - goal line + dated finish flags
 
 Extend the full-plan domain to the latest finish so nothing runs off the edge; clip each
 trajectory where it reaches the total; draw a horizontal "Plan complete ¬∑ <total>" goal line
@@ -108,10 +108,10 @@ This removes the misleading "Aug 5" the bug reported. Source: `DECISIONS.md` D-0
 ### D-06: Historical weeks stay inspection-only
 
 Historical mode (`isPastWeek`) keeps the crosshair, goal line, and Plan flag, but hides the pace
-slider, the Forecast/Your-pace narrative, the scenario line, and the Forecast/Your-pace flags ---
+slider, the Forecast/Your-pace narrative, the scenario line, and the Forecast/Your-pace flags -
 consistent with `2026-07-18-week-progress-lab` D-08.
 
-### D-07: Option X --- capacityScenario + Replan untouched (ü§- confirmed with user)
+### D-07: Option X - capacityScenario + Replan untouched (ü§î confirmed with user)
 
 The forecast comes from `ProgressSnapshot.projection` (existing). `computeCapacityScenario`'s
 `finishDate` math is **not** changed, so `Replan.tsx` and `capacityScenario.ts` need no edits and
@@ -125,7 +125,7 @@ That (pre-plan) workstream will make `ProgressSnapshot.projection` the single fi
 and may change the deficit/total baseline (reserved-capacity vs material-content). This plan is
 **downstream and read-only** w.r.t. those numbers: it renders whatever `projection.finishDate`,
 `totalPlannedMinutes`, and the planned/deficit series contain. Do not hardcode the total or the
-forecast date --- read them. If projection-inconsistency lands first, this chart reflects it
+forecast date - read them. If projection-inconsistency lands first, this chart reflects it
 automatically. No shared edits; the two can proceed in parallel.
 
 ## Architecture overview
@@ -160,9 +160,9 @@ automatically. No shared edits; the two can proceed in parallel.
 `apps/app/src/roadmap/replan/capacityScenario.test.ts`, `apps/app/src/pages/Replan.tsx`,
 `apps/app/src/roadmap/replan/Replan.test.tsx`, anything under `packages/`.
 
-## Phase 1 --- End dates: goal line, finish flags, domain, clipping
+## Phase 1 - End dates: goal line, finish flags, domain, clipping
 
-**Status:** -òê Not started ¬∑ **Depends on:** none
+**Status:** üü° Implemented and self-verified - awaiting reviewer verification ¬∑ **Depends on:** none
 
 ### Steps
 1. Add optional props to `BurnUpPlot`/`BurnUpPlotInner`: `deadlineISO?`, `forecastFinishISO?`,
@@ -184,7 +184,7 @@ automatically. No shared edits; the two can proceed in parallel.
 8. Keep all new SVG decorative paths `pointerEvents="none"`.
 
 ### Tests (`BurnUpChart.test.tsx`)
-- Domain includes each supplied finish date; right edge -â• latest finish.
+- Domain includes each supplied finish date; right edge ‚â• latest finish.
 - Planned/scenario clipped at the total (no point beyond the finish x).
 - Goal line + each finish flag renders at the right x for given props; flags absent when props absent.
 - Legend renders GP forecast + Your pace entries.
@@ -198,22 +198,22 @@ pnpm --filter @study-tracker/app test -- BurnUpChart
 pnpm --filter @study-tracker/app typecheck
 ```
 
-## Phase 2 --- Coordinate crosshair (variation B)
+## Phase 2 - Coordinate crosshair (variation B)
 
-**Status:** -òê Not started ¬∑ **Depends on:** Phase 1
+**Status:** ‚òê Not started ¬∑ **Depends on:** Phase 1
 
 ### Steps
 1. Add a transparent overlay hit-rect over the plot area capturing `mousemove`/`mouseleave`
    (existing series have `pointerEvents="none"`, so an explicit `pointerEvents:all` overlay is
-   required). Convert client coords -Üí data via `getBoundingClientRect` + viewBox scale.
+   required). Convert client coords ‚Üí data via `getBoundingClientRect` + viewBox scale.
 2. On hover: draw vertical + horizontal guides; a date pill on the X axis (date under cursor);
    an hours pill on the Y axis (hours at cursor Y).
-3. Add pure interpolators for planned (step), actual (only -â§ today -Üí null after), GP mean,
+3. Add pure interpolators for planned (step), actual (only ‚â§ today ‚Üí null after), GP mean,
    and scenario (only when active). Draw a coloured dot on each visible line at the hovered
    date and a readout box listing each series' value (`hLabel`).
 4. Hide the crosshair on `mouseleave`; keep it keyboard-agnostic (checkpoint keyboard
    selection from the shipped modal is unchanged).
-5. Note (non-blocking): touch/pointer parity is out of scope --- mouse hover only.
+5. Note (non-blocking): touch/pointer parity is out of scope - mouse hover only.
 
 ### Tests
 - Given a cursor position (or a direct helper call), the readout lists the correct planned /
@@ -227,9 +227,9 @@ pnpm --filter @study-tracker/app test -- BurnUpChart
 pnpm --filter @study-tracker/app typecheck
 ```
 
-## Phase 3 --- Narrative three-finish panel + wiring
+## Phase 3 - Narrative three-finish panel + wiring
 
-**Status:** -òê Not started ¬∑ **Depends on:** Phase 1 (plot accepts finish props)
+**Status:** ‚òê Not started ¬∑ **Depends on:** Phase 1 (plot accepts finish props)
 
 ### Steps
 1. In `Week.tsx`, pass to `ProgressLabModal` (current week only): `forecastFinishISO =
@@ -242,14 +242,14 @@ pnpm --filter @study-tracker/app typecheck
    `scenarioDifferenceLabel`/`differenceInCalendarDays` for the "N days early/late vs deadline".
 3. Keep the pace slider and `Replan with this pace` link exactly as-is (`:347-392`).
 4. At `paceDeltaMinutes === 0`: no scenario line (already gated at `:272`), and the narrative
-   scenario line reads "current trajectory -Üí forecast" (D-05).
+   scenario line reads "current trajectory ‚Üí forecast" (D-05).
 5. Thread `deadlineISO`/`forecastFinishISO`/`scenarioFinishISO`(= `paceScenario?.finishDate`
    when `>0`)/`totalPlannedMinutes` into `BurnUpPlot` (Phase 1 props).
 6. Historical mode hides the pace slider + Forecast/Your-pace narrative + scenario flags (D-06).
 7. Legend styles + narrative styles use design tokens (`form-design-spacing` rule).
 
 ### Tests (`ProgressLabModal.test.tsx`, `Week.test.tsx`)
-- Narrative shows the deadline, the forecast date, and --- at +N --- the scenario date + delta.
+- Narrative shows the deadline, the forecast date, and - at +N - the scenario date + delta.
 - `basis==='analytic'` renders the "estimate" tag; `'gp'` does not.
 - At Current pace: no scenario line prop; forecast wording shown.
 - Historical: no slider, no forecast/scenario; Plan flag + crosshair remain.
@@ -262,9 +262,9 @@ pnpm --filter @study-tracker/app typecheck
 pnpm --filter @study-tracker/app lint
 ```
 
-## Phase 4 --- Integration, regression proof, visual verification
+## Phase 4 - Integration, regression proof, visual verification
 
-**Status:** -òê Not started ¬∑ **Depends on:** Phase 3
+**Status:** ‚òê Not started ¬∑ **Depends on:** Phase 3
 
 ### Steps
 1. Extend `e2e/week-progress-lab.spec.ts` (authenticated seeded flow): open the modal, assert
@@ -291,7 +291,7 @@ git diff --stat apps/app/src/roadmap/replan/capacityScenario.ts apps/app/src/pag
 
 - **OQ-01:** When `progression-inconsistency` lands and changes the deficit/total baseline, the
   goal-line total and "behind" figure shift automatically (read from the snapshot). Assumed
-  acceptable --- flag if the two need explicit sequencing. `ü§- Assumed (unconfirmed)`.
+  acceptable - flag if the two need explicit sequencing. `ü§î Assumed (unconfirmed)`.
 - **OQ-02:** Forecast pin sits at `forecastFinishISO` even though the drawn GP curve may end
   earlier; the dotted connector conveys the projection. Assumed acceptable (mock-approved).
 - **OQ-03:** Touch/pointer crosshair parity deferred to a follow-up (mouse hover only here).

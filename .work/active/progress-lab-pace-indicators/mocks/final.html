@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  FINAL working mock --- Progress Lab pace indicators (Option X).
+  FINAL working mock - Progress Lab pace indicators (Option X).
   Folds in every decision:
     D-01 forward-projection green line (Option X: capacityScenario finish math UNCHANGED)
     D-02 narrative three-finish panel (Plan deadline / GP forecast / Pace scenario)
@@ -10,14 +10,14 @@
     - "Current pace" (slider 0) shows the FORECAST from ProgressSnapshot.projection.finishDate.
       NO green line is drawn at 0 (matches today's gating).
     - "+N min" draws the capacity scenario line, ending at computeCapacityScenario(...).finishDate
-      (unchanged math -†’ Replan untouched). These are optimistic "if you commit to the plan pace + N".
-  Region -†’ decision annotations are inline HTML comments.
+      (unchanged math â†’ Replan untouched). These are optimistic "if you commit to the plan pace + N".
+  Region â†’ decision annotations are inline HTML comments.
 -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Progress Lab --- final (Option X)</title>
+  <title>Progress Lab - final (Option X)</title>
   <style>
     :root{
       --paper:#f5efe4;--paper-deep:#ede3d2;--card:#fbf7ee;--ink:#2a1f18;
@@ -84,9 +84,9 @@
         <div>
           <div class="eyebrow">Progress Lab Â· Active roadmap</div>
           <h2>Study trajectory and pace scenario</h2>
-          <p>Three finishes --- plan, forecast, and what a faster pace would buy --- each with a date on the chart.</p>
+          <p>Three finishes - plan, forecast, and what a faster pace would buy - each with a date on the chart.</p>
         </div>
-        <button class="close" aria-label="Close">-œ•</button>
+        <button class="close" aria-label="Close">âœ•</button>
       </header>
 
       <div class="range-bar">
@@ -106,7 +106,7 @@
             <div class="burn-head"><span>Hours studied vs plan</span><span>Day 43 of 63</span></div>
             <div class="chart-stage"><svg class="chart-svg" id="chart" viewBox="0 0 820 460"></svg></div>
             <div class="burn-foot">
-              <div class="deficit">-ˆ’19h 33m behind plan</div>
+              <div class="deficit">âˆ’19h 33m behind plan</div>
               <!-- D-02/D-03: legend now names every line -->
               <div class="legend">
                 <span><i></i>Actual</span>
@@ -132,8 +132,8 @@
             <input class="slider" id="pace" type="range" min="0" max="60" step="15" value="0">
             <div class="slider-labels"><span>Current</span><span>+60 min</span></div>
             <div class="narr">
-              <p>Stick to your planned slots and you finish <b>Aug 10</b> --- your deadline.</p>
-              <p>At your recent pace, you're tracking to <b class="rust">-‰ˆ Aug 27</b>, about <b class="rust">17 days late</b>. <span class="prov">estimate</span></p>
+              <p>Stick to your planned slots and you finish <b>Aug 10</b> - your deadline.</p>
+              <p>At your recent pace, you're tracking to <b class="rust">â‰ˆ Aug 27</b>, about <b class="rust">17 days late</b>. <span class="prov">estimate</span></p>
               <p class="scen-line" id="scen">That's your current trajectory. Commit to more minutes per study day to pull it in.</p>
             </div>
             <button class="primary">Replan with this pace</button>
@@ -151,7 +151,7 @@
     var planned=[[0,0],[6,330],[13,700],[20,1080],[27,1470],[34,1850],[41,2230],[43,2340],[48,2620],[55,3000],[62,3300],[63,3340],[END,3340]];
     var actual=[[0,0],[5,150],[10,300],[15,470],[20,610],[25,760],[30,880],[35,980],[39,1040],[43,1080]];
     var gp=[[0,0],[8,240],[16,470],[24,720],[32,900],[40,1040],[43,1080],[50,1520],[57,1960],[64,2410],[71,2860],[75,3060]]; // GP curve DATA ends here (does not reach total within horizon)
-    var FORECAST={day:80,date:'-‰ˆ Aug 27',delta:'17 days late'};   // ProgressSnapshot.projection.finishDate (analytic fallback)
+    var FORECAST={day:80,date:'â‰ˆ Aug 27',delta:'17 days late'};   // ProgressSnapshot.projection.finishDate (analytic fallback)
     // Option X: +N scenario finishes = computeCapacityScenario(...).finishDate (UNCHANGED math; optimistic "if you commit")
     var SCEN={0:null,15:{fd:54,date:'Aug 1',delta:'9 days early'},30:{fd:51,date:'Jul 29',delta:'12 days early'},45:{fd:49,date:'Jul 27',delta:'14 days early'},60:{fd:47,date:'Jul 25',delta:'16 days early'}};
     var PLAN_FIN=63;
@@ -223,7 +223,7 @@
       }
       svg.innerHTML=out.join('');
     }
-    function updateScen(){var n=SCEN[state.pace];document.getElementById('pace-title').textContent=state.pace===0?'Current study pace':'+'+state.pace+' min per study day';document.getElementById('scen').innerHTML=state.pace===0?'That\'s your current trajectory. Commit to more minutes per study day to pull it in.':'Commit to <b class="moss">+'+state.pace+' min</b> per study day and you\'d finish <b class="moss">'+n.date+'</b> --- '+n.delta+' vs the deadline.';}
+    function updateScen(){var n=SCEN[state.pace];document.getElementById('pace-title').textContent=state.pace===0?'Current study pace':'+'+state.pace+' min per study day';document.getElementById('scen').innerHTML=state.pace===0?'That\'s your current trajectory. Commit to more minutes per study day to pull it in.':'Commit to <b class="moss">+'+state.pace+' min</b> per study day and you\'d finish <b class="moss">'+n.date+'</b> - '+n.delta+' vs the deadline.';}
     svg.addEventListener('mousemove',function(ev){var r=svg.getBoundingClientRect();state.cursor={px:(ev.clientX-r.left)*(svg.clientWidth/r.width),py:(ev.clientY-r.top)*(svg.clientHeight/r.height)};render();});
     svg.addEventListener('mouseleave',function(){state.cursor=null;render();});
     document.querySelectorAll('#ranges button').forEach(function(b){b.addEventListener('click',function(){state.range=b.dataset.range;document.querySelectorAll('#ranges button').forEach(function(n){n.classList.toggle('active',n===b);});document.getElementById('rr').textContent=state.range==='full'?'Jun 08 to Aug 30 Â· to last finish':state.range==='month'?'30-day window':'This week';render();});});

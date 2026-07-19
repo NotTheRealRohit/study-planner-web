@@ -3,17 +3,25 @@ import { describe, expect, it, vi } from 'vitest'
 import type { BurnUpData } from '@study-tracker/progress'
 import {
   BurnUpChart,
+  BurnUpPlot,
   buildCheckpointSummary,
   buildBurnUpDateDomain,
   buildBurnUpYDomainMax,
   buildMinuteTickValues,
   buildProgressLabDateDomain,
   buildXAxisTicks,
+  clipPlannedPoints,
+  clipScenarioPoints,
   hasMeaningfulBurnUpData,
   minutesToLabel,
   plannedMinutesAtDate,
   resolveLayerVisibility,
 } from './BurnUpChart'
+
+vi.mock('@visx/responsive', () => ({
+  ParentSize: ({ children }: { children: (size: { width: number; height: number }) => unknown }) =>
+    children({ width: 800, height: 400 }),
+}))
 
 function makeBurnUpData(overrides: Partial<BurnUpData> = {}): BurnUpData {
   return {
@@ -118,6 +126,78 @@ describe('BurnUpChart helpers', () => {
     expect(week.map((date) => date.toISOString().slice(0, 10))).toEqual(['2026-07-13', '2026-07-19'])
   })
 
+  it('extends only the full-plan domain past supplied finish dates', () => {
+    const data = makeBurnUpData({
+      startDate: '2026-07-01',
+      deadline: '2026-08-31',
+      today: '2026-07-18',
+    })
+    const finishes = {
+      deadlineISO: '2026-09-02',
+      forecastFinishISO: '2026-09-07',
+      scenarioFinishISO: '2026-09-05',
+    }
+
+    const full = buildProgressLabDateDomain(
+      data,
+      'full',
+      '2026-07-18',
+      '2026-07-13',
+      '2026-07-19',
+      finishes,
+    )
+    const month = buildProgressLabDateDomain(
+      data,
+      'month',
+      '2026-07-18',
+      '2026-07-13',
+      '2026-07-19',
+      finishes,
+    )
+    const week = buildProgressLabDateDomain(
+      data,
+      'week',
+      '2026-07-18',
+      '2026-07-13',
+      '2026-07-19',
+      finishes,
+    )
+
+    expect(full.map((date) => date.toISOString().slice(0, 10))).toEqual(['2026-07-01', '2026-09-10'])
+    expect(month.map((date) => date.toISOString().slice(0, 10))).toEqual(['2026-07-11', '2026-08-09'])
+    expect(week.map((date) => date.toISOString().slice(0, 10))).toEqual(['2026-07-13', '2026-07-19'])
+  })
+
+  it('stops planned and scenario trajectories at their supplied completion', () => {
+    const domain: [Date, Date] = [
+      new Date('2026-07-01T00:00:00.000Z'),
+      new Date('2026-07-15T00:00:00.000Z'),
+    ]
+    const planned = clipPlannedPoints([
+      { date: '2026-07-01', minutes: 0 },
+      { date: '2026-07-05', minutes: 120 },
+      { date: '2026-07-10', minutes: 240 },
+      { date: '2026-07-12', minutes: 300 },
+    ], domain, 240)
+    const scenario = clipScenarioPoints([
+      { date: '2026-07-05', minutes: 90 },
+      { date: '2026-07-08', minutes: 180 },
+      { date: '2026-07-10', minutes: 260 },
+      { date: '2026-07-12', minutes: 300 },
+    ], domain, '2026-07-10', 240)
+
+    expect(planned).toEqual([
+      { date: '2026-07-01', minutes: 0 },
+      { date: '2026-07-05', minutes: 120 },
+      { date: '2026-07-10', minutes: 240 },
+    ])
+    expect(scenario).toEqual([
+      { date: '2026-07-05', minutes: 90 },
+      { date: '2026-07-08', minutes: 180 },
+      { date: '2026-07-10', minutes: 240 },
+    ])
+  })
+
   it('gives every visible checkpoint a deterministic tick and reduces compact long-range labels', () => {
     const actual = [
       { date: '2026-07-01', minutes: 0 },
@@ -196,6 +276,77 @@ describe('BurnUpChart helpers', () => {
   })
 })
 
+describe('BurnUpPlot finish indicators', () => {
+  const plottedData = makeBurnUpData({
+    startDate: '2026-07-01',
+    deadline: '2026-07-12',
+    today: '2026-07-08',
+    planned: [
+      { date: '2026-07-01', minutes: 0 },
+      { date: '2026-07-12', minutes: 240 },
+      { date: '2026-07-15', minutes: 300 },
+    ],
+    actual: [
+      { date: '2026-07-01', minutes: 0 },
+      { date: '2026-07-08', minutes: 100 },
+    ],
+    gpCurve: [
+      { date: '2026-07-08', mean: 100, lower: 80, upper: 120 },
+      { date: '2026-07-13', mean: 220, lower: 170, upper: 270 },
+    ],
+  })
+
+  it('renders a safe goal line, dated flags, connector, and clipped scenario', () => {
+    render(
+      <BurnUpPlot
+        data={plottedData}
+        deadlineISO="2026-07-12"
+        forecastFinishISO="2026-07-14"
+        scenarioFinishISO="2026-07-16"
+        totalPlannedMinutes={240}
+        scenarioPoints={[
+          { date: '2026-07-08', minutes: 100 },
+          { date: '2026-07-14', minutes: 210 },
+          { date: '2026-07-16', minutes: 240 },
+          { date: '2026-07-18', minutes: 300 },
+        ]}
+      />,
+    )
+
+    expect(screen.getByTestId('burn-up-done-zone')).toBeInTheDocument()
+    expect(screen.getByTestId('burn-up-goal-line')).toHaveTextContent('PLAN COMPLETE · 4h')
+    expect(screen.getByTestId('forecast-finish-connector')).toBeInTheDocument()
+
+    const plan = screen.getByTestId('finish-flag-plan')
+    const forecast = screen.getByTestId('finish-flag-forecast')
+    const scenario = screen.getByTestId('finish-flag-scenario')
+    expect(plan).toHaveTextContent('Plan · Jul 12')
+    expect(forecast).toHaveTextContent('Forecast · Jul 14')
+    expect(scenario).toHaveTextContent('Your pace · Jul 16')
+
+    const flagX = (flag: HTMLElement) => Number(flag.querySelector('circle')?.getAttribute('cx'))
+    expect(flagX(plan)).toBeLessThan(flagX(forecast))
+    expect(flagX(forecast)).toBeLessThan(flagX(scenario))
+    expect(screen.getByTestId('capacity-scenario-line')).toHaveAttribute('data-finish-date', '2026-07-16')
+  })
+
+  it('hides goal and finish decorations when required values are missing or invalid', () => {
+    render(
+      <BurnUpPlot
+        data={plottedData}
+        deadlineISO="not-a-date"
+        forecastFinishISO="2026-07-14"
+        totalPlannedMinutes={-1}
+      />,
+    )
+
+    expect(screen.queryByTestId('burn-up-done-zone')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('burn-up-goal-line')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('finish-flag-plan')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('finish-flag-forecast')).not.toBeInTheDocument()
+  })
+})
+
 describe('BurnUpChart', () => {
   it('renders an empty state before responsive SVG layout is needed', () => {
     render(<BurnUpChart data={makeBurnUpData()} />)
@@ -223,6 +374,8 @@ describe('BurnUpChart', () => {
     expect(opener).toHaveAttribute('aria-haspopup', 'dialog')
     expect(opener).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('Open Progress Lab')).toBeInTheDocument()
+    expect(screen.getByText('GP forecast')).toBeInTheDocument()
+    expect(screen.getByText('Your pace')).toBeInTheDocument()
 
     fireEvent.click(opener)
     expect(onOpen).toHaveBeenCalledTimes(1)

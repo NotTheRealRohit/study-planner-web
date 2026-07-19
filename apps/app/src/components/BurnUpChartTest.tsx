@@ -1,4 +1,4 @@
-import { BurnUpChart } from './BurnUpChart';
+import { BurnUpChart, BurnUpPlot } from './BurnUpChart';
 import type { BurnUpData } from '@study-tracker/progress';
 import { addDays, format } from 'date-fns';
 
@@ -148,6 +148,8 @@ function generateTestData(): BurnUpData {
     actual,
     gpCurve: gpPoints,
     today: format(todayDate, 'yyyy-MM-dd'),
+    startDate: format(startDate, 'yyyy-MM-dd'),
+    deadline: format(addDays(startDate, totalDays - 1), 'yyyy-MM-dd'),
     deficit,
     dayNumber,
     totalDays,
@@ -159,6 +161,10 @@ function generateTestData(): BurnUpData {
 /* ------------------------------------------------------------------ */
 
 const testData = generateTestData();
+const totalPlannedMinutes = Math.max(0, ...testData.planned.map((point) => point.minutes));
+const scenarioFinishISO = format(addDays(new Date(`${testData.today}T00:00:00.000Z`), 35), 'yyyy-MM-dd');
+const forecastFinishISO = format(addDays(new Date(`${testData.today}T00:00:00.000Z`), 42), 'yyyy-MM-dd');
+const actualAtToday = Math.max(0, ...testData.actual.map((point) => point.minutes));
 
 export default function BurnUpChartTest() {
   return (
@@ -174,6 +180,21 @@ export default function BurnUpChartTest() {
     >
       <div style={{ width: '100%', maxWidth: 800 }}>
         <BurnUpChart data={testData} />
+
+        <div style={{ marginTop: 24 }}>
+          <BurnUpPlot
+            data={testData}
+            deadlineISO={testData.deadline}
+            forecastFinishISO={forecastFinishISO}
+            scenarioFinishISO={scenarioFinishISO}
+            totalPlannedMinutes={totalPlannedMinutes}
+            scenarioPoints={[
+              { date: testData.today, minutes: actualAtToday },
+              { date: scenarioFinishISO, minutes: totalPlannedMinutes },
+            ]}
+            style={{ height: 400 }}
+          />
+        </div>
 
         {/* Debug info */}
         <div

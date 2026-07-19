@@ -4,7 +4,7 @@ import { AreaClosed, LinePath, Line } from '@visx/shape';
 import { AxisLeft } from '@visx/axis';
 import { Group } from '@visx/group';
 import { ParentSize } from '@visx/responsive';
-import { curveStepAfter, curveMonotoneX } from '@visx/curve';
+import { curveStepAfter, curveMonotoneX, curveLinear } from '@visx/curve';
 import { format } from 'date-fns';
 
 import type { BurnUpData, CumulativePoint } from '@study-tracker/progress';
@@ -58,6 +58,12 @@ export interface ScenarioChartPoint {
   minutes: number;
 }
 
+export interface FinishDateInputs {
+  deadlineISO?: string;
+  forecastFinishISO?: string;
+  scenarioFinishISO?: string;
+}
+
 export function minutesToLabel(minutes: number): string {
   const safe = Math.max(0, Math.round(minutes));
   const h = Math.floor(safe / 60);
@@ -86,6 +92,12 @@ function addDays(date: Date, days: number): Date {
 
 function parseISODateUTC(dateISO: string): Date {
   return new Date(`${dateISO}T00:00:00.000Z`);
+}
+
+function parseOptionalISODateUTC(dateISO: string | undefined): Date | null {
+  if (!dateISO || !/^\d{4}-\d{2}-\d{2}$/.test(dateISO)) return null;
+  const date = parseISODateUTC(dateISO);
+  return Number.isFinite(date.getTime()) && toISODate(date) === dateISO ? date : null;
 }
 
 function startOfUTCDate(date: Date): Date {
@@ -117,11 +129,18 @@ export function buildBurnUpDateDomain(
   return [new Date(min), new Date(max)];
 }
 
-function allBurnUpDates(data: BurnUpData): Date[] {
+function finishDates(inputs: FinishDateInputs): Date[] {
+  return [inputs.deadlineISO, inputs.forecastFinishISO, inputs.scenarioFinishISO]
+    .map(parseOptionalISODateUTC)
+    .filter((date): date is Date => date !== null);
+}
+
+function allBurnUpDates(data: BurnUpData, finishes: FinishDateInputs = {}): Date[] {
   return [
     ...data.planned.map((point) => parseISODateUTC(point.date)),
     ...data.actual.map((point) => parseISODateUTC(point.date)),
     ...data.gpCurve.map((point) => parseISODateUTC(point.date)),
+    ...finishDates(finishes),
   ];
 }
 
@@ -131,9 +150,13 @@ export function buildProgressLabDateDomain(
   referenceDateISO: string,
   weekStartISO: string,
   weekEndISO: string,
+  finishes: FinishDateInputs = {},
 ): [Date, Date] {
-  const full = buildBurnUpDateDomain(data, allBurnUpDates(data));
-  if (range === 'full') return full;
+  const suppliedFinishes = finishDates(finishes);
+  const full = buildBurnUpDateDomain(data, allBurnUpDates(data, finishes));
+  if (range === 'full') {
+    return suppliedFinishes.length > 0 ? [full[0], addDays(full[1], 3)] : full;
+  }
 
   const reference = parseISODateUTC(referenceDateISO);
   const requested: [Date, Date] = range === 'month'
@@ -325,17 +348,81 @@ function isWithinDomain(date: Date, domain: [Date, Date]): boolean {
   return date >= domain[0] && date <= domain[1];
 }
 
-function clipPlannedPoints(points: CumulativePoint[], domain: [Date, Date]): CumulativePoint[] {
+function validTotalMinutes(totalPlannedMinutes: number | undefined): number | null {
+  return typeof totalPlannedMinutes === 'number' && Number.isFinite(totalPlannedMinutes) && totalPlannedMinutes > 0
+    ? totalPlannedMinutes
+    : null;
+}
+
+export function clipPlannedPoints(
+  points: CumulativePoint[],
+  domain: [Date, Date],
+  totalPlannedMinutes?: number,
+): CumulativePoint[] {
   const startISO = toISODate(domain[0]);
   const endISO = toISODate(domain[1]);
-  const clipped = points.filter((point) => point.date >= startISO && point.date <= endISO);
+  const total = validTotalMinutes(totalPlannedMinutes);
+  const ordered = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  const completed: CumulativePoint[] = [];
+  for (const point of ordered) {
+    if (total !== null && point.minutes >= total) {
+      completed.push({ ...point, minutes: total });
+      break;
+    }
+    completed.push(point);
+  }
+  const clipped = completed.filter((point) => point.date >= startISO && point.date <= endISO);
   const result = [
-    { date: startISO, minutes: plannedMinutesAtDate(points, startISO) },
+    { date: startISO, minutes: plannedMinutesAtDate(completed, startISO) },
     ...clipped,
-    { date: endISO, minutes: plannedMinutesAtDate(points, endISO) },
   ];
+  if (total === null || completed.some((point) => point.date > endISO)) {
+    result.push({ date: endISO, minutes: plannedMinutesAtDate(completed, endISO) });
+  }
   const byDate = new Map(result.map((point) => [point.date, point]));
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function linearMinutesAtDate(points: ScenarioChartPoint[], dateISO: string): number | null {
+  const exact = points.find((point) => point.date === dateISO);
+  if (exact) return exact.minutes;
+  const before = [...points].reverse().find((point) => point.date < dateISO);
+  const after = points.find((point) => point.date > dateISO);
+  if (!before || !after) return null;
+  const beforeTime = parseISODateUTC(before.date).getTime();
+  const afterTime = parseISODateUTC(after.date).getTime();
+  const dateTime = parseISODateUTC(dateISO).getTime();
+  const ratio = (dateTime - beforeTime) / (afterTime - beforeTime);
+  return before.minutes + (after.minutes - before.minutes) * ratio;
+}
+
+export function clipScenarioPoints(
+  points: ScenarioChartPoint[],
+  domain: [Date, Date],
+  scenarioFinishISO?: string,
+  totalPlannedMinutes?: number,
+): ScenarioChartPoint[] {
+  const ordered = [...points].sort((a, b) => a.date.localeCompare(b.date));
+  const startISO = toISODate(domain[0]);
+  const validFinish = parseOptionalISODateUTC(scenarioFinishISO);
+  const endISO = toISODate(validFinish && validFinish < domain[1] ? validFinish : domain[1]);
+  const bounded = ordered.filter((point) => point.date >= startISO && point.date <= endISO);
+  const startMinutes = linearMinutesAtDate(ordered, startISO);
+  const endMinutes = linearMinutesAtDate(ordered, endISO);
+  if (startMinutes !== null) bounded.push({ date: startISO, minutes: startMinutes });
+  if (endMinutes !== null) bounded.push({ date: endISO, minutes: endMinutes });
+
+  const byDate = new Map(bounded.map((point) => [point.date, point]));
+  const total = validTotalMinutes(totalPlannedMinutes);
+  const clipped: ScenarioChartPoint[] = [];
+  for (const point of [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (total !== null && point.minutes >= total) {
+      clipped.push({ ...point, minutes: total });
+      break;
+    }
+    clipped.push(point);
+  }
+  return clipped;
 }
 
 const MARGIN = { top: 12, right: 20, left: 58 };
@@ -352,6 +439,10 @@ interface InnerProps {
   selectedCheckpoint?: string | null;
   onCheckpointSelect?: (dateISO: string) => void;
   scenarioPoints?: ScenarioChartPoint[];
+  deadlineISO?: string;
+  forecastFinishISO?: string;
+  scenarioFinishISO?: string;
+  totalPlannedMinutes?: number;
 }
 
 function BurnUpPlotInner({
@@ -366,15 +457,25 @@ function BurnUpPlotInner({
   selectedCheckpoint,
   onCheckpointSelect,
   scenarioPoints = [],
+  deadlineISO,
+  forecastFinishISO,
+  scenarioFinishISO,
+  totalPlannedMinutes,
 }: InnerProps) {
   const isBehind = data.deficit < 0;
   const accentColor = isBehind ? C.rust : C.moss;
-  const fullDateDomain = buildBurnUpDateDomain(data, allBurnUpDates(data));
+  const finishInputs = { deadlineISO, forecastFinishISO, scenarioFinishISO };
+  const suppliedFinishDates = finishDates(finishInputs);
+  const baseFullDateDomain = buildBurnUpDateDomain(data, allBurnUpDates(data, finishInputs));
+  const fullDateDomain: [Date, Date] = suppliedFinishDates.length > 0
+    ? [baseFullDateDomain[0], addDays(baseFullDateDomain[1], 3)]
+    : baseFullDateDomain;
   const dateDomain = requestedDateDomain ?? fullDateDomain;
+  const goalMinutes = validTotalMinutes(totalPlannedMinutes);
 
   const plannedPoints = useMemo(
-    () => clipPlannedPoints(data.planned, dateDomain),
-    [data.planned, dateDomain],
+    () => clipPlannedPoints(data.planned, dateDomain, goalMinutes ?? undefined),
+    [data.planned, dateDomain, goalMinutes],
   );
   const actualPoints = useMemo(
     () => data.actual.filter((point) => isWithinDomain(parseISODateUTC(point.date), dateDomain)),
@@ -385,8 +486,13 @@ function BurnUpPlotInner({
     [data.gpCurve, dateDomain],
   );
   const visibleScenario = useMemo(
-    () => scenarioPoints.filter((point) => isWithinDomain(parseISODateUTC(point.date), dateDomain)),
-    [scenarioPoints, dateDomain],
+    () => clipScenarioPoints(
+      scenarioPoints,
+      dateDomain,
+      scenarioFinishISO,
+      goalMinutes ?? undefined,
+    ),
+    [dateDomain, goalMinutes, scenarioFinishISO, scenarioPoints],
   );
 
   const plannedParsed = useMemo(
@@ -412,7 +518,10 @@ function BurnUpPlotInner({
   );
 
   const yDomainMax = buildBurnUpYDomainMax({
-    planned: plannedParsed.map((point) => point.minutes),
+    planned: [
+      ...plannedParsed.map((point) => point.minutes),
+      ...(goalMinutes !== null ? [goalMinutes] : []),
+    ],
     actual: actualParsed.map((point) => point.minutes),
     gpMean: gpParsed.map((point) => point.mean),
     gpUpper: gpParsed.map((point) => point.upper),
@@ -430,6 +539,17 @@ function BurnUpPlotInner({
   const referenceDate = parseISODateUTC(referenceDateISO);
   const referenceVisible = isWithinDomain(referenceDate, dateDomain);
   const referenceX = xScale(referenceDate);
+  const goalY = goalMinutes !== null ? yScale(goalMinutes) : null;
+  const deadlineDate = parseOptionalISODateUTC(deadlineISO);
+  const forecastFinishDate = parseOptionalISODateUTC(forecastFinishISO);
+  const scenarioFinishDate = parseOptionalISODateUTC(scenarioFinishISO);
+  const finishMarkers = goalY === null ? [] : [
+    { key: 'plan', label: 'Plan', date: deadlineDate, color: C.inkFaint, offsetY: -10 },
+    { key: 'forecast', label: 'Forecast', date: forecastFinishDate, color: C.rust, offsetY: -25 },
+    { key: 'scenario', label: 'Your pace', date: scenarioFinishDate, color: C.moss, offsetY: 20 },
+  ].flatMap((marker) => marker.date !== null && isWithinDomain(marker.date, dateDomain)
+    ? [{ ...marker, date: marker.date }]
+    : []);
 
   const behindPath = useMemo(() => {
     if (!isBehind || actualParsed.length < 2) return null;
@@ -461,6 +581,19 @@ function BurnUpPlotInner({
             height={yMax}
             fill={C.paperDeep}
             opacity={0.45}
+            pointerEvents="none"
+          />
+        )}
+
+        {goalY !== null && (
+          <rect
+            data-testid="burn-up-done-zone"
+            x={0}
+            y={0}
+            width={xMax}
+            height={Math.max(0, goalY)}
+            fill={C.moss}
+            opacity={0.06}
             pointerEvents="none"
           />
         )}
@@ -519,6 +652,21 @@ function BurnUpPlotInner({
           />
         )}
 
+        {layers.projection && goalY !== null && forecastFinishDate && gpParsed.length > 0 && isWithinDomain(forecastFinishDate, dateDomain) && (
+          <line
+            data-testid="forecast-finish-connector"
+            x1={xScale(gpParsed[gpParsed.length - 1].date)}
+            y1={yScale(gpParsed[gpParsed.length - 1].mean)}
+            x2={xScale(forecastFinishDate)}
+            y2={goalY}
+            stroke={C.rust}
+            strokeWidth={1}
+            strokeDasharray="2 4"
+            opacity={0.45}
+            pointerEvents="none"
+          />
+        )}
+
         {scenarioParsed.length >= 2 && (
           <LinePath
             data-testid="capacity-scenario-line"
@@ -528,7 +676,8 @@ function BurnUpPlotInner({
             stroke={C.moss}
             strokeWidth={2.5}
             strokeDasharray="6 5"
-            curve={curveMonotoneX}
+            curve={curveLinear}
+            data-finish-date={scenarioFinishISO}
             pointerEvents="none"
           />
         )}
@@ -586,6 +735,82 @@ function BurnUpPlotInner({
             )}
           </g>
         ))}
+
+        {goalY !== null && (
+          <g data-testid="burn-up-goal-line" pointerEvents="none">
+            <line
+              x1={0}
+              x2={xMax}
+              y1={goalY}
+              y2={goalY}
+              stroke={C.moss}
+              strokeWidth={1}
+              strokeDasharray="5 4"
+              opacity={0.65}
+            />
+            <text
+              x={4}
+              y={Math.max(10, goalY - 6)}
+              fill={C.inkFaint}
+              style={{
+                fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                fontSize: 9,
+                fontWeight: 600,
+                letterSpacing: '0.08em',
+              }}
+            >
+              PLAN COMPLETE · {minutesToLabel(goalMinutes ?? 0)}
+            </text>
+          </g>
+        )}
+
+        {goalY !== null && finishMarkers.map((marker) => {
+          const x = xScale(marker.date);
+          const labelY = Math.max(10, Math.min(yMax - 6, goalY + marker.offsetY));
+          const nearRight = x > xMax - 70;
+          const nearLeft = x < 70;
+          const textAnchor = nearRight ? 'end' : nearLeft ? 'start' : 'middle';
+          const labelX = nearRight ? x + 4 : nearLeft ? x - 4 : x;
+          return (
+            <g
+              key={marker.key}
+              data-testid={`finish-flag-${marker.key}`}
+              data-date={toISODate(marker.date)}
+              pointerEvents="none"
+            >
+              <line
+                x1={x}
+                x2={x}
+                y1={goalY}
+                y2={labelY < goalY ? labelY + 3 : labelY - 11}
+                stroke={marker.color}
+                strokeWidth={1}
+                opacity={0.55}
+              />
+              <circle
+                cx={x}
+                cy={goalY}
+                r={4.5}
+                fill={marker.color}
+                stroke={C.card}
+                strokeWidth={1.5}
+              />
+              <text
+                x={labelX}
+                y={labelY}
+                textAnchor={textAnchor}
+                fill={marker.color}
+                style={{
+                  fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {marker.label} · {format(marker.date, 'MMM d')}
+              </text>
+            </g>
+          );
+        })}
 
         {referenceVisible && (
           <>
@@ -681,6 +906,10 @@ export interface BurnUpPlotProps {
   selectedCheckpoint?: string | null;
   onCheckpointSelect?: (dateISO: string) => void;
   scenarioPoints?: ScenarioChartPoint[];
+  deadlineISO?: string;
+  forecastFinishISO?: string;
+  scenarioFinishISO?: string;
+  totalPlannedMinutes?: number;
   style?: CSSProperties;
   className?: string;
 }
@@ -695,6 +924,10 @@ export function BurnUpPlot({
   selectedCheckpoint,
   onCheckpointSelect,
   scenarioPoints,
+  deadlineISO,
+  forecastFinishISO,
+  scenarioFinishISO,
+  totalPlannedMinutes,
   style,
   className,
 }: BurnUpPlotProps) {
@@ -715,6 +948,10 @@ export function BurnUpPlot({
             selectedCheckpoint={selectedCheckpoint}
             onCheckpointSelect={onCheckpointSelect}
             scenarioPoints={scenarioPoints}
+            deadlineISO={deadlineISO}
+            forecastFinishISO={forecastFinishISO}
+            scenarioFinishISO={scenarioFinishISO}
+            totalPlannedMinutes={totalPlannedMinutes}
           />
         )}
       </ParentSize>
@@ -744,6 +981,18 @@ function Legend({ isBehind }: { isBehind: boolean }) {
           <line x1={0} y1={5} x2={20} y2={5} stroke={C.inkFaint} strokeWidth={1.5} strokeDasharray="4 3" />
         </svg>
         <span style={labelStyle}>Planned</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width={20} height={10} aria-hidden="true">
+          <line x1={0} y1={5} x2={20} y2={5} stroke={accentColor} strokeWidth={1.5} strokeDasharray="3 3" />
+        </svg>
+        <span style={labelStyle}>GP forecast</span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <svg width={20} height={10} aria-hidden="true">
+          <line x1={0} y1={5} x2={20} y2={5} stroke={C.moss} strokeWidth={2.5} strokeDasharray="6 5" />
+        </svg>
+        <span style={labelStyle}>Your pace</span>
       </div>
       {isBehind && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
