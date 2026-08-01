@@ -6,6 +6,7 @@
 **Map:** [#9 Phase 2 map: Assessments + LLM-guided Practice](https://github.com/NotTheRealRohit/study-planner-web/issues/9)
 
 > This is an M.Tech **capstone**: build feature-rich and complete — no ship-fast / MVP / deferral tradeoffs.
+> **Amended by #14 (2026-08-01):** the "development cost is not a constraint" clause is **reversed for the AI/model layer only** — no funds for Claude, so models run **cost-effective, accurate-enough** on the **Google Gemini free tier**. Feature scope stays full; only the models go cheap.
 
 ## Destination
 
@@ -39,7 +40,7 @@ Legend: ☐ open · ✅ done.
 4. ✅ #17 Inline-hint live guide (prototype) — highest uncertainty; grounds the practice spec; unblocks #21. (resolved 2026-08-01: **Variant C** anchored coach popover chosen HITL from 3 built surfaces; line-anchored + line-aware tiered-Socratic hints [nudge→hint→targeted→gated-reveal, orient-then-ask copy], hybrid triggers [I'm stuck / idle / failed-test that OFFER], reveal gated in prompt + structurally; guide = streamed Intelligence-Service LLM call, **model TBD=#14**; real editor needs Monaco/CodeMirror [#21 build note]. Throwaway branch `prototype/wf17-inline-hint-guide`, route `/study/practice-prototype`. **Wave 1 complete.**)
 
 **Wave 2 — AI infra trio (internal order matters)**
-5. ☐ #14 AI backend home & streaming — the home all model calls assume.
+5. ✅ #14 AI backend home & streaming — the home all model calls assume. (resolved 2026-08-01: single JWT-verified Intelligence Service owns all model+embedding calls; **cost-principle reversed** → Google Gemini free tier via `google-genai` behind a provider abstraction [Ollama fallback] — guide=`gemini-3.5-flash-lite`, generation+grading=`gemini-3.6-flash`, embeddings=`gemini-embedding-001`@768-dim; streaming = `POST`+`fetch` ReadableStream over `/v1/*` [not EventSource], provider-neutral SSE frames, reveal=separate gated call, generation streams per-question, grading req/resp; prompt arch = git-versioned Jinja + SSTI variable rule + untrusted-as-data + native `responseSchema`; abuse hardening = key server-side, **no endpoint runs the model on arbitrary text — every call bound to a user-owned artifact**, durable Postgres rate-limits + free-tier circuit breaker, audit logging; #14/#13 seam = #14 owns embedding client, #13 bulk-drives it. Graduated the prompt-arch/injection fog.)
 6. ☐ #12 Content ingestion & storage — the content that gets chunked (fixes title-only gap).
 7. ☐ #13 Vector store, embeddings & async jobs — consumes #12; picks the worker. Trio unblocks #18.
 
@@ -63,7 +64,7 @@ Legend: ☐ open · ✅ done.
 | [#11](https://github.com/NotTheRealRohit/study-planner-web/issues/11) | Assessment types, formats & scoring spec | grilling | 0 | ✅ closed |
 | [#12](https://github.com/NotTheRealRohit/study-planner-web/issues/12) | Content ingestion & storage design | grilling | 2 | ☐ open |
 | [#13](https://github.com/NotTheRealRohit/study-planner-web/issues/13) | Vector store, embeddings & async job mechanism | grilling | 2 | ☐ open |
-| [#14](https://github.com/NotTheRealRohit/study-planner-web/issues/14) | AI backend home & streaming | grilling | 2 | ☐ open |
+| [#14](https://github.com/NotTheRealRohit/study-planner-web/issues/14) | AI backend home & streaming | grilling | 2 | ✅ closed — Gemini free tier |
 | [#15](https://github.com/NotTheRealRohit/study-planner-web/issues/15) | Persistence & local-first fit | grilling | 0 | ✅ closed |
 | [#16](https://github.com/NotTheRealRohit/study-planner-web/issues/16) | Code execution sandbox selection | research | — | ✅ closed — Judge0 CE |
 | [#17](https://github.com/NotTheRealRohit/study-planner-web/issues/17) | Inline-hint live guide (prototype) | prototype | 1 | ✅ closed — Variant C |
@@ -72,14 +73,14 @@ Legend: ☐ open · ✅ done.
 
 | # | Ticket | Type | Wave | Blocked by |
 |---|---|---|---|---|
-| [#18](https://github.com/NotTheRealRohit/study-planner-web/issues/18) | Grounded assessment-generation pipeline | grilling | 3 | #12 #13 #14 |
+| [#18](https://github.com/NotTheRealRohit/study-planner-web/issues/18) | Grounded assessment-generation pipeline | grilling | 3 | #12 #13 (#14 ✅) |
 | [#19](https://github.com/NotTheRealRohit/study-planner-web/issues/19) | Grading → mastery signal mapping | grilling | 3 | #11 #15 |
 | [#20](https://github.com/NotTheRealRohit/study-planner-web/issues/20) | KT model & adaptive-difficulty loop | grilling | 3 | #19 |
 | [#21](https://github.com/NotTheRealRohit/study-planner-web/issues/21) | Practice session model (written + coding) | grilling | 3 | ✅ #17 (now unblocked) |
 
 ### Fog (not yet specified) / see map
 
-Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics · prompt architecture + injection safety · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11) · content cache lifecycle/eviction (surfaced by #15).
+Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics (+ #14: grader-robustness metric, free-tier data-use ethics note) · ~~prompt architecture + injection safety~~ (✅ graduated/resolved by #14) · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11) · content cache lifecycle/eviction (surfaced by #15).
 
 ## How to continue
 
