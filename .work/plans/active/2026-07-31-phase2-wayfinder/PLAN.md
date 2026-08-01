@@ -33,7 +33,7 @@ Legend: ☐ open · ✅ done.
 **Wave 0 — Frame (cheap, constrains everything)**
 1. ✅ #10 App IA & navigation — where the features live; every later ticket references it. (resolved 2026-07-31: 2 tabs, material-scoped, path-param routes, local-first records + online generation)
 2. ✅ #11 Assessment types, formats & scoring — self-contained schema decision; later unblocks #19. (resolved 2026-08-01: Question-atom + mixed-container Assessment; 3 families/closed format enum; unified `[0,1]`+per-skill-binary KT contract, τ≈0.6; difficulty 1..5 authored + reserved empirical slot)
-3. ☐ #15 Persistence & local-first fit — the event/data-model spine everything must obey.
+3. ✅ #15 Persistence & local-first fit — the event/data-model spine everything must obey. (resolved 2026-08-01: three-layer split — pointer event + server-owned content rows + redacted `assessmentContentCache`; per-Question runId-grouped `QuestionAttempted`→`QuestionGraded` [retry = fresh KT observation]; all grading server-side; mastery = `masteryCache` projection [`MasteryUpdated` reserved for #19]; Dexie **v5→v6** adds the two cache tables only. **Wave 0 complete.**)
 
 **Wave 1 — De-risk the centerpiece (runs in parallel with the rest)**
 4. ☐ #17 Inline-hint live guide (prototype) — highest uncertainty; grounds the practice spec; unblocks #21.
@@ -64,7 +64,7 @@ Legend: ☐ open · ✅ done.
 | [#12](https://github.com/NotTheRealRohit/study-planner-web/issues/12) | Content ingestion & storage design | grilling | 2 | ☐ open |
 | [#13](https://github.com/NotTheRealRohit/study-planner-web/issues/13) | Vector store, embeddings & async job mechanism | grilling | 2 | ☐ open |
 | [#14](https://github.com/NotTheRealRohit/study-planner-web/issues/14) | AI backend home & streaming | grilling | 2 | ☐ open |
-| [#15](https://github.com/NotTheRealRohit/study-planner-web/issues/15) | Persistence & local-first fit | grilling | 0 | ☐ open |
+| [#15](https://github.com/NotTheRealRohit/study-planner-web/issues/15) | Persistence & local-first fit | grilling | 0 | ✅ closed |
 | [#16](https://github.com/NotTheRealRohit/study-planner-web/issues/16) | Code execution sandbox selection | research | — | ✅ closed — Judge0 CE |
 | [#17](https://github.com/NotTheRealRohit/study-planner-web/issues/17) | Inline-hint live guide (prototype) | prototype | 1 | ☐ open |
 
@@ -79,7 +79,7 @@ Legend: ☐ open · ✅ done.
 
 ### Fog (not yet specified) / see map
 
-Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics · prompt architecture + injection safety · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11).
+Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics · prompt architecture + injection safety · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11) · content cache lifecycle/eviction (surfaced by #15).
 
 ## How to continue
 
