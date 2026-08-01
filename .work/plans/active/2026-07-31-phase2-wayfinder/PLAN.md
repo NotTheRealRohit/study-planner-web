@@ -36,7 +36,7 @@ Legend: ☐ open · ✅ done.
 3. ✅ #15 Persistence & local-first fit — the event/data-model spine everything must obey. (resolved 2026-08-01: three-layer split — pointer event + server-owned content rows + redacted `assessmentContentCache`; per-Question runId-grouped `QuestionAttempted`→`QuestionGraded` [retry = fresh KT observation]; all grading server-side; mastery = `masteryCache` projection [`MasteryUpdated` reserved for #19]; Dexie **v5→v6** adds the two cache tables only. **Wave 0 complete.**)
 
 **Wave 1 — De-risk the centerpiece (runs in parallel with the rest)**
-4. ☐ #17 Inline-hint live guide (prototype) — highest uncertainty; grounds the practice spec; unblocks #21.
+4. ✅ #17 Inline-hint live guide (prototype) — highest uncertainty; grounds the practice spec; unblocks #21. (resolved 2026-08-01: **Variant C** anchored coach popover chosen HITL from 3 built surfaces; line-anchored + line-aware tiered-Socratic hints [nudge→hint→targeted→gated-reveal, orient-then-ask copy], hybrid triggers [I'm stuck / idle / failed-test that OFFER], reveal gated in prompt + structurally; guide = streamed Intelligence-Service LLM call, **model TBD=#14**; real editor needs Monaco/CodeMirror [#21 build note]. Throwaway branch `prototype/wf17-inline-hint-guide`, route `/study/practice-prototype`. **Wave 1 complete.**)
 
 **Wave 2 — AI infra trio (internal order matters)**
 5. ☐ #14 AI backend home & streaming — the home all model calls assume.
@@ -66,7 +66,7 @@ Legend: ☐ open · ✅ done.
 | [#14](https://github.com/NotTheRealRohit/study-planner-web/issues/14) | AI backend home & streaming | grilling | 2 | ☐ open |
 | [#15](https://github.com/NotTheRealRohit/study-planner-web/issues/15) | Persistence & local-first fit | grilling | 0 | ✅ closed |
 | [#16](https://github.com/NotTheRealRohit/study-planner-web/issues/16) | Code execution sandbox selection | research | — | ✅ closed — Judge0 CE |
-| [#17](https://github.com/NotTheRealRohit/study-planner-web/issues/17) | Inline-hint live guide (prototype) | prototype | 1 | ☐ open |
+| [#17](https://github.com/NotTheRealRohit/study-planner-web/issues/17) | Inline-hint live guide (prototype) | prototype | 1 | ✅ closed — Variant C |
 
 ### Blocked (wired, wait for upstream)
 
@@ -75,7 +75,7 @@ Legend: ☐ open · ✅ done.
 | [#18](https://github.com/NotTheRealRohit/study-planner-web/issues/18) | Grounded assessment-generation pipeline | grilling | 3 | #12 #13 #14 |
 | [#19](https://github.com/NotTheRealRohit/study-planner-web/issues/19) | Grading → mastery signal mapping | grilling | 3 | #11 #15 |
 | [#20](https://github.com/NotTheRealRohit/study-planner-web/issues/20) | KT model & adaptive-difficulty loop | grilling | 3 | #19 |
-| [#21](https://github.com/NotTheRealRohit/study-planner-web/issues/21) | Practice session model (written + coding) | grilling | 3 | #17 |
+| [#21](https://github.com/NotTheRealRohit/study-planner-web/issues/21) | Practice session model (written + coding) | grilling | 3 | ✅ #17 (now unblocked) |
 
 ### Fog (not yet specified) / see map
 
