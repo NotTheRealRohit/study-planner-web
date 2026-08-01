@@ -41,8 +41,9 @@ Legend: ☐ open · ✅ done.
 
 **Wave 2 — AI infra trio (internal order matters)**
 5. ✅ #14 AI backend home & streaming — the home all model calls assume. (resolved 2026-08-01: single JWT-verified Intelligence Service owns all model+embedding calls; **cost-principle reversed** → Google Gemini free tier via `google-genai` behind a provider abstraction [Ollama fallback] — guide=`gemini-3.5-flash-lite`, generation+grading=`gemini-3.6-flash`, embeddings=`gemini-embedding-001`@768-dim; streaming = `POST`+`fetch` ReadableStream over `/v1/*` [not EventSource], provider-neutral SSE frames, reveal=separate gated call, generation streams per-question, grading req/resp; prompt arch = git-versioned Jinja + SSTI variable rule + untrusted-as-data + native `responseSchema`; abuse hardening = key server-side, **no endpoint runs the model on arbitrary text — every call bound to a user-owned artifact**, durable Postgres rate-limits + free-tier circuit breaker, audit logging; #14/#13 seam = #14 owns embedding client, #13 bulk-drives it. Graduated the prompt-arch/injection fog.)
-6. ☐ #12 Content ingestion & storage — the content that gets chunked (fixes title-only gap).
-7. ☐ #13 Vector store, embeddings & async jobs — consumes #12; picks the worker. Trio unblocks #18.
+6. ☐ **#22 Data + service architecture refactor** — NEW, split from #12 (2026-08-01). Decides the async-job/event-bus mechanism (Kafka/Redpanda transport-bus vs pgmq) + microservice split (separate Ingestion Service + Intelligence Service) + evolved sync spine; fixes two audit gaps (`sync_checkpoints` unmigrated; 5 MB snapshot cap unenforced). **Blocks #12 #13.**
+7. ⏸ #12 Content ingestion & storage — **paused, blocked by #22**. Decided so far: sources = all 4 (upload/URL/paste/YouTube); deterministic extraction (no LLM), LLM topics/summary via Intelligence Service bound to `material_id`; leaning toward a separate Ingestion Service.
+8. ☐ #13 Vector store, embeddings & async jobs — consumes #12; job mechanism decided in #22. Trio unblocks #18.
 
 **Wave 3 — Downstream (open as upstream closes)**
 8. ☐ #18 Grounded generation pipeline — needs #12 #13 #14.
@@ -62,7 +63,8 @@ Legend: ☐ open · ✅ done.
 |---|---|---|---|---|
 | [#10](https://github.com/NotTheRealRohit/study-planner-web/issues/10) | App IA & navigation for Assessments + Practice | grilling | 0 | ✅ closed |
 | [#11](https://github.com/NotTheRealRohit/study-planner-web/issues/11) | Assessment types, formats & scoring spec | grilling | 0 | ✅ closed |
-| [#12](https://github.com/NotTheRealRohit/study-planner-web/issues/12) | Content ingestion & storage design | grilling | 2 | ☐ open |
+| [#22](https://github.com/NotTheRealRohit/study-planner-web/issues/22) | Data + service architecture refactor | grilling | 2 | ☐ open — **NEW frontier**, blocks #12 #13 |
+| [#12](https://github.com/NotTheRealRohit/study-planner-web/issues/12) | Content ingestion & storage design | grilling | 2 | ⏸ paused — blocked by #22 |
 | [#13](https://github.com/NotTheRealRohit/study-planner-web/issues/13) | Vector store, embeddings & async job mechanism | grilling | 2 | ☐ open |
 | [#14](https://github.com/NotTheRealRohit/study-planner-web/issues/14) | AI backend home & streaming | grilling | 2 | ✅ closed — Gemini free tier |
 | [#15](https://github.com/NotTheRealRohit/study-planner-web/issues/15) | Persistence & local-first fit | grilling | 0 | ✅ closed |
