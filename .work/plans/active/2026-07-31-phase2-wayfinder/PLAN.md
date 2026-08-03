@@ -84,6 +84,23 @@ Legend: ☐ open · ✅ done.
 
 Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics (+ #14: grader-robustness metric, free-tier data-use ethics note) · ~~prompt architecture + injection safety~~ (✅ graduated/resolved by #14) · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11) · content cache lifecycle/eviction (surfaced by #15).
 
+## Migration ledger (server-side schema — single source of truth)
+
+Several tickets each said "migration `004`" in isolation. That is a **coordination** artifact, not a per-ticket decision — the number belongs here, not in a ticket. This ledger assigns the number, the owner, and (the part that matters) the **apply order by FK / dependency**. Convention: **integer prefixes** (matches the existing `003_`), applied in ascending order.
+
+| # | File | Owner | Contents | Depends on |
+|---|---|---|---|---|
+| `003` | `003_events_table.sql` | (exists) | `events` table, `sync-snapshots` bucket | — |
+| `004` | `004_sync_checkpoints.sql` | #22 | `sync_checkpoints` table + RLS `auth.uid()` (fixes the latent restore bug — `SyncEngine` reads/writes a table with no migration) | independent |
+| `005` | `005_pgmq_bootstrap.sql` | #22 / #13 | enable `vector` + `pgmq` extensions; create stage queues (`ingest.extract`, `embed`, `topics`) + the KT derived-computation fan-out queues | — (shared infra) |
+| `006` | `006_content_materials.sql` | **#12** | `materials`, `content_chunks` (folded `halfvec(768)` + HNSW cosine), `material-raw` Storage bucket, RLS `auth.uid()=user_id`, the pgmq **enqueue trigger** | `005` (queues must exist before the trigger) |
+| `007` | `007_assessments.sql` | #15 / #18 | `assessments`, `questions` (fat generated content incl. hidden answers; FK `material_id → materials`) | `006` |
+
+Notes:
+- **#12's content tables moved from "`004`" to `006`** — no cross-ticket coordination needed anymore; this table is the single source of truth. The closed #12 resolution comment says "migration `004`" (self-consistent at decision time); read the number from **here**.
+- The **5 MB snapshot-cap enforcement (#22) is NOT a migration** — it is client-side code in `SyncEngine` (hard size-check before upload). It never claimed a migration slot; dropped from the collision set.
+- Numbers are reserved on decision; the implementer applies them in ascending order. If a future ticket needs a new table, append the next integer here **before** writing the SQL.
+
 ## How to continue
 
 Run `/wayfinder 9` (optionally naming a ticket). One decision ticket per session; research tickets may resolve AFK. Frontier query: `gh issue list --label wayfinder:phase2 --state open`. Claim a ticket by assigning it to yourself first.
