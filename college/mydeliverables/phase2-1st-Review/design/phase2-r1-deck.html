@@ -1,0 +1,416 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Verified Learning &amp; LLM-Guided Practice · Phase-2 · Guidance Call 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+ --paper:#F5EFE4;--paper-deep:#EDE3D2;--card:#FBF7EE;--ink:#2A1F18;--ink-soft:#5C4D40;--ink-faint:#8B7B6B;
+ --rule:#D9CDB8;--rule-soft:#E6DCC8;--terra:#B85C38;--terra-d:#8E4429;--moss:#4A6B3A;--clay:#A9762F;
+ --disp:'Fraunces',Georgia,serif;--body:'Inter Tight',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;background:#2A241C;font-family:var(--body);overflow:hidden}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#frame{width:1280px;height:720px;position:relative;transform-origin:center;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.slide{position:absolute;inset:0;background:var(--paper);display:none;overflow:hidden}
+.slide.active{display:block}
+.pes{position:absolute;top:26px;right:34px;display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--ink-faint)}
+.pes .dot{width:20px;height:20px;border-radius:50%;border:2px solid var(--terra)}
+.hd{display:flex;align-items:baseline;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:26px}
+.hd .num{font-family:var(--mono);font-size:17px;color:var(--terra)}
+.hd .ttl{font-family:var(--disp);font-size:34px;font-weight:600;color:var(--ink);letter-spacing:-.3px}
+.hd .ct{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--ink-faint)}
+.pad{padding:52px 68px;width:100%;height:100%;display:flex;flex-direction:column}
+.ph{color:var(--ink-faint);font-style:italic}
+.lead{font-family:var(--disp);font-size:30px;font-weight:400;line-height:1.25;color:var(--ink)}
+.prompt{display:flex;gap:14px;padding:13px 0;border-bottom:1px solid var(--rule)}
+.prompt .k{font-family:var(--mono);font-size:14px;color:var(--terra);font-weight:500;flex:0 0 26px}
+.prompt .t{font-size:18px;color:var(--ink-soft);line-height:1.45}
+.phbox{border:1.5px dashed var(--rule);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-family:var(--mono);font-size:13px;background:var(--card)}
+.tag{font-family:var(--mono);font-size:12px;padding:2px 10px;border-radius:11px;border:1px solid currentColor}
+.footnote{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:auto;padding-top:14px}
+.navbar{position:absolute;bottom:16px;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);z-index:5}
+.pbar{position:absolute;bottom:0;left:0;height:4px;background:var(--terra);z-index:6;transition:width .2s}
+.hint{position:fixed;bottom:14px;right:18px;font-family:var(--mono);font-size:11px;color:rgba(245,239,228,.5);z-index:20}
+.peslogo{height:26px;width:auto;display:block;flex:0 0 auto}
+.titlelogo{height:56px;width:auto;align-self:flex-start;display:block;flex:0 0 auto;margin-bottom:22px}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px}
+.mono-k{font-family:var(--mono);font-size:12px;letter-spacing:1px;color:var(--terra)}
+.chip{font-family:var(--mono);font-size:11px;color:var(--ink-soft);background:var(--card);border:1px solid var(--rule);border-radius:20px;padding:3px 11px;white-space:nowrap}
+.clk{cursor:pointer;transition:border-color .12s,box-shadow .12s,color .12s}
+.clk:hover{border-color:var(--terra)!important;box-shadow:0 3px 12px rgba(0,0,0,.10)}
+#infobox{position:fixed;inset:0;background:rgba(20,16,12,.72);display:none;align-items:center;justify-content:center;z-index:55;padding:4vh 4vw;cursor:pointer}
+#infobox.open{display:flex}
+#infobox .ibcard{background:var(--paper);max-width:660px;width:100%;max-height:86vh;overflow:auto;border-radius:14px;padding:30px 34px;box-shadow:0 18px 60px rgba(0,0,0,.5);cursor:default;position:relative;border-top:5px solid var(--terra)}
+#infobox .ibttl{font-family:var(--disp);font-size:27px;font-weight:600;color:var(--ink);margin-bottom:6px;padding-right:44px;line-height:1.15}
+#infobox .ibbody p{font-size:16px;color:var(--ink-soft);line-height:1.5;margin-bottom:11px}
+#infobox .ibbody b{color:var(--ink)}
+#infobox .ibbody .ibtech{font-family:var(--mono);font-size:12.5px;color:var(--moss);background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:10px 12px;margin-top:4px;line-height:1.45}
+#infobox .ibbody .ibsub{font-size:14px;color:var(--ink-faint);font-style:italic;margin-bottom:12px}
+#infobox .ibclose{position:absolute;top:15px;right:18px;font-family:var(--mono);font-size:13px;color:var(--ink-faint);cursor:pointer}
+</style></head><body>
+<div id="stage"><div id="frame">
+
+<!-- 01 TITLE -->
+<section class="slide active"><div class="pad" style="justify-content:center"><img class="titlelogo" alt="PES University"/>
+<div style="font-family:var(--mono);font-size:14px;letter-spacing:3px;color:var(--terra);margin-bottom:20px">M.TECH PROJECT · PHASE-2 · GUIDANCE CALL 1 &nbsp;·&nbsp; PROPOSING THE TIMELINE</div>
+<div class="lead" style="font-size:50px;font-weight:600;line-height:1.06">Verified Learning &amp;<br>LLM-Guided Practice</div>
+<div style="width:64px;height:4px;background:var(--terra);margin:22px 0 18px;border-radius:2px"></div>
+<div style="font-size:19px;color:var(--ink-soft);max-width:80%;line-height:1.5">Closing the adaptive loop. Assessments <b>verify learning after</b> a session. A Socratic guide <b>supports it during</b> one. Both stay grounded in the learner&rsquo;s own material and feed the result back into the plan.</div>
+<div style="margin-top:20px;font-size:14px;color:var(--ink-soft);background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--terra);border-radius:8px;padding:11px 15px;max-width:80%;line-height:1.5"><b style="color:var(--ink)">Today: Guidance Call 1.</b> This session proposes the Phase-2 timeline and commits what Review 1 will show <b>next weekend</b>. Guidance and review sessions alternate on successive weekends.</div>
+<div style="display:flex;gap:38px;margin-top:34px;font-size:15px;color:var(--ink-soft)">
+<div><span style="font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--ink-faint);display:block;margin-bottom:3px">PRESENTER</span>***REMOVED*** · PES2PGE24DS201</div>
+<div><span style="font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--ink-faint);display:block;margin-bottom:3px">GUIDE</span>Prof. Ramesh Prakash Guledgudd</div>
+<div><span style="font-family:var(--mono);font-size:11px;letter-spacing:1px;color:var(--ink-faint);display:block;margin-bottom:3px">PROGRAM</span>M.Tech · Data Science &amp; AI · PES University</div>
+</div></div></section>
+
+<!-- 02 AGENDA -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">02</span><span class="ttl">Agenda</span><span class="ct">02 / 18</span></div>
+<div style="columns:2;column-gap:70px">
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">03</span><span style="font-size:19px;color:var(--ink)">Phase-1 recap &amp; the gap</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">04</span><span style="font-size:19px;color:var(--ink)">The novelty proposal</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">05</span><span style="font-size:19px;color:var(--ink)">Closing the loop</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">06</span><span style="font-size:19px;color:var(--ink)">Assessment subsystem</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">07</span><span style="font-size:19px;color:var(--ink)">LLM-guided Practice</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">08</span><span style="font-size:19px;color:var(--ink)">RAG grounding</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">09</span><span style="font-size:19px;color:var(--ink)">Research coupling: verified learning &rarr; KT</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">10</span><span style="font-size:19px;color:var(--ink)">Phase-2 architecture</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">11</span><span style="font-size:19px;color:var(--ink)">AI backend &amp; cost</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">12</span><span style="font-size:19px;color:var(--ink)">Algorithms &amp; techniques</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">13</span><span style="font-size:19px;color:var(--ink)">Decisions &amp; frontier</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">14</span><span style="font-size:19px;color:var(--ink)">Timeline &amp; review cadence</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">15</span><span style="font-size:19px;color:var(--ink)">This coming week &rarr; Review 1</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">16</span><span style="font-size:19px;color:var(--ink)">Expected outcomes &amp; evaluation</span></div>
+<div style="display:flex;gap:12px;align-items:baseline;padding:9px 0"><span style="font-family:var(--mono);font-size:13px;color:var(--terra)">17</span><span style="font-size:19px;color:var(--ink)">References</span></div>
+</div></div></section>
+
+<!-- 03 PHASE-1 RECAP + GAP -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">03</span><span class="ttl">Phase-1 Recap &amp; the Gap</span><span class="ct">03 / 18</span></div>
+<div class="lead" style="margin-bottom:18px">Phase-1 shipped a working, evaluated <b>open-loop</b> adaptive planner. Phase-2 closes the loop and fixes the one signal Phase-1 could not trust.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1">
+<div>
+<div class="mono-k" style="margin-bottom:10px">DONE IN PHASE-1</div>
+<div class="prompt"><span class="k">01</span><span class="t"><b>Adaptive open loop.</b> Pace calibration, CUSUM change detection, GP completion projection, capacity-based replanning, in a live local-first web app.</span></div>
+<div class="prompt"><span class="k">02</span><span class="t"><b>Honest evaluation.</b> We compared every component offline against baselines with held-out archetypes, bootstrap CIs and Holm correction. We report the nulls.</span></div>
+</div>
+<div>
+<div class="mono-k" style="margin-bottom:10px;color:var(--terra)">THE GAP PHASE-2 CLOSES</div>
+<div class="card" style="border-left:3px solid var(--terra);padding:14px 16px;margin-bottom:12px">
+<div style="font-size:17px;font-weight:600;color:var(--ink);margin-bottom:5px">The pace signal is self-reported <i>time</i>, and time is gameable.</div>
+<div style="font-size:14.5px;color:var(--ink-soft);line-height:1.45">Logging 45 minutes proves you sat there, not that you learned. The loop adapts to effort, never to evidence of mastery.</div></div>
+<div class="card" style="border-left:3px solid var(--moss);padding:14px 16px">
+<div style="font-size:17px;font-weight:600;color:var(--ink);margin-bottom:5px">Review-3 suggestion, now in scope.</div>
+<div style="font-size:14.5px;color:var(--ink-soft);line-height:1.45">My guide asked me to explore <b>LLM-guided practice</b>: a live coach that nudges but never completes the work. It becomes a first-class Phase-2 pillar.</div></div>
+</div></div></div></section>
+
+<!-- 04 NOVELTY PROPOSAL -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">04</span><span class="ttl">The Novelty Proposal</span><span class="ct">04 / 18</span></div>
+<div class="lead" style="margin-bottom:20px">Two coupled subsystems that turn <i>time spent</i> into <i>evidence of learning</i>, then route that evidence back into the plan.</div>
+<div style="display:flex;gap:16px;margin-bottom:16px">
+<div class="card" style="flex:1;border-top:3px solid var(--terra);padding:15px 17px">
+<div class="mono-k">PILLAR B · AFTER A SESSION</div>
+<div style="font-size:19px;font-weight:600;color:var(--ink);margin:6px 0">Assessments</div>
+<div style="font-size:14.5px;color:var(--ink-soft);line-height:1.45">Quiz, written and coding questions generated from the learner&rsquo;s own material, graded to a mastery signal. <b>Verifies</b> that learning happened.</div></div>
+<div class="card" style="flex:1;border-top:3px solid var(--moss);padding:15px 17px">
+<div class="mono-k" style="color:var(--moss)">DURING A SESSION</div>
+<div style="font-size:19px;font-weight:600;color:var(--ink);margin:6px 0">LLM-Guided Practice</div>
+<div style="font-size:14.5px;color:var(--ink-soft);line-height:1.45">A live, Socratic inline coach that watches the work and nudges. It gives tiered hints, never the finished answer. <b>Supports</b> learning as it happens.</div></div>
+</div>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+<span class="chip" style="border-color:var(--terra);color:var(--terra)">RAG-grounded on the learner&rsquo;s material</span>
+<span class="chip" style="border-color:var(--moss);color:var(--moss)">Coupled to knowledge-tracing &amp; adaptation</span>
+<span class="chip">Backed by working prototypes</span>
+<span class="chip">Capstone-grade, feature-complete</span>
+</div>
+<div class="card" style="padding:12px 15px;font-size:14px;color:var(--ink-soft);line-height:1.5">
+<b style="color:var(--ink)">Standing principle.</b> This is a capstone: build feature-rich and complete, with no MVP shortcuts. The one reversal is the <b>AI/model layer</b>, run on the <b>Google Gemini free tier</b> for a <i>cost-effective, accurate-enough</i> result. Feature scope stays full. Only the models stay cheap.</div></div></section>
+
+<!-- 05 CLOSING THE LOOP -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">05</span><span class="ttl">Closing the Loop</span><span class="ct">05 / 18</span></div>
+<div class="mono-k" style="margin-bottom:14px">FROM A GRADED ATTEMPT TO A RESHAPED PLAN · CLICK ANY STEP</div>
+<div style="display:flex;gap:6px;margin-bottom:20px;align-items:stretch">
+<div class="card clk" data-k="l_sess" style="flex:1;text-align:center;padding:11px 8px;cursor:pointer"><div style="font-size:14px;font-weight:600;color:var(--ink)">Study session</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">+ practice</div></div>
+<div style="align-self:center;color:var(--terra);font-size:16px">&rarr;</div>
+<div class="card clk" data-k="l_assess" style="flex:1;text-align:center;padding:11px 8px;cursor:pointer;border-top:3px solid var(--terra)"><div style="font-size:14px;font-weight:600;color:var(--ink)">Assessment</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">score &isin; [0,1] + per-skill</div></div>
+<div style="align-self:center;color:var(--terra);font-size:16px">&rarr;</div>
+<div class="card clk" data-k="l_mastery" style="flex:1;text-align:center;padding:11px 8px;cursor:pointer;border-top:3px solid var(--moss)"><div style="font-size:14px;font-weight:600;color:var(--ink)">Mastery signal</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">knowledge tracing</div></div>
+<div style="align-self:center;color:var(--terra);font-size:16px">&rarr;</div>
+<div class="card clk" data-k="l_adapt" style="flex:1;text-align:center;padding:11px 8px;cursor:pointer;border-top:3px solid var(--moss)"><div style="font-size:14px;font-weight:600;color:var(--ink)">Adaptive difficulty</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">next-item selection</div></div>
+<div style="align-self:center;color:var(--terra);font-size:16px">&rarr;</div>
+<div class="card clk" data-k="l_road" style="flex:1;text-align:center;padding:11px 8px;cursor:pointer;border-top:3px solid var(--clay)"><div style="font-size:14px;font-weight:600;color:var(--ink)">Roadmap feedback</div><div style="font-size:11px;color:var(--ink-soft);margin-top:2px">pace &amp; plan</div></div>
+</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-top:6px">
+<div class="card" style="flex:1;border-left:3px solid var(--terra);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px">Phase-1 loop</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.45">logged <b>time</b> &rarr; calibrated pace &rarr; re-projected finish date. Adapts to effort.</div></div>
+<div class="card" style="flex:1.4;border-left:3px solid var(--moss);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px">Phase-2 loop</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.45">verified <b>mastery</b> joins the signal. The plan responds to evidence of <i>learning</i>, not just hours. Every attempt reduces to a single knowledge-tracing observation.</div></div>
+</div>
+<div class="footnote">Every attempt &rarr; <b style="color:var(--terra)">score &isin; [0,1] + a per-skill binary (&ge; &tau; &asymp; 0.6)</b> = the knowledge-tracing observation. Retry = a fresh observation. <b>Click any step</b> for detail.</div></div></section>
+
+<!-- 06 ASSESSMENT SUBSYSTEM -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">06</span><span class="ttl">Assessment Subsystem</span><span class="ct">06 / 18</span></div>
+<div style="font-size:17px;color:var(--ink);margin-bottom:16px"><b>The Question is the gradeable atom.</b> An Assessment is a material-scoped container of possibly-mixed questions across three families. <span style="font-family:var(--mono);font-size:12px;color:var(--terra)">CLICK A FAMILY</span></div>
+<div style="display:flex;gap:12px;margin-bottom:16px">
+<div class="card clk" data-k="fam_obj" style="flex:1;border-top:3px solid var(--terra);padding:13px 15px;cursor:pointer"><div style="font-size:16px;font-weight:600;color:var(--ink)">Objective</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:5px 0 7px">mcq · multi_select · true_false · cloze · numeric</div><div style="font-size:13px;color:var(--moss);font-weight:600">&rarr; auto-graded</div></div>
+<div class="card clk" data-k="fam_written" style="flex:1;border-top:3px solid var(--moss);padding:13px 15px;cursor:pointer"><div style="font-size:16px;font-weight:600;color:var(--ink)">Written</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:5px 0 7px">short_answer · long_form</div><div style="font-size:13px;color:var(--moss);font-weight:600">&rarr; LLM rubric grading</div></div>
+<div class="card clk" data-k="fam_coding" style="flex:1;border-top:3px solid var(--clay);padding:13px 15px;cursor:pointer"><div style="font-size:16px;font-weight:600;color:var(--ink)">Coding</div><div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:5px 0 7px">implement_fn · debug · output_prediction · complete_code</div><div style="font-size:13px;color:var(--moss);font-weight:600">&rarr; Judge0 sandbox</div></div>
+</div>
+<div style="display:flex;gap:14px;flex:1">
+<div class="card" style="flex:1;padding:13px 16px"><div class="mono-k" style="margin-bottom:6px">THE SCORING CONTRACT</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.5">Whatever the family, every attempt reduces to <b style="color:var(--ink)">score &isin; [0,1]</b> plus a <b style="color:var(--ink)">per-skill binary <code>correct</code></b> (&ge; &tau; &asymp; 0.6). That pair <i>is</i> the knowledge-tracing observation, one clean seam into the research pillar.</div></div>
+<div class="card" style="flex:1;padding:13px 16px"><div class="mono-k" style="margin-bottom:6px">DIFFICULTY &amp; GRADING</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.5">Authored difficulty <b style="color:var(--ink)">band 1..5</b>, with a reserved <code>observedDifficulty</code> slot for the adaptive loop. <b style="color:var(--ink)">All grading is server-side.</b> No answer keys ever reach the client. Attempts queue offline and grade on reconnect.</div></div>
+</div>
+<div class="footnote">Attempts are per-Question, run-grouped: <code>QuestionAttempted</code> &rarr; <code>QuestionGraded</code> (1:1 via <code>attemptId</code>). Records local-first. Generation and grading stay online-only.</div></div></section>
+
+<!-- 07 LLM-GUIDED PRACTICE -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">07</span><span class="ttl">LLM-Guided Practice</span><span class="ct">07 / 18</span></div>
+<div class="lead" style="margin-bottom:16px">A line-anchored coach popover that orients, then asks. It is Socratic, never cryptic, and structurally unable to give the answer.</div>
+<div style="display:grid;grid-template-columns:1.15fr 1fr;gap:26px;flex:1">
+<div>
+<div class="mono-k" style="margin-bottom:10px">THE FOUR-TIER LADDER</div>
+<div style="display:flex;flex-direction:column;gap:8px">
+<div class="card" style="border-left:3px solid var(--rule);padding:9px 13px"><b style="color:var(--ink);font-size:15px">1 · Nudge:</b> <span style="font-size:13.5px;color:var(--ink-soft)">points at the line, asks a question</span></div>
+<div class="card" style="border-left:3px solid var(--clay);padding:9px 13px"><b style="color:var(--ink);font-size:15px">2 · Hint:</b> <span style="font-size:13.5px;color:var(--ink-soft)">names the concept in play</span></div>
+<div class="card" style="border-left:3px solid var(--terra);padding:9px 13px"><b style="color:var(--ink);font-size:15px">3 · Targeted:</b> <span style="font-size:13.5px;color:var(--ink-soft)">the specific fix, still as a prompt</span></div>
+<div class="card" style="border-left:3px solid var(--terra-d);padding:9px 13px"><b style="color:var(--ink);font-size:15px">4 · Gated reveal:</b> <span style="font-size:13.5px;color:var(--ink-soft)">a separate, gated call, never automatic</span></div>
+</div>
+</div>
+<div>
+<div class="mono-k" style="margin-bottom:10px;color:var(--moss)">HYBRID TRIGGERS · THEY <i>OFFER</i></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+<span class="chip">&ldquo;I&rsquo;m stuck&rdquo;</span><span class="chip">idle timer</span><span class="chip">failed test run</span>
+</div>
+<div class="card" style="padding:13px 16px">
+<div style="font-size:14.5px;color:var(--ink-soft);line-height:1.5"><b style="color:var(--ink)">Prototype built &amp; chosen.</b> We prototyped three surfaces. A human-in-the-loop review picked <b>Variant C, the anchored coach popover</b>. The hint anchor follows the caret and leads with the line it reads.</div>
+<div style="margin-top:10px;font-family:var(--mono);font-size:11.5px;color:var(--moss);line-height:1.5">branch <code>prototype/wf17-inline-hint-guide</code><br>route <code>/study/practice-prototype</code></div>
+</div>
+</div>
+</div>
+<div class="footnote">Reveal is gated <b>in the prompt and structurally</b> (a separate call). The guide streams server-side from the Intelligence Service: question + answer + active line + RAG chunks + tier. Production editor: Monaco / CodeMirror inline-widget API.</div></div></section>
+
+<!-- 08 RAG GROUNDING -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">08</span><span class="ttl">RAG Grounding</span><span class="ct">08 / 18</span></div>
+<div class="lead" style="margin-bottom:18px">Full retrieval-augmented grounding, now. Every generated question and every hint stays anchored in the learner&rsquo;s <i>own</i> material.</div>
+<div style="display:flex;gap:6px;margin-bottom:20px;align-items:stretch;flex-wrap:wrap">
+<div class="card" style="flex:1;min-width:120px;padding:10px 12px"><div style="font-size:13px;font-weight:600;color:var(--ink)">Ingest</div><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.3">upload · URL · paste · YouTube</div></div>
+<div style="align-self:center;color:var(--ink-faint)">&rarr;</div>
+<div class="card" style="flex:1;min-width:120px;padding:10px 12px"><div style="font-size:13px;font-weight:600;color:var(--ink)">Extract</div><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.3">deterministic parsers</div></div>
+<div style="align-self:center;color:var(--ink-faint)">&rarr;</div>
+<div class="card" style="flex:1;min-width:120px;padding:10px 12px"><div style="font-size:13px;font-weight:600;color:var(--ink)">Chunk</div><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.3">bound to material_id</div></div>
+<div style="align-self:center;color:var(--ink-faint)">&rarr;</div>
+<div class="card" style="flex:1;min-width:120px;padding:10px 12px;border-top:3px solid var(--moss)"><div style="font-size:13px;font-weight:600;color:var(--ink)">Embed</div><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.3">Gemini · pgvector</div></div>
+<div style="align-self:center;color:var(--ink-faint)">&rarr;</div>
+<div class="card" style="flex:1;min-width:120px;padding:10px 12px;border-top:3px solid var(--terra)"><div style="font-size:13px;font-weight:600;color:var(--ink)">Async worker</div><div style="font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.3">off the request path</div></div>
+</div>
+<div style="display:flex;gap:14px;flex:1">
+<div class="card" style="flex:1;border-left:3px solid var(--clay);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:5px">Ported, not run</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.45">We <b>port the patterns</b> of open-notebook (MIT), its transformations engine, chunk&rarr;embed&rarr;vector-search, context builder and Jinja prompts, into our own FastAPI service on Supabase/pgvector. We do <b>not</b> run it as a service.</div></div>
+<div class="card" style="flex:1;border-left:3px solid var(--terra);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:5px">Anchored generation</div><div style="font-size:14px;color:var(--ink-soft);line-height:1.45">No endpoint runs a model on arbitrary text. <b>Every call is bound to a user-owned artifact</b> (a material, a question, an attempt), which is both the grounding source and the abuse guard.</div></div>
+</div>
+<div class="footnote">Findings: <code>research/external/open-notebook-findings.md</code>. Sources decided in #12. The #22 architecture refactor sets the async job mechanism.</div></div></section>
+
+<!-- 09 RESEARCH COUPLING -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">09</span><span class="ttl">Research Coupling: Verified Learning &rarr; KT</span><span class="ct">09 / 18</span></div>
+<div class="lead" style="margin-bottom:18px">The assessment outcome is not a grade to display. It is the input to a knowledge-tracing model that drives the whole adaptive loop.</div>
+<div>
+<div class="prompt"><span class="k">01</span><span class="t"><b>Grading &rarr; mastery mapping.</b> The <code>score &isin; [0,1]</code> + per-skill binary becomes a per-concept mastery update, a derived projection cached locally, with a reserved <code>MasteryUpdated</code> event for the loop.</span></div>
+<div class="prompt"><span class="k">02</span><span class="t"><b>Knowledge-tracing model.</b> Cold-start-capable tracing (BKT / Deep-IRT family, benchmarked on Eedi &amp; POJ in Phase-1) estimates genuine per-skill mastery from a handful of attempts, the parallel to the Phase-1 pace convergence curve.</span></div>
+<div class="prompt"><span class="k">03</span><span class="t"><b>Adaptive difficulty.</b> Mastery selects the next item&rsquo;s difficulty band. Too easy wastes time, too hard demoralizes. The loop steers toward the productive edge.</span></div>
+<div class="prompt"><span class="k">04</span><span class="t"><b>Roadmap feedback.</b> Verified mastery feeds pace calibration and re-projection, and replaces gameable self-reported time. <i>This</i> is the closed loop, and the measured contribution.</span></div>
+</div>
+<div class="footnote">Extension narrative vs the base papers: Islam 2024 (predict-then-schedule) and CLST 2024 (cold-start KT). We report mastery calibration (reliability / ECE) alongside AUC. A verification signal must be trustworthy, not just discriminative.</div></div></section>
+
+<!-- 10 ARCHITECTURE -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">10</span><span class="ttl">Phase-2 Architecture</span><span class="ct">10 / 18</span></div>
+<div class="mono-k" style="margin-bottom:14px">EVOLVED SPINE · MICROSERVICE SPLIT + ASYNC JOBS (#22)</div>
+<div style="display:flex;gap:12px;align-items:flex-start;margin-top:4px">
+<div class="card" style="flex:1;border-top:3px solid var(--terra);padding:14px 16px;display:flex;flex-direction:column"><div style="font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px">React SPA · local-first</div><div style="font-size:13px;color:var(--ink-soft);line-height:1.5">Assessments &amp; Practice tabs · Dexie event store (v5&rarr;v6: two cache tables) · redacted content cache for offline read · attempts queue offline.</div></div>
+<div class="card" style="flex:1;border-top:3px solid var(--clay);padding:14px 16px;display:flex;flex-direction:column"><div style="font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px">Ingestion Service <span style="font-family:var(--mono);font-size:10px;color:var(--terra);border:1px solid var(--terra);border-radius:9px;padding:0 6px">new</span></div><div style="font-size:13px;color:var(--ink-soft);line-height:1.5">Deterministic parsers · extraction · chunking. Kept separate so heavy parsing never blocks model calls.</div></div>
+<div class="card" style="flex:1;border-top:3px solid var(--moss);padding:14px 16px;display:flex;flex-direction:column"><div style="font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px">Intelligence Service</div><div style="font-size:13px;color:var(--ink-soft);line-height:1.5">JWT-verified · all model + embedding calls · generation · rubric grading · streamed guide · Pillar-A engines.</div></div>
+<div class="card" style="flex:1;border-top:3px solid var(--ink-soft);padding:14px 16px;display:flex;flex-direction:column"><div style="font-size:16px;font-weight:600;color:var(--ink);margin-bottom:6px">Judge0 CE</div><div style="font-size:13px;color:var(--ink-soft);line-height:1.5">Self-hosted code sandbox over HTTP · <code>isolate</code> · 90+ languages · authoritative grading verdicts.</div></div>
+</div>
+<div class="card" style="margin-top:14px;padding:12px 15px;display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+<div style="font-size:13.5px;color:var(--ink-soft);line-height:1.5"><b style="color:var(--ink)">Supabase = single source of truth.</b> Postgres (events · assessments · questions · pgvector) + auth + storage. Any async bus is <b>transport-only</b>, never authority.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap"><span class="chip">async: Kafka/Redpanda vs pgmq (#22)</span><span class="chip">migration 004</span><span class="chip">client &harr; server &harr; Judge0</span></div></div>
+<div class="footnote">#22 is the current frontier. It fixes two latent audit gaps (a missing <code>sync_checkpoints</code> migration and an unenforced 5&nbsp;MB snapshot cap) while it sets the async spine. #12 (ingestion) resumes once #22 lands.</div></div></section>
+
+<!-- 11 AI BACKEND & COST -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">11</span><span class="ttl">AI Backend &amp; Cost</span><span class="ct">11 / 18</span></div>
+<div class="lead" style="margin-bottom:16px">One JWT-verified Intelligence Service owns every model call, on the free tier, behind a provider abstraction, and hardened against abuse.</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1">
+<div class="card" style="border-left:3px solid var(--terra);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">Models · Gemini free tier</div><div style="font-family:var(--mono);font-size:12px;color:var(--ink-soft);line-height:1.7">guide &rarr; gemini-3.5-flash-lite<br>gen + grade &rarr; gemini-3.6-flash<br>embed &rarr; gemini-embedding-001 · 768-dim</div><div style="font-size:13px;color:var(--ink-soft);margin-top:7px;line-height:1.4">Provider abstraction with a local <b>Ollama</b> fallback, vendor-swappable.</div></div>
+<div class="card" style="border-left:3px solid var(--moss);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">Streaming</div><div style="font-size:13.5px;color:var(--ink-soft);line-height:1.5"><code>POST</code> + <code>fetch</code> ReadableStream over <code>/v1/*</code> (header auth, not EventSource), provider-neutral SSE frames. Guide streams deltas. <b>Reveal is a separate gated call</b>.</div></div>
+<div class="card" style="border-left:3px solid var(--clay);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">Prompt architecture</div><div style="font-size:13.5px;color:var(--ink-soft);line-height:1.5">Git-versioned <b>Jinja</b> templates (ported open-notebook), SSTI variable rule, untrusted-content-as-data, native <code>responseSchema</code>.</div></div>
+<div class="card" style="border-left:3px solid var(--ink-soft);padding:13px 16px"><div style="font-size:15px;font-weight:600;color:var(--ink);margin-bottom:6px">Abuse hardening</div><div style="font-size:13.5px;color:var(--ink-soft);line-height:1.5">Key server-side only · <b>no endpoint runs a model on arbitrary text</b> (every call bound to a user-owned artifact) · durable Postgres rate-limits · free-tier circuit breaker · audit log.</div></div>
+</div>
+<div class="footnote">Cost principle reversed for the model layer only (ticket #14): <b>cost-effective, accurate-enough</b>. Feature scope stays full: full RAG, full KT coupling, all assessment families, live guide.</div></div></section>
+
+<!-- 12 ALGORITHMS & TECHNIQUES -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">12</span><span class="ttl">Algorithms &amp; Techniques</span><span class="ct">12 / 18</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;align-content:start;flex:1">
+<div class="card" style="border-left:3px solid var(--terra);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Grounded item generation</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">RAG retrieval over pgvector &rarr; schema-constrained LLM generation, concept-tagged, per family.</div></div>
+<div class="card" style="border-left:3px solid var(--moss);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Rubric grading (written)</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">LLM scored against a generated rubric &rarr; <code>score &isin; [0,1]</code>, per-criterion breakdown.</div></div>
+<div class="card" style="border-left:3px solid var(--clay);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Sandboxed code grading</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">Judge0 test-case execution &rarr; native verdicts. Hybrid client Pyodide gives instant feedback.</div></div>
+<div class="card" style="border-left:3px solid var(--moss);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Cold-start knowledge tracing</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">BKT / Deep-IRT-class model over per-skill observations. Cold-start AUC + ECE calibration.</div></div>
+<div class="card" style="border-left:3px solid var(--terra);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Adaptive difficulty selection</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">Mastery-driven next-item band (1..5), steering toward the productive edge.</div></div>
+<div class="card" style="border-left:3px solid var(--ink-soft);padding:11px 15px"><div style="font-size:15px;font-weight:600;color:var(--ink)">Tiered Socratic guidance</div><div style="font-size:13px;color:var(--ink-soft);margin-top:2px;line-height:1.4">Line-anchored 4-tier ladder. Structurally gated reveal. Streamed from the service.</div></div>
+</div>
+<div class="footnote">Pillar-A engines (Bayesian + shrinkage calibration, CUSUM, GP projection) continue from Phase-1 and now consume the verified-mastery signal. Spaced-repetition re-assessment scheduling starts once the KT loop is sharp.</div></div></section>
+
+<!-- 13 DECISIONS & FRONTIER -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">13</span><span class="ttl">Decisions &amp; Frontier</span><span class="ct">13 / 18</span></div>
+<div style="font-size:16px;color:var(--ink);margin-bottom:14px">Phase-2 is charted as a <b>wayfinder map</b>. We lock decisions ticket-by-ticket before any build. <span style="font-family:var(--mono);font-size:12px;color:var(--terra)">7 of 12 resolved</span></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1">
+<div>
+<div class="mono-k" style="color:var(--moss);margin-bottom:9px">LOCKED · DESIGN DECIDED</div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#10</b> App IA: two tabs, material-scoped</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#11</b> Types &amp; scoring: Question-atom, [0,1]+binary</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#14</b> AI backend: Gemini free tier, streaming</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#15</b> Persistence: pointer + server row + cache</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#16</b> Code sandbox: Judge0 CE</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#17</b> Inline-hint guide: Variant C <span style="font-family:var(--mono);font-size:10px;color:var(--moss)">prototype built</span></div>
+</div>
+</div>
+<div>
+<div class="mono-k" style="margin-bottom:9px">FRONTIER &amp; BLOCKED</div>
+<div class="card" style="border-left:3px solid var(--terra);padding:10px 13px;margin-bottom:8px"><b style="color:var(--ink);font-size:14px">#22 · architecture spine</b><div style="font-size:13px;color:var(--ink-soft);line-height:1.4">async mechanism + microservice split + evolved sync, <span style="color:var(--terra)">the current frontier</span>.</div></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#21</b> Practice session model: unblocked</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#12</b> Content ingestion: resumes after #22</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#13</b> Vector store &amp; async worker</div>
+<div style="font-size:13.5px;color:var(--ink-soft)"><b style="color:var(--ink)">#18</b> Generation pipeline · <b style="color:var(--ink)">#19</b> Grading&rarr;mastery · <b style="color:var(--ink)">#20</b> KT + adaptive loop</div>
+</div>
+</div>
+</div>
+<div class="footnote">Each locked decision came from a structured grilling and domain-modeling pass. Prototype tickets produce clickable artifacts, not just prose. Map: GitHub Issues #9.</div></div></section>
+
+<!-- 14 TIMELINE -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">14</span><span class="ttl">Timeline &amp; Review Cadence</span><span class="ct">14 / 18</span></div>
+<div style="font-size:16px;color:var(--ink);margin-bottom:18px">Phase-2 runs on <b>alternating weekends</b>. A guidance call sets the week&rsquo;s target, the review shows it. Today is <b style="color:var(--terra)">Guidance 1</b>. <b>Review 1 is next weekend</b>. The three PES reviews are the graded milestones.</div>
+<div style="display:flex;gap:14px;align-items:flex-start;margin-top:4px">
+<div class="card" style="flex:1;border-top:4px solid var(--terra);padding:15px 16px;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:19px;font-weight:600;color:var(--ink)">Review 1</span><span class="chip" style="border-color:var(--terra);color:var(--terra)">40% code</span></div>
+<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:3px 0 10px">~ next weekend</div>
+<div style="font-size:13px;color:var(--ink-soft);line-height:1.55">Novelty proposal &amp; Phase-2 system · architecture spine (#22) · RAG ingestion pipeline · assessment data model + generation prototype · Variant C practice guide · first closed-loop wiring · expected outcomes.</div></div>
+<div class="card" style="flex:1;border-top:4px solid var(--moss);padding:15px 16px;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:19px;font-weight:600;color:var(--ink)">Review 2</span><span class="chip" style="border-color:var(--moss);color:var(--moss)">80% code</span></div>
+<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:3px 0 10px">~ mid Sep 2026</div>
+<div style="font-size:13px;color:var(--ink-soft);line-height:1.55">Full assessment subsystem: all three families, generation + server grading · production practice editor (Monaco/CodeMirror) · KT mastery mapping + adaptive difficulty · candidate contribution · intermediate results.</div></div>
+<div class="card" style="flex:1;border-top:4px solid var(--clay);padding:15px 16px;display:flex;flex-direction:column">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:19px;font-weight:600;color:var(--ink)">Review 3 · ESA</span><span class="chip" style="border-color:var(--clay);color:var(--clay)">100% code</span></div>
+<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:3px 0 10px">Sep 20 – Oct 25 2026</div>
+<div style="font-size:13px;color:var(--ink-soft);line-height:1.55">End-to-end verified closed loop · full evaluation (closed+verified vs open+unverified) · model comparison vs Islam 2024 / CLST 2024 · working demo · journal publication proof.</div></div>
+</div>
+<div class="mono-k" style="margin:auto 0 0">PROPOSED CADENCE · GUIDANCE &harr; REVIEW ON SUCCESSIVE WEEKENDS</div>
+<div style="position:relative;height:38px;margin:16px 12px 0">
+<div style="position:absolute;top:8px;left:0;width:5%;height:4px;background:var(--terra)"></div>
+<div style="position:absolute;top:8px;left:5%;right:0;height:4px;background:repeating-linear-gradient(90deg,var(--ink-faint) 0 7px,transparent 7px 14px)"></div>
+<div style="position:absolute;left:5%;top:9px;transform:translateX(-50%);text-align:center"><div style="width:13px;height:13px;border-radius:50%;background:var(--terra);border:3px solid var(--paper);margin:-4px auto 0"></div><div style="font-family:var(--mono);font-size:10px;color:var(--terra);margin-top:5px;white-space:nowrap">G1 · today</div></div>
+<div style="position:absolute;left:22%;top:9px;transform:translateX(-50%);text-align:center"><div style="width:13px;height:13px;border-radius:50%;background:var(--moss);border:3px solid var(--paper);margin:-4px auto 0"></div><div style="font-family:var(--mono);font-size:10px;color:var(--moss);margin-top:5px;white-space:nowrap">R1 · next wk</div></div>
+<div style="position:absolute;left:55%;top:9px;transform:translateX(-50%);text-align:center"><div style="width:12px;height:12px;border-radius:50%;background:var(--ink-faint);border:3px solid var(--paper);margin:-4px auto 0"></div><div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:5px;white-space:nowrap">R2</div></div>
+<div style="position:absolute;left:92%;top:9px;transform:translateX(-50%);text-align:center"><div style="width:12px;height:12px;border-radius:50%;background:var(--ink-faint);border:3px solid var(--paper);margin:-4px auto 0"></div><div style="font-family:var(--mono);font-size:10px;color:var(--ink-faint);margin-top:5px;white-space:nowrap">R3 · ESA</div></div>
+</div></div></section>
+
+<!-- 15 THIS COMING WEEK -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">15</span><span class="ttl">This Coming Week &rarr; Review 1</span><span class="ct">15 / 18</span></div>
+<div class="lead" style="margin-bottom:16px">A guidance call commits the week. Here is what <b>Review 1 will show next weekend</b>, and where I would value your input.</div>
+<div style="display:grid;grid-template-columns:1.25fr 1fr;gap:24px;flex:1">
+<div>
+<div class="mono-k" style="margin-bottom:8px">COMMITTED FOR REVIEW 1 · 40% MILESTONE</div>
+<div class="prompt" style="padding:8px 0"><span class="k">01</span><span class="t" style="font-size:15px"><b>Architecture spine locked (#22):</b> async mechanism + Ingestion / Intelligence split decided and written up.</span></div>
+<div class="prompt" style="padding:8px 0"><span class="k">02</span><span class="t" style="font-size:15px"><b>RAG ingestion wired (#12/#13):</b> material &rarr; extract &rarr; chunk &rarr; embed &rarr; pgvector on the new spine.</span></div>
+<div class="prompt" style="padding:8px 0"><span class="k">03</span><span class="t" style="font-size:15px"><b>Assessment model + generation prototype:</b> objective &amp; written items generated from real material.</span></div>
+<div class="prompt" style="padding:8px 0"><span class="k">04</span><span class="t" style="font-size:15px"><b>Practice guide, clickable:</b> Variant C at <code>/study/practice-prototype</code>.</span></div>
+<div class="prompt" style="padding:8px 0"><span class="k">05</span><span class="t" style="font-size:15px"><b>First closed-loop wiring:</b> graded attempt &rarr; score&isin;[0,1]+binary &rarr; mastery stub.</span></div>
+<div class="prompt" style="padding:8px 0;border-bottom:none"><span class="k">06</span><span class="t" style="font-size:15px"><b>Evaluation plan drafted:</b> metrics, baselines &amp; hypothesis for the dissertation.</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:12px">
+<div class="card" style="border-top:3px solid var(--terra);padding:13px 16px"><div class="mono-k" style="margin-bottom:6px">REVIEW 1 WILL DEMONSTRATE</div><div style="font-size:13.5px;color:var(--ink-soft);line-height:1.5">Clickable prototype routes, the wayfinder decision log (#9&ndash;#22), the assessment data model, and the drafted evaluation plan. A working 40% slice, not slides alone.</div></div>
+<div class="card" style="border-top:3px solid var(--moss);padding:13px 16px"><div class="mono-k" style="margin-bottom:6px;color:var(--moss)">GUIDANCE SOUGHT TODAY</div><div style="font-size:13.5px;color:var(--ink-soft);line-height:1.55"><b style="color:var(--ink)">1 ·</b> Is 40% best spent on the <b>closed-loop spine</b> or on <b>assessment breadth</b> first?<br><b style="color:var(--ink)">2 ·</b> Is closed-vs-open-loop the right headline claim?<br><b style="color:var(--ink)">3 ·</b> Scope of the real-data study for the ESA.</div></div>
+</div>
+</div>
+<div class="footnote">Frontier ticket #22 lands first this week; #12/#13 resume on it. Full decision log: GitHub Issues #9. Cadence: guidance &harr; review, alternating weekends.</div></div></section>
+
+<!-- 16 EXPECTED OUTCOMES -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">16</span><span class="ttl">Expected Outcomes &amp; Evaluation</span><span class="ct">16 / 18</span></div>
+<div class="lead" style="margin-bottom:18px">The deliverable is rigor. We measure each subsystem against an honest baseline and a stated hypothesis.</div>
+<div style="display:grid;grid-template-columns:1.1fr 1fr;gap:22px;flex:1">
+<div>
+<div class="mono-k" style="margin-bottom:9px">HEADLINE METRICS</div>
+<div class="prompt" style="padding:9px 0"><span class="k">01</span><span class="t" style="font-size:16px"><b>Generation quality:</b> validity, groundedness &amp; concept-tag accuracy of generated items, plus grader robustness to adversarial submissions.</span></div>
+<div class="prompt" style="padding:9px 0"><span class="k">02</span><span class="t" style="font-size:16px"><b>KT model:</b> cold-start AUC + full-sequence AUC, mastery calibration (ECE / reliability).</span></div>
+<div class="prompt" style="padding:9px 0"><span class="k">03</span><span class="t" style="font-size:16px"><b>Guide effectiveness:</b> does tiered guidance help without giving the answer?</span></div>
+<div class="prompt" style="padding:9px 0;border-bottom:none"><span class="k">04</span><span class="t" style="font-size:16px"><b>Closed vs open loop:</b> schedule adherence &amp; measured learning gain, verified vs unverified.</span></div>
+</div>
+<div>
+<div class="mono-k" style="margin-bottom:9px">THE CENTRAL CLAIM</div>
+<div class="card" style="border-top:3px solid var(--terra);padding:15px 17px;margin-bottom:12px">
+<div style="font-size:16px;color:var(--ink);line-height:1.5">A plan driven by <b>verified mastery</b> adapts better than one driven by <b>self-reported time</b>. We measure this on adherence and learning gain, against the Phase-1 open-loop system as baseline.</div></div>
+<div class="card" style="padding:12px 15px;font-size:13px;color:var(--ink-soft);line-height:1.5">
+<b style="color:var(--ink)">Honest limits.</b> Free-tier data-use is an ethics and limitations note. Scope is a single learner. The real-data closed-loop study is a genuine but small cold-start case. We report it as feasibility, not a benchmark.</div></div>
+</div></div></section>
+
+<!-- 16 REFERENCES -->
+<section class="slide"><div class="pes"><img class="peslogo" alt="PES University"/></div><div class="pad"><div class="hd"><span class="num">17</span><span class="ttl">References</span><span class="ct">17 / 18</span></div>
+<div style="columns:2;column-gap:40px">
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[1]</span><span>M. Islam et al., &ldquo;Predicting Student Performance and Optimizing Study Schedule using Deep Learning and Dynamic Programming,&rdquo; ICCIT, IEEE, 2024. <span style='color:var(--terra)'>[base paper, Pillar A]</span></span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[2]</span><span>CLST 2024, cold-start knowledge tracing. <span style='color:var(--terra)'>[base paper, Pillar B]</span></span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[3]</span><span>A. Zanellati et al., &ldquo;Hybrid Models for Knowledge Tracing: A Systematic Review,&rdquo; IEEE TLT, 2024.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[4]</span><span>M. V. Yudelson et al., pyBKT, the Bayesian Knowledge Tracing toolkit, 2021.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[5]</span><span>Z. Liu et al., pyKT, a benchmark library for deep knowledge tracing, NeurIPS, 2022.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[6]</span><span>H. Doss, Judge0, an open-source online code execution system, 2020.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[7]</span><span>open-notebook (MIT), patterns for RAG transformations &amp; context building. <span style='color:var(--ink-faint)'>research/external</span></span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[8]</span><span>P. Lewis et al., &ldquo;Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks,&rdquo; NeurIPS, 2020.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[9]</span><span>Google, Gemini API, models &amp; embeddings documentation, 2026.</span></div>
+<div style="display:flex;gap:8px;padding:6px 0;font-size:13px;color:var(--ink-soft);line-height:1.4"><span style="font-family:var(--mono);color:var(--terra);flex:0 0 24px">[10]</span><span>A. T. Corbett &amp; J. R. Anderson, &ldquo;Knowledge Tracing: Modeling the Acquisition of Procedural Knowledge,&rdquo; UMUAI, 1994.</span></div>
+</div>
+<div class="footnote">Full Phase-2 bibliography, plus the 21 Pillar-A references, in the dissertation. Decisions &amp; findings: GitHub Issues #9–#22.</div></div></section>
+
+<!-- 17 THANK YOU -->
+<section class="slide"><div class="pad" style="justify-content:center;align-items:flex-start">
+<div style="font-family:var(--disp);font-size:72px;font-weight:600;color:var(--ink)">Thank you</div>
+<div style="width:64px;height:4px;background:var(--terra);margin:20px 0 16px;border-radius:2px"></div>
+<div style="font-size:20px;color:var(--ink-soft)">Questions welcome.</div>
+<div style="margin-top:20px;font-size:15px;color:var(--ink-soft)">***REMOVED*** · PES2PGE24DS201 &nbsp;·&nbsp; guided by Prof. Ramesh Prakash Guledgudd</div>
+<div style="margin-top:6px;font-family:var(--mono);font-size:13px;color:var(--ink-faint)">Verified Learning &amp; LLM-Guided Practice · Phase-2 · Guidance Call 1 · M.Tech DSAI · PES University</div></div></section>
+
+<div class="pbar" id="pbar"></div>
+<div class="navbar"><span id="counter">01 / 18</span> · &larr; &rarr; to navigate · F fullscreen</div>
+</div></div>
+<div class="hint">Verified Learning &amp; LLM-Guided Practice · Phase-2 · Guidance 1 · ***REMOVED***</div>
+<div id="infobox"><div class="ibcard"><span class="ibclose">&#10005; Esc</span><div class="ibttl" id="ibttl"></div><div class="ibbody" id="ibbody"></div></div></div>
+<script>
+const LOGO="data:image/png;base64,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";
+document.querySelectorAll(".peslogo,.titlelogo").forEach(el=>el.src=LOGO);
+const frame=document.getElementById('frame');
+const slides=[...document.querySelectorAll('.slide')];
+let i=0;
+const ib=document.getElementById("infobox"),ibttl=document.getElementById("ibttl"),ibbody=document.getElementById("ibbody");
+const INFO={
+ l_sess:{t:"Study session: the input",b:`<p><b>What it is.</b> A learner works through their material, or a practice item, in an in-app session.</p><p><b>What changes in Phase-2.</b> The session no longer only produces a duration. It can end in an <b>assessment</b> that verifies what was actually learned, and it can be accompanied by the <b>live guide</b>.</p><p class="ibtech">Recorded local-first as append-only events. Attempts queue offline and grade on reconnect.</p>`},
+ l_assess:{t:"Assessment: the verification",b:`<p><b>What it is.</b> A material-scoped set of questions across three families: objective, written, coding.</p><p><b>The clean seam.</b> Whatever the family, every attempt reduces to a single pair: <b>score &isin; [0,1]</b> and a <b>per-skill binary</b> (correct when &ge; &tau; &asymp; 0.6). That pair is the only thing the research pillar needs.</p><p class="ibtech">All grading is server-side. No answer keys reach the client. Retry produces a fresh, independent observation.</p>`},
+ l_mastery:{t:"Mastery signal: knowledge tracing",b:`<p><b>What it is.</b> An estimate of genuine per-concept mastery, inferred from a handful of graded attempts.</p><p><b>Why it matters.</b> This is the signal Phase-1 could not measure. It replaces gameable self-reported time with evidence of learning.</p><p class="ibtech">Cold-start-capable tracing (BKT / Deep-IRT family, benchmarked on Eedi &amp; POJ in Phase-1). We report calibration (ECE), not just AUC. A verification number must be trustworthy.</p>`},
+ l_adapt:{t:"Adaptive difficulty: the productive edge",b:`<p><b>What it is.</b> The mastery estimate chooses the next item&rsquo;s difficulty band (1..5).</p><p><b>Why it matters.</b> Too easy wastes the learner&rsquo;s time. Too hard demoralizes. The loop steers each learner toward the edge where learning is fastest.</p><p class="ibtech">A reserved <code>observedDifficulty</code> slot reconciles authored difficulty against real outcomes.</p>`},
+ l_road:{t:"Roadmap feedback: closing the loop",b:`<p><b>What it is.</b> Verified mastery feeds back into pace calibration and finish-date projection, the same Pillar-A engines from Phase-1, now driven by evidence of learning.</p><p><b>Why it matters.</b> This is the novelty and the measured contribution: a plan that responds to what you have <i>learned</i>, not just the hours you logged.</p><p class="ibtech">We evaluate the closed loop against the Phase-1 open loop on adherence and learning gain.</p>`},
+ fam_obj:{t:"Objective questions: auto-graded",b:`<p class="ibsub">mcq · multi_select · true_false · cloze · numeric</p><p><b>How graded.</b> Deterministically, against the stored answer key on the server: instant, cheap, and reproducible.</p><p><b>Role in the loop.</b> The backbone of fast mastery signal: many cheap observations per concept.</p><p class="ibtech">Answer keys live server-side only. The client cache is redacted and answer-free for offline read.</p>`},
+ fam_written:{t:"Written questions: LLM rubric grading",b:`<p class="ibsub">short_answer · long_form</p><p><b>How graded.</b> The model scores the response against a generated rubric, returning <code>score &isin; [0,1]</code> with a per-criterion breakdown the learner can read back.</p><p><b>Why rubric-first.</b> A rubric makes the grade explainable and far more reliable than a bare &ldquo;grade this&rdquo; prompt.</p><p class="ibtech">Grader robustness to adversarial submissions is an explicit Phase-2 evaluation metric.</p>`},
+ fam_coding:{t:"Coding questions: Judge0 sandbox",b:`<p class="ibsub">implement_fn · debug · output_prediction · complete_code</p><p><b>How graded.</b> Hybrid. Client-side Pyodide / JS gives instant feedback while the learner works. A self-hosted <b>Judge0 CE</b> sandbox produces the authoritative verdict against hidden test cases.</p><p><b>Why self-host.</b> Native grading verdicts, 90+ languages, and isolate-based isolation. We call it over HTTP to respect its GPL license. Piston is the fallback.</p><p class="ibtech">Server verdict is the graded observation. Client execution is convenience only.</p>`}
+};
+function openIB(k){const d=INFO[k];if(!d)return;ibttl.textContent=d.t;ibbody.innerHTML=d.b;ib.classList.add("open");}
+function closeIB(){ib.classList.remove("open");}
+document.querySelectorAll(".clk").forEach(el=>el.addEventListener("click",e=>{e.stopPropagation();openIB(el.getAttribute("data-k"));}));
+ib.addEventListener("click",e=>{if(e.target===ib)closeIB();});
+ib.querySelector(".ibclose").addEventListener("click",e=>{e.stopPropagation();closeIB();});
+function fit(){const k=Math.min(window.innerWidth/1280,window.innerHeight/720)*0.96;frame.style.transform='scale('+k+')';}
+function show(n){i=Math.max(0,Math.min(slides.length-1,n));slides.forEach((s,x)=>s.classList.toggle('active',x===i));
+ document.getElementById('counter').textContent=String(i+1).padStart(2,'0')+' / '+slides.length;
+ document.getElementById('pbar').style.width=((i+1)/slides.length*100)+'%';}
+window.addEventListener('resize',fit);
+document.addEventListener('keydown',e=>{
+ if(ib.classList.contains('open')){if(e.key==='Escape'){closeIB();}e.preventDefault();return;}
+ if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){show(i+1);e.preventDefault();}
+ else if(e.key==='ArrowLeft'||e.key==='PageUp'){show(i-1);e.preventDefault();}
+ else if(e.key==='Home'){show(0);} else if(e.key==='End'){show(slides.length-1);}
+ else if(e.key.toLowerCase()==='f'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+});
+document.getElementById('stage').addEventListener('click',e=>{if(ib.classList.contains('open'))return;show(e.clientX>window.innerWidth/2?i+1:i-1);});
+fit();show(0);
+</script></body></html>
