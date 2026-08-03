@@ -51,6 +51,12 @@ Legend: ☐ open · ✅ done.
 10. ☐ #20 KT model & adaptive-difficulty loop — needs #19.
 11. ☐ #21 Practice session model — needs the #17 prototype.
 
+**Wave 3 (UI/UX cluster) — graduated from fog 2026-08-03**
+12. ☐ #24 Material library, detail, ingestion-progress & picker UI/UX — frontier (#10 #12 #18 done).
+13. ☐ #25 Assessment review / feedback surface UI/UX — frontier (#11 #15 #18 done); sharpens alongside #21.
+14. ☐ #26 Roadmap-feedback UX — blocked by #20 (the mastery/adaptive signal to surface).
+15. ☐ #23 Generation-quality evaluation harness — blocked by #18 (impl) + #20; written triggers.
+
 **Parallel tracks** (if running concurrent sessions): (A) #10/#11 product framing · (B) #17 prototype · (C) #14→#12→#13 infra chain. They converge at #18/#19.
 
 **Why not pure foundation-first:** destination includes prototypes, and #17 (the inline guide) is the biggest unknown most likely to reshape the spec — prove it before building RAG around assumptions.
@@ -80,10 +86,13 @@ Legend: ☐ open · ✅ done.
 | [#20](https://github.com/NotTheRealRohit/study-planner-web/issues/20) | KT model & adaptive-difficulty loop | grilling | 3 | #19 (#18 seam: `observedDifficulty` = #23 calibration target) |
 | [#21](https://github.com/NotTheRealRohit/study-planner-web/issues/21) | Practice session model (written + coding) | grilling | 3 | ✅ #17 (now unblocked) |
 | [#23](https://github.com/NotTheRealRohit/study-planner-web/issues/23) | Generation-quality evaluation harness (groundedness / difficulty-calibration / dedup) | task | 3 | #18 (groundedness+dedup) · #20 (difficulty-calibration); written triggers in ticket |
+| [#24](https://github.com/NotTheRealRohit/study-planner-web/issues/24) | Material library, detail, ingestion-progress & picker UI/UX | grilling | 3 (UI) | **frontier** — #10 ✅ #12 ✅ #18 ✅ (graduated from fog 2026-08-03) |
+| [#25](https://github.com/NotTheRealRohit/study-planner-web/issues/25) | Assessment review / feedback surface UI/UX | grilling | 3 (UI) | **frontier** — #11 ✅ #15 ✅ #18 ✅; sharpens alongside #21 (graduated 2026-08-03) |
+| [#26](https://github.com/NotTheRealRohit/study-planner-web/issues/26) | Roadmap-feedback UX (mastery + adaptive difficulty into roadmap/progress) | grilling | 3 (UI) | #20 (the signal to surface) (graduated 2026-08-03) |
 
 ### Fog (not yet specified) / see map
 
-Spaced-repetition scheduling · roadmap-feedback UX · capstone evaluation & metrics (+ #14: grader-robustness metric, free-tier data-use ethics note) · ~~prompt architecture + injection safety~~ (✅ graduated/resolved by #14) · material library/detail surface (surfaced by #10) · assessment feedback/review surface (surfaced by #11) · content cache lifecycle/eviction (surfaced by #15).
+Spaced-repetition scheduling · ~~roadmap-feedback UX~~ (✅ graduated → #26) · capstone evaluation & metrics [guide-effectiveness + KT-model slices remain; generation-quality slice ✅ graduated → #23] · ~~prompt architecture + injection safety~~ (✅ graduated/resolved by #14) · ~~material library/detail surface~~ (✅ graduated → #24) · ~~assessment feedback/review surface~~ (✅ graduated → #25) · content cache lifecycle/eviction (eviction/refresh policy only; the `assessmentContentCache` projection resolved by #18).
 
 ## Migration ledger (server-side schema — single source of truth)
 
