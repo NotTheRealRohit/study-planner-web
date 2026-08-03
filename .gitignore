@@ -30,6 +30,7 @@ __pycache__/
 .codex/memory/
 
 # Research tier generated artifacts
+/research/external/
 research/datasets/**
 !research/datasets/**/
 !research/datasets/**/manifest.json
